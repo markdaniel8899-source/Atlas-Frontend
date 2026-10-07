@@ -1,0 +1,9 @@
+{
+  "name": "ATLAS",
+  "url": "https://atlas.example.com",
+  "description": "ATLAS is an AI-powered personal learning OS: one goal becomes a step-by-step roadmap, with lessons, notes, quizzes, a focus timer and progress tracking in one place.",
+  "routes": [
+    { "path": "/", "changefreq": "weekly", "priority": "1.0" },
+    { "path": "/login", "changefreq": "monthly", "priority": "0.6" }
+  ]
+}

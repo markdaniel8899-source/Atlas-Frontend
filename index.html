@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#030305" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Fonts: preconnect + parallel stylesheets instead of blocking CSS @imports -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+    />
+    <title>ATLAS | AI Learning OS</title>
+    <meta
+      name="description"
+      content="ATLAS turns one goal into a step-by-step AI learning plan: roadmaps, quizzes, notes, focus timer and progress tracking. Free while in beta."
+    />
+    <link rel="canonical" href="https://atlas.example.com/" />
+
+    <!-- Open Graph / Twitter (static fallback; Seo.tsx updates per route) -->
+    <meta property="og:title" content="ATLAS | AI Learning OS" />
+    <meta
+      property="og:description"
+      content="ATLAS turns one goal into a step-by-step AI learning plan: roadmaps, quizzes, notes, focus timer and progress tracking. Free while in beta."
+    />
+    <meta property="og:site_name" content="ATLAS" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://atlas.example.com/" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="ATLAS | AI Learning OS" />
+    <meta
+      name="twitter:description"
+      content="ATLAS turns one goal into a step-by-step AI learning plan: roadmaps, quizzes, notes, focus timer and progress tracking. Free while in beta."
+    />
+
+    <!-- Structured data: WebSite + SoftwareApplication for search & AI engines -->
+    <script type="application/ld+json">
+      [
+        {
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          "name": "ATLAS",
+          "url": "https://atlas.example.com/",
+          "description": "ATLAS is an AI-powered personal learning OS: one goal becomes a step-by-step roadmap, with lessons, notes, quizzes, a focus timer and progress tracking in one place.",
+          "inLanguage": "en"
+        },
+        {
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "ATLAS",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web",
+          "url": "https://atlas.example.com/",
+          "description": "AI learning operating system that builds a personalised roadmap from one goal, then keeps lessons, notes, AI quizzes, an offline focus timer and progress tracking together.",
+          "featureList": "AI learning roadmap, AI quizzes, self-organising notes, offline focus timer, squads and friends, AI assistant",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        }
+      ]
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

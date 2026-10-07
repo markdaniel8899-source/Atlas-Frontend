@@ -1,0 +1,539 @@
+/* Font stylesheets load in index.html (preconnect + parallel) for CWV;
+   Deltha import removed - defined but never referenced. */
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   FONTS: Geist self-hosted (variable)
+--------------------------------------------------------------- */
+@font-face {
+  font-family: "Geist";
+  src: url("../node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2")
+    format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2")
+    format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------
+   DESIGN TOKENS
+--------------------------------------------------------------- */
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Outfit", "Syne", "Syne Variable", ui-sans-serif, system-ui,
+    sans-serif;
+  --font-outfit: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-syne: "Syne", "Syne Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* ATLAS deep-space palette */
+  --color-void: #030305;
+  --color-ink: #0a0a1a;
+  --color-midnight: #0b1026;
+  --color-star: #9db4ff;
+
+  /* Layer scale: mesh(0) < canvas(1) < content(10) < grain(9999) */
+}
+
+/* ---------------------------------------------------------------
+   GLASSMORPHISM: shared card/modal surface
+--------------------------------------------------------------- */
+@utility glass {
+  background-color: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Subtle theme texture for otherwise flat glass cards: a soft lilac wash from
+   the top-right, a faint indigo lift from the bottom-left and a hairline of
+   light along the top edge. Composes with .glass (background-color only). */
+@utility card-sheen {
+  background-image:
+    radial-gradient(
+      130% 100% at 100% 0%,
+      rgba(207, 158, 255, 0.07),
+      transparent 58%
+    ),
+    radial-gradient(
+      90% 70% at 0% 100%,
+      rgba(64, 68, 204, 0.08),
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 30%
+    );
+}
+
+/* Corner wash: one smooth theme gradient anchored to the top-right,
+   instead of discrete blurred discs. */
+@utility atlas-glow {
+  background: radial-gradient(
+    circle 360px at 100% 0%,
+    rgba(207, 158, 255, 0.16) 0%,
+    rgba(157, 180, 255, 0.1) 30%,
+    rgba(61, 79, 158, 0.06) 52%,
+    transparent 78%
+  );
+}
+
+/* Scrollable area without a visible scrollbar (roadmap map, etc.). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------
+   ROADMAP MAP: active-node glow ring + marching connector dashes
+--------------------------------------------------------------- */
+@keyframes atlas-node-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(207, 158, 255, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(207, 158, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(207, 158, 255, 0);
+  }
+}
+
+.atlas-node-active {
+  animation: atlas-node-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Pulsing halo ring around the current level (own element, so the node's
+   glow shadow stays static). */
+@keyframes atlas-node-ring {
+  0% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.32);
+  }
+}
+
+.atlas-node-ring {
+  animation: atlas-node-ring 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes atlas-march {
+  to {
+    stroke-dashoffset: -36;
+  }
+}
+
+.atlas-edge-active {
+  animation: atlas-march 1.2s linear infinite;
+}
+
+/* Neon path: fine 4 4 dash, marching one full period every cycle. */
+@keyframes atlas-march-neon {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+.atlas-edge-neon {
+  animation: atlas-march-neon 1.6s linear infinite;
+}
+
+/* Bright comet dashes flowing down the whole trail (pathLength=1). */
+@keyframes atlas-trail-flow {
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+.atlas-trail-flow {
+  animation: atlas-trail-flow 3.6s linear infinite;
+}
+
+/* Completed segment draws itself in when a level is checked off. */
+@keyframes atlas-trail-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.atlas-trail-draw {
+  stroke-dasharray: 1;
+  animation: atlas-trail-draw 0.85s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Staggered entrance for level nodes and phase ribbons. */
+@keyframes atlas-node-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Floating sparkle / particle motion for the map background. */
+@keyframes atlas-sparkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes atlas-particle-drift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-28px);
+  }
+}
+
+/* ---------------------------------------------------------------
+   LENIS SMOOTH SCROLL BASE
+--------------------------------------------------------------- */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------
+   BASE
+--------------------------------------------------------------- */
+@layer base {
+  html {
+    color-scheme: dark;
+    /* Hide the default scrollbar (Firefox/legacy Edge). scrollbar-width is an
+       inherited property, so inner scroll containers are covered too;
+       Chromium/WebKit is handled by the ::-webkit-scrollbar rule below.
+       Scrolling itself stays fully functional - the visual read-out comes
+       from <ScrollProgressIndicator/>. */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background-color: var(--color-void);
+    /* Nothing to reserve once the scrollbar never exists, and because the bar
+       is always hidden the preloader's scroll lock (body { overflow: hidden })
+       can no longer change the viewport width - the old sideways jerk on
+       reveal is gone by construction. */
+    scrollbar-gutter: auto;
+  }
+
+  body {
+    position: relative;
+    min-height: 100dvh;
+    margin: 0;
+    overflow-x: clip;
+    background-color: var(--color-void);
+    color: rgba(255, 255, 255, 0.7);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01" on, "cv01" on;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Slow-moving mesh gradient: the cinematic base layer */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: -35%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        42% 38% at 22% 24%,
+        rgba(30, 34, 96, 0.55),
+        transparent 72%
+      ),
+      radial-gradient(
+        46% 42% at 78% 18%,
+        rgba(15, 26, 72, 0.5),
+        transparent 72%
+      ),
+      radial-gradient(
+        50% 46% at 68% 82%,
+        rgba(11, 34, 70, 0.45),
+        transparent 72%
+      ),
+      radial-gradient(
+        34% 32% at 28% 78%,
+        rgba(44, 26, 82, 0.4),
+        transparent 72%
+      ),
+      linear-gradient(160deg, #030305 0%, #0a0a1a 48%, #0b1026 100%);
+    animation: mesh-drift 52s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  /* Fixed film-grain overlay: never intercepts input */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 240px 240px;
+  }
+
+  #root {
+    position: relative;
+    z-index: 10;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  /* Major headings: Outfit, refined scale, medium weight */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2.5rem, 4.4vw, 3.75rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    body,
+    body * {
+      cursor: none !important;
+    }
+  }
+
+  ::selection {
+    background: rgba(157, 180, 255, 0.28);
+    color: #ffffff;
+  }
+
+  :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid rgba(157, 180, 255, 0.65);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Hide the default scrollbar globally in Chromium/WebKit (matching the
+     scrollbar-width: none above for Firefox). No track/thumb rules needed -
+     the bar is fully removed from layout; wheel, trackpad, keyboard and
+     drag-scrolling all keep working. */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+a:not([class*="rounded"]):not(:has(button)) {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition:
+    background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+a:not([class*="rounded"]):not(:has(button)):hover {
+  background-size: 100% 1px;
+}
+
+/* ---------------------------------------------------------------
+   RICH TEXT (quiz): inline math + auto sub/sup match host type
+--------------------------------------------------------------- */
+.rich-text .katex {
+  font-size: inherit;
+}
+
+.rich-text sub,
+.rich-text sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* ---------------------------------------------------------------
+   AMBIENT MOTION
+--------------------------------------------------------------- */
+@keyframes mesh-drift {
+  0% {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, 2%, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(-1%, 3%, 0) scale(1.02);
+  }
+}
+
+@keyframes orb-breathe {
+  0% {
+    transform: scale(0.92) rotate(0deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08) rotate(8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92) rotate(0deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes orb-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(4%, -6%, 0) scale(1.15);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+/* Squad cards: soft vertical drift so they never read as static */
+@keyframes card-bob {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+/* ---------------------------------------------------------------
+   PLASMA BEAM · continuous life
+--------------------------------------------------------------- */
+@keyframes beam-throb {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scaleX(1.16);
+  }
+}
+
+@keyframes beam-core-throb {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.75);
+  }
+}
+
+@keyframes beam-impact-throb {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes preloader-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.35);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  [data-animate] {
+    animation: none !important;
+  }
+
+  [data-bob] {
+    animation: none !important;
+  }
+}

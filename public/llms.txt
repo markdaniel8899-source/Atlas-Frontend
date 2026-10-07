@@ -1,0 +1,34 @@
+# ATLAS
+
+> ATLAS is an AI-powered personal learning OS: you describe one goal and it
+> builds a step-by-step roadmap, then keeps lessons, notes, AI quizzes, an
+> offline focus timer and progress tracking in a single app.
+
+ATLAS helps self-directed learners plan, study and prove progress without
+juggling six tools. The marketing pages below are public; the app itself
+requires a free account.
+
+## Key pages
+
+- [Home](https://atlas.example.com/): Product overview, features, problem it
+  solves and the seven-level learning journey.
+- [Sign in / Create account](https://atlas.example.com/login): Entry point to
+  the ATLAS app — free while in beta.
+
+## Capabilities
+
+- AI learning roadmap: personalised phase-by-phase plans for any skill
+  (Python, Calculus, Cybersecurity, and more).
+- AI quizzes: MCQs, coding challenges and debugging tests generated from your
+  own course content, with pass-to-unlock levels.
+- Self-organising notes linked to exact topics and courses.
+- Offline focus timer with session logging and streaks.
+- Squads and friends for accountability and shared streaks.
+- AI assistant that answers from your own course context.
+
+## Optional metadata
+
+- Product name: ATLAS
+- Category: Education / Learning management
+- Pricing: Free while in beta
+- Author: ATLAS Team

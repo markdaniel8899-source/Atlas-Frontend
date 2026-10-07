@@ -1,0 +1,22 @@
+node_modules/
+.env
+.env.local
+.env.production
+.next/
+dist/
+build/
+.DS_Store
+*.log
+
+# additional project ignores (kept from previous config)
+.env.*
+dist-ssr
+*.local
+.vscode/*
+!.vscode/extensions.json
+venv/
+__pycache__/
+*.pyc
+probe-out*/
+*.tsbuildinfo
+*.err.log
