@@ -472,6 +472,10 @@ export const LightPillar = ({
   }, [pillarRotation]);
 
   if (!webGLSupported) {
+    debugError(
+      "LightPillar",
+      "CSS GRADIENT rendered (internal fallback) — real effect NOT running",
+    );
     return <CssFallbackBackground className={className} variant="pillar" />;
   }
 

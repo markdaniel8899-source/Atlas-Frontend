@@ -122,6 +122,11 @@ export function withWebGLFallback<P extends object>(
       );
     }, [webgl]);
     if (!webgl) {
+      debugError(
+        "Fallback",
+        "CSS GRADIENT rendered (no-WebGL path) — real effect NOT running",
+        { component: Wrapped.displayName },
+      );
       return <CssFallbackBackground variant={variant} />;
     }
     return (

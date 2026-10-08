@@ -26,6 +26,24 @@ export function debugError(scope: string, message: string, data?: unknown) {
 let supportLogged = false;
 let probesInstalled = false;
 
+// ONE shared probe canvas for the whole app. Creating a fresh canvas per
+// check leaks WebGL contexts (browsers cap them at ~8-16 per page) and can
+// evict LIVE effect contexts → dead static canvases on mobile.
+let probeCanvas: HTMLCanvasElement | null = null;
+
+function probeSupported(): boolean {
+  if (!probeCanvas) probeCanvas = document.createElement("canvas");
+  try {
+    return Boolean(
+      probeCanvas.getContext("webgl2") ||
+        probeCanvas.getContext("webgl") ||
+        probeCanvas.getContext("experimental-webgl"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Post-init runtime probes — catches the "init OK, screen goes white later"
  * failure mode:
@@ -79,14 +97,7 @@ function installRuntimeProbes(): void {
 /** Detects real WebGL support and logs it exactly once. */
 export function logWebGLSupport(): boolean {
   if (supportLogged) {
-    let cached = true;
-    try {
-      const c = document.createElement("canvas");
-      cached = Boolean(c.getContext("webgl2") || c.getContext("webgl"));
-    } catch {
-      cached = false;
-    }
-    return cached;
+    return probeSupported();
   }
   supportLogged = true;
   installRuntimeProbes();
@@ -96,13 +107,13 @@ export function logWebGLSupport(): boolean {
   let maxTexture = 0;
   let contextError: string | null = null;
   try {
-    const canvas = document.createElement("canvas");
-    const gl2 = canvas.getContext("webgl2");
+    if (!probeCanvas) probeCanvas = document.createElement("canvas");
+    const gl2 = probeCanvas.getContext("webgl2");
     webgl2 = Boolean(gl2);
     const gl =
       gl2 ||
-      (canvas.getContext("webgl") as WebGLRenderingContext | null) ||
-      (canvas.getContext("experimental-webgl") as WebGLRenderingContext | null);
+      (probeCanvas.getContext("webgl") as WebGLRenderingContext | null) ||
+      (probeCanvas.getContext("experimental-webgl") as WebGLRenderingContext | null);
     webgl = Boolean(gl);
     if (gl) {
       maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
