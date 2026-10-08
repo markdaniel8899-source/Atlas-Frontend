@@ -39,7 +39,7 @@ export default function LandingPage() {
           className="relative z-[1] flex min-h-screen w-full flex-col justify-center overflow-hidden bg-[#030308] pb-14 pt-16 sm:pb-40 sm:pt-20 lg:pb-24 lg:pt-16 lg:sticky lg:top-0"
         >
           {/* Clearance for the hero widget that straddles the boundary above. */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 max-sm:max-h-screen">
+          <div aria-hidden className="pointer-events-none absolute inset-0">
             <MoltenMetal
               color1="#160C46"
               color2="#4044CC"
@@ -57,7 +57,7 @@ export default function LandingPage() {
               grain
               grainIntensity={0.05}
               mouseInteraction={false}
-              opacity={0.7}
+              opacity={0.95}
             />
           </div>
           {/* Depth cue: scales down + dims + blurs as the next layer covers it. */}
@@ -73,7 +73,7 @@ export default function LandingPage() {
           className="relative w-full overflow-hidden shadow-[0_-40px_80px_-20px_rgba(0,0,0,0.75)] lg:z-10"
           style={{ background: "rgba(4,4,10,0.97)" }}
         >
-          <div aria-hidden className="pointer-events-none absolute inset-0 max-sm:max-h-screen">
+          <div aria-hidden className="pointer-events-none absolute inset-0">
             <Beams
               beamWidth={3}
               beamHeight={30}

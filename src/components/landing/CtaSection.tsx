@@ -27,7 +27,7 @@ export function CtaSection() {
 
   return (
     <div ref={ref} className="relative w-full overflow-hidden bg-[#04040a]">
-      <div aria-hidden="true" className="absolute inset-0 max-sm:max-h-screen">
+      <div aria-hidden="true" className="absolute inset-0">
         <Ferrofluid
           colors={FERRO_COLORS}
           speed={0.1}

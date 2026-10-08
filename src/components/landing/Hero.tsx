@@ -156,12 +156,9 @@ export function Hero({ intro = true }: HeroProps) {
             Beam container: bottom edge = the card's top edge, top edge 130vh above it.
             The shader fades over ~0.73 of its own height, so at 130vh the beam is
             still lit at the hero's top-0 and falls the whole way onto the card.
-            Mobile uses the simple bounded pattern (int.md): explicit height,
-            centered, overflow hidden — keeps the canvas ~45% smaller so the
-            WebGL context survives low-end phones.
           */}
           <div
-            className="pointer-events-none absolute bottom-full left-1/2 w-[130%] -translate-x-1/2 overflow-hidden max-sm:top-[-70vh] sm:top-[-130vh]"
+            className="pointer-events-none absolute bottom-full left-[85%] w-[130%] -translate-x-1/2 top-[-130vh] sm:left-1/2"
           >
             <LaserFlow
               color="#CF9EFF"
@@ -254,7 +251,7 @@ export function Hero({ intro = true }: HeroProps) {
           >
             <Button
               onClick={() => curtainNavigate(navigate, "/login")}
-              className="w-full justify-center sm:w-auto"
+              className="max-sm:px-6"
             >
               Start your ascent
               <ArrowRight className="size-4" />
@@ -262,7 +259,7 @@ export function Hero({ intro = true }: HeroProps) {
             <Button
               variant="outline"
               onClick={() => curtainNavigate(navigate, "/login")}
-              className="w-full sm:w-auto"
+              className="max-sm:px-6"
             >
               I already train here
             </Button>

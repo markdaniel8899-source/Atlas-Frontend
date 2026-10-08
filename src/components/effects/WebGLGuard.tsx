@@ -67,8 +67,8 @@ interface BoundaryState {
 
 /**
  * Catches any error thrown while mounting/rendering a WebGL effect, logs it,
- * and swaps in the CSS fallback plus a VISIBLE error chip instead of leaving
- * a white screen (or unmounting the whole React tree).
+ * and swaps in the CSS fallback instead of leaving a white screen (or
+ * unmounting the whole React tree). Dev builds also show an error chip.
  */
 export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   state: BoundaryState = { failed: false, message: "" };
@@ -83,19 +83,22 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
   componentDidCatch(error: Error, info: ErrorInfo) {
     debugError(
       "ErrorBoundary",
-      "WebGL effect threw — rendering CSS fallback + visible error chip",
+      "WebGL effect threw — rendering CSS fallback",
       { error: error.message, stack: error.stack, componentStack: info.componentStack },
     );
   }
 
   render() {
     if (this.state.failed) {
-      // DEBUG-BYPASS: CSS gradient fallback disabled for the false-negative
-      // test — show ONLY the visible error chip so failures are inspectable.
       return (
-        <div role="alert" className="webgl-debug-error">
-          WebGL error: {this.state.message}
-        </div>
+        <>
+          {this.props.fallback ?? <CssFallbackBackground />}
+          {import.meta.env.DEV && (
+            <div role="alert" className="webgl-debug-error">
+              WebGL error: {this.state.message}
+            </div>
+          )}
+        </>
       );
     }
     return this.props.children;
@@ -113,21 +116,20 @@ export function withWebGLFallback<P extends object>(
   variant?: FallbackVariant,
 ) {
   function Wrapped(props: P) {
-    // DEBUG-BYPASS: support result is still probed+logged (and the detailed
-    // false-negative probe fires when it reports false), but it no longer
-    // gates rendering — the REAL effect always mounts, exactly like desktop.
     const [webgl] = useState(isWebGLSupported);
     useEffect(() => {
       debugLog(
         `withWebGLFallback(${Component.displayName || Component.name || "Component"})`,
         webgl
           ? "mounted — WebGL support: true, rendering real effect"
-          : "mounted — support reported FALSE but BYPASS active: forcing real effect",
+          : "mounted — support reported false but effect still mounted (boundary guards failures)",
         { variant: variant ?? "none" },
       );
     }, [webgl, variant]);
     return (
-      <WebGLErrorBoundary>
+      <WebGLErrorBoundary
+        fallback={<CssFallbackBackground variant={variant} />}
+      >
         <Component {...props} />
       </WebGLErrorBoundary>
     );

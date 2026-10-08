@@ -27,7 +27,7 @@ export function Footer() {
       {/* ── Left-side light rays ── */}
       <div
         aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-full max-w-[42rem] max-sm:max-h-screen"
+          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-full max-w-[42rem]"
       >
         <SideRays
           speed={2.5}

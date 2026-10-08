@@ -30,21 +30,25 @@ const FEATURES = [
     icon: Timer,
     title: "Focus Timer",
     body: "Start your work and let the timer run. You can close the tab and come back later. Your time is always saved.",
+    short: "Start a timer and focus. Close the tab anytime — your time is saved.",
   },
   {
     icon: FileText,
     title: "Smart Notes",
     body: "A simple writing space next to your timer. Write your ideas and they are saved automatically as you type.",
+    short: "Write next to your timer. Notes save automatically as you type.",
   },
   {
     icon: CalendarDays,
     title: "Progress Map",
     body: "See how consistent you are. A simple calendar shows every day you worked and tracks your real progress.",
+    short: "A calendar shows every day you worked and your real progress.",
   },
   {
     icon: Users,
     title: "Team Tracking",
     body: "Work with your friends or team. Share your focus hours and stay motivated by seeing their progress.",
+    short: "Share focus hours with friends and stay motivated together.",
   },
 ];
 
@@ -106,9 +110,10 @@ function TiltCard({ item }: TiltCardProps) {
         {item.title}
       </h3>
       <p className="relative mt-2 text-[12.5px] leading-snug text-white/45 sm:text-sm sm:leading-relaxed">
-        {item.body}
+        <span className="sm:hidden">{item.short}</span>
+        <span className="hidden sm:inline">{item.body}</span>
       </p>
-      <span className="relative mt-4 flex items-center gap-1 text-xs font-medium text-star/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+      <span className="relative mt-4 hidden items-center gap-1 text-xs font-medium text-star/70 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:flex">
         Explore
         <ArrowUpRight className="size-3.5" />
       </span>
@@ -351,7 +356,7 @@ export function FeaturesSection() {
               </div>
 
               {/* Weekly bars */}
-              <div className="relative mt-6 flex items-end gap-1.5">
+              <div className="relative mt-6 hidden items-end gap-1.5 sm:flex">
                 {WEEK.map((h, i) => (
                   <motion.div
                     key={i}

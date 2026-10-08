@@ -6,7 +6,6 @@ import {
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
-  useSpring,
   useTransform,
 } from "framer-motion";
 import type { MotionValue } from "framer-motion";
@@ -25,7 +24,6 @@ import { ScrollReveal } from "./ScrollReveal";
 
 const SEGMENTS = 7;
 const SEG = 1 / SEGMENTS;
-const SPRING = { stiffness: 240, damping: 30, mass: 0.6 };
 const ENTRY_MAG = 0.3;
 const ENTRY_Y = 0.3;
 const EXIT_Y = -0.8;
@@ -190,12 +188,11 @@ function LevelText({ index, progress, frac, w, vh }: LevelTextProps) {
   const alignment = index === 1 || index === 2 ? "text-left" : "text-center";
 
   // Phones: the text column sits close to both screen edges, so copy enters
-  // with a short slide + soft scale instead of flying in from outside the
-  // page (which reads as a broken "reverse" transition on a narrow canvas).
+  // with a short glide instead of flying in from outside the page.
   const compact = w > 0 && w < 768;
-  const entryMag = compact ? 0.1 : ENTRY_MAG;
-  const entryY = compact ? 0.14 : ENTRY_Y;
-  const exitY = compact ? -0.35 : EXIT_Y;
+  const entryMag = compact ? 0.05 : ENTRY_MAG;
+  const entryY = compact ? 0.08 : ENTRY_Y;
+  const exitY = compact ? -0.18 : EXIT_Y;
 
   const end: Point = { x: (0.5 - nodeX(index, w)) * w, y: 0 };
   const side = end.x >= 0 ? 1 : -1;
@@ -206,14 +203,15 @@ function LevelText({ index, progress, frac, w, vh }: LevelTextProps) {
   };
 
   // Timeline is anchored to `frac` (where the drawn line reaches this node):
-  // the copy slides in just before the node activates, is dead-centre and
-  // fully visible while the node is lit, then leaves before the next one.
+  // copy fades in as the line approaches and lands exactly on the node's
+  // position the moment it lights (stop 0.45 ≈ the node's centre moment in
+  // window space), then holds past the node and leaves before the next one.
   const winStart = Math.max(0, frac - 0.5 * SEG);
   const winEnd = Math.min(1, frac + 0.6 * SEG);
   const win = Math.max(winEnd - winStart, 1e-3);
   const at = (k: number) => winStart + k * win;
 
-  const stops = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.55, 0.7, 1].map(at);
+  const stops = [0, 0.07, 0.14, 0.21, 0.28, 0.36, 0.45, 0.6, 0.78, 1].map(at);
   const xs = [
     start.x,
     start.x,
@@ -238,20 +236,19 @@ function LevelText({ index, progress, frac, w, vh }: LevelTextProps) {
     0,
     exitY * vh,
   ];
-  const fadeStops = [0, 0.1, 0.75, 0.95].map(at);
+  const fadeStops = [0, 0.45, 0.8, 0.97].map(at);
 
-  const xRaw = useTransform(progress, stops, xs);
-  const yRaw = useTransform(progress, stops, ys);
+  // No spring on the copy either: like the drawn line, position tracks
+  // scroll 1:1 so the text can never lag behind the node it belongs to.
+  const x = useTransform(progress, stops, xs);
+  const y = useTransform(progress, stops, ys);
   const opacity = useTransform(progress, fadeStops, [0, 1, 1, 0]);
-  const blur = useTransform(progress, fadeStops, [10, 0, 0, 8]);
-  const scaleRaw = useTransform(
+  const blur = useTransform(progress, fadeStops, [7, 0, 0, 6]);
+  const scale = useTransform(
     progress,
     fadeStops,
     compact ? [0.9, 1, 1, 0.95] : [1, 1, 1, 1],
   );
-  const x = useSpring(xRaw, SPRING);
-  const y = useSpring(yRaw, SPRING);
-  const scale = useSpring(scaleRaw, SPRING);
   const filter = useMotionTemplate`blur(${blur}px)`;
 
   return (
@@ -273,7 +270,7 @@ function LevelText({ index, progress, frac, w, vh }: LevelTextProps) {
         {isCta && (
           <CurtainLink
             to="/login"
-            className="pointer-events-auto mt-5 inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#4044CC] shadow-[0_0_28px_rgba(207,158,255,0.55)] transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_44px_rgba(207,158,255,0.9)] sm:mt-6 sm:px-7"
+            className="pointer-events-auto mt-4 inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-[13px] font-semibold text-[#4044CC] shadow-[0_0_14px_rgba(207,158,255,0.3)] transition-all duration-300 hover:scale-[1.04] hover:shadow-[0_0_44px_rgba(207,158,255,0.9)] sm:mt-6 sm:px-7 sm:py-3 sm:text-sm sm:shadow-[0_0_28px_rgba(207,158,255,0.55)]"
           >
             Create Your Account
           </CurtainLink>
@@ -304,11 +301,11 @@ function LevelNode({ index, frac, progress, w, reduced }: LevelNodeProps) {
 
   const nodeOpacity = useTransform(progress, stops, [0.4, 0.4, 1, 1, 1]);
   const fill = useTransform(progress, stops, [0, 0, 1, 1, 1]);
-  const scale = useTransform(progress, stops, [1, 1, 1.3, 1, 1]);
+  const scale = useTransform(progress, stops, [1, 1, 1.18, 1, 1]);
   const glow = useTransform(
     progress,
     stops,
-    reduced ? [0, 0, 16, 9, 9] : [0, 0, 34, 15, 15],
+    reduced ? [0, 0, 14, 8, 8] : [0, 0, 26, 12, 12],
   );
   const boxShadow = useMotionTemplate`0 0 ${glow}px rgba(207,158,255,0.85)`;
 
@@ -409,6 +406,9 @@ export function CompleteJourneySection() {
   // fraction until the path has been sampled once.
   const fracs = LEVELS.map((_, i) => nodeFracs[i] ?? nodeY(i));
 
+  // Phones get a lighter particle trail (two dots instead of four).
+  const particleDelays = w > 0 && w < 768 ? [0, 6] : PARTICLE_DELAYS;
+
   // scroll → drawn length, anchored so draw = frac[i] lands exactly on the
   // scroll where node i crosses the viewport centre.
   drawMap.current = {
@@ -508,7 +508,7 @@ export function CompleteJourneySection() {
     <section
       id="complete-journey"
       ref={sectionRef}
-      className="relative h-[700vh] w-full bg-[#04040a]"
+      className="relative h-[600vh] w-full bg-[#04040a]"
     >
       <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
         {ready && (
@@ -592,7 +592,7 @@ export function CompleteJourneySection() {
               style={{ pathLength: draw }}
             />
             {!reduced &&
-              PARTICLE_DELAYS.map((delay, i) => (
+              particleDelays.map((delay, i) => (
                 <motion.g key={delay} style={{ opacity: particleOpacity }}>
                   <circle
                     r={9}
@@ -641,17 +641,17 @@ export function CompleteJourneySection() {
 
         <header className="absolute inset-x-0 top-[7%] z-10 px-6 sm:px-12">
             <motion.div ref={headerRef} className="max-w-2xl text-left" style={{ x: headerX, opacity: headerOpacity, y: headerY }}>
-              <ScrollReveal distance={30}>
+              <ScrollReveal distance={20}>
                 <p className="bg-gradient-to-r from-[#7c5cff] via-[#b794ff] to-[#cf9eff] bg-clip-text text-[12px] font-semibold uppercase tracking-[0.16em] text-transparent [filter:drop-shadow(0_0_14px_rgba(207,158,255,0.4))] sm:text-[14px] sm:tracking-[0.2em]">
                   What We Offer
                 </p>
               </ScrollReveal>
-              <ScrollReveal distance={44} className="mt-4">
+              <ScrollReveal distance={30} className="mt-4">
                 <h2 className="text-[26px] font-bold leading-[1.1] text-white sm:text-[36px] lg:text-[48px]">
                   Everything You Need to Master Any Subject
                 </h2>
               </ScrollReveal>
-              <ScrollReveal distance={44} className="mt-4">
+              <ScrollReveal distance={30} className="mt-4">
                 <p className="max-w-xl text-[14px] leading-relaxed text-gray-400 sm:text-[18px]">
                   From your first goal to your final boss battle, ATLAS guides
                   every step of your journey.

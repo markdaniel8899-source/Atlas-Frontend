@@ -67,17 +67,6 @@ export const LightPillar = ({
   const timeRef = useRef(0);
   const rotationSpeedRef = useRef(rotationSpeed);
 
-  // DEBUG-BYPASS: support detection is logged but never gates rendering.
-  useEffect(() => {
-    const canvas = document.createElement("canvas");
-    const gl =
-      canvas.getContext("webgl") ||
-      canvas.getContext("experimental-webgl");
-    debugLog("LightPillar", "WebGL support check (logged only, not gating)", {
-      supported: Boolean(gl),
-    });
-  }, []);
-
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
@@ -151,7 +140,7 @@ export const LightPillar = ({
         depth: false,
       });
     } catch (err) {
-      // DEBUG-BYPASS: surface the exact context error via the error boundary.
+      // Surface the exact context error via the error boundary (CSS fallback).
       debugError("LightPillar", "WebGLRenderer construction FAILED", err);
       throw err;
     }
@@ -472,8 +461,6 @@ export const LightPillar = ({
       materialRef.current.uniforms.uPillarRotSin.value =
       Math.sin(pillarRotRad);
   }, [pillarRotation]);
-
-  // DEBUG-BYPASS: internal no-WebGL gradient render removed for the test.
 
   return (
     <div
