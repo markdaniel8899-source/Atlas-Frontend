@@ -453,7 +453,7 @@ export const LightPillar = ({
   }, [pillarRotation]);
 
   if (!webGLSupported) {
-    return <CssFallbackBackground className={className} />;
+    return <CssFallbackBackground className={className} variant="pillar" />;
   }
 
   return (
@@ -472,4 +472,4 @@ export const LightPillar = ({
   );
 };
 
-export default withWebGLFallback(LightPillar);
+export default withWebGLFallback(LightPillar, "pillar");

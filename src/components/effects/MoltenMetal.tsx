@@ -400,4 +400,4 @@ function MoltenMetal({
   );
 }
 
-export default withWebGLFallback(MoltenMetal);
+export default withWebGLFallback(MoltenMetal, "molten");

@@ -314,4 +314,4 @@ const SideRays = ({
   );
 };
 
-export default withWebGLFallback(SideRays);
+export default withWebGLFallback(SideRays, "siderays");

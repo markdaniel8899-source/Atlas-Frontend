@@ -370,4 +370,4 @@ const DirLight = ({ position, color }: { position: [number, number, number]; col
   return <directionalLight ref={dir} color={color} intensity={1} position={position} />;
 };
 
-export default withWebGLFallback(Beams);
+export default withWebGLFallback(Beams, "beams");

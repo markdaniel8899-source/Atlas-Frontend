@@ -425,4 +425,4 @@ const Ferrofluid = ({
   );
 };
 
-export default withWebGLFallback(Ferrofluid);
+export default withWebGLFallback(Ferrofluid, "ferro");

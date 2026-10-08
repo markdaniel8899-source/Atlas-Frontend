@@ -30,16 +30,33 @@ export function useIsMobile(): boolean {
   return mobile;
 }
 
+/** Per-effect fallback variants — gradients use each effect's exact colors. */
+export type FallbackVariant =
+  | "beams"
+  | "molten"
+  | "laser"
+  | "dither"
+  | "ferro"
+  | "siderays"
+  | "pillar";
+
 /**
- * Lightweight animated-gradient stand-in rendered when WebGL is unavailable
- * or an effect crashes. Palette matches the app's void/indigo/lilac theme.
+ * Lightweight animated stand-in rendered when WebGL is unavailable,
+ * unsupported, or the device is mobile. Each variant mirrors the exact
+ * palette of the desktop shader it replaces (see WebGLGuard.css).
  */
-export function CssFallbackBackground({ className = "" }: { className?: string }) {
+export function CssFallbackBackground({
+  className = "",
+  variant,
+}: {
+  className?: string;
+  variant?: FallbackVariant;
+}) {
+  const variantClass = variant ? ` webgl-fallback--${variant}` : "";
   return (
     <div
       aria-hidden="true"
-      className={`webgl-fallback ${className}`.trim()}
-      style={{ mixBlendMode: "screen" }}
+      className={`webgl-fallback${variantClass} ${className}`.trim()}
     />
   );
 }
@@ -77,20 +94,23 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 }
 
 /**
- * Wraps a WebGL-dependent component so it degrades to the CSS fallback.
- * On mobile (UA or ≤768px viewport) or when WebGL is unavailable, the
- * effect never mounts at all — the animated CSS gradient renders instead,
- * so a failed shader can never leave a white section behind.
+ * Wraps a WebGL-dependent component so it degrades to a palette-matched
+ * CSS fallback. On mobile (UA or ≤768px viewport) or when WebGL is
+ * unavailable, the effect never mounts — the animated gradient renders
+ * instead, so a failed shader can never leave a white section behind.
  */
-export function withWebGLFallback<P extends object>(Component: ComponentType<P>) {
+export function withWebGLFallback<P extends object>(
+  Component: ComponentType<P>,
+  variant?: FallbackVariant,
+) {
   function Wrapped(props: P) {
     const mobile = useIsMobile();
     const [webgl] = useState(isWebGLSupported);
     if (mobile || !webgl) {
-      return <CssFallbackBackground />;
+      return <CssFallbackBackground variant={variant} />;
     }
     return (
-      <WebGLErrorBoundary>
+      <WebGLErrorBoundary fallback={<CssFallbackBackground variant={variant} />}>
         <Component {...props} />
       </WebGLErrorBoundary>
     );

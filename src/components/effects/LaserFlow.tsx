@@ -663,4 +663,4 @@ export const LaserFlow = ({
   return <div ref={mountRef} className={`laser-flow-container ${className || ""}`} style={style} />;
 };
 
-export default withWebGLFallback(LaserFlow);
+export default withWebGLFallback(LaserFlow, "laser");

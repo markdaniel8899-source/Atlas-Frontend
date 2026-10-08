@@ -921,4 +921,4 @@ const DitherVeil = ({
   return <div ref={containerRef} className={`dither-veil ${className}`.trim()} style={style} />;
 };
 
-export default withWebGLFallback(DitherVeil);
+export default withWebGLFallback(DitherVeil, "dither");
