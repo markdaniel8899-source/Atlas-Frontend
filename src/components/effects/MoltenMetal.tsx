@@ -3,6 +3,7 @@ import { Renderer, Program, Mesh, Triangle } from "ogl";
 import "./MoltenMetal.css";
 import { withWebGLFallback } from "./WebGLGuard";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 const hexToRgb = (hex: string): number[] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -187,6 +188,9 @@ function MoltenMetal({
     const container = containerRef.current;
     if (!container) return;
 
+    debugLog("MoltenMetal", "mount — creating WebGL renderer");
+    logContainerHealth("MoltenMetal", container);
+
     const renderer = new Renderer({
       webgl: 2,
       alpha: true,
@@ -202,6 +206,11 @@ function MoltenMetal({
     canvas.style.height = "100%";
     canvas.style.display = "block";
     container.appendChild(canvas);
+    debugLog("MoltenMetal", "WebGL renderer created OK", {
+      webgl2: renderer.isWebgl2,
+      dpr: renderer.dpr,
+    });
+    logCanvasSize("MoltenMetal", container);
 
     const geometry = new Triangle(gl);
     const program = new Program(gl, {
@@ -239,6 +248,12 @@ function MoltenMetal({
 
     const setSize = () => {
       const rect = container.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) {
+        debugError("MoltenMetal", "setSize called with ZERO container", {
+          width: rect.width,
+          height: rect.height,
+        });
+      }
       const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(1, Math.floor(rect.height));
       renderer.setSize(w, h);

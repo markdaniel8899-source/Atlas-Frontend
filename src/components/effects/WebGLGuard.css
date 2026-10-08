@@ -175,3 +175,22 @@
     opacity: 1;
   }
 }
+
+/* Debug: visible error chip when the WebGL boundary catches a crash. */
+.webgl-debug-error {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 99999;
+  max-width: min(90vw, 480px);
+  padding: 6px 10px;
+  border: 1px solid #ff6b6b;
+  border-radius: 8px;
+  background: rgba(120, 0, 20, 0.92);
+  color: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+  pointer-events: none;
+}

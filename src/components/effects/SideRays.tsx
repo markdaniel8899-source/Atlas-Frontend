@@ -3,6 +3,7 @@ import { Renderer, Program, Triangle, Mesh } from "ogl";
 import "./SideRays.css";
 import { withWebGLFallback } from "./WebGLGuard";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 type RayOrigin = "top-left" | "top-right" | "bottom-right" | "bottom-left";
 
@@ -158,6 +159,9 @@ const SideRays = ({
   useEffect(() => {
     if (!isVisible || !containerRef.current) return;
 
+    debugLog("SideRays", "effect run — initializing WebGL", { isVisible });
+    logContainerHealth("SideRays", containerRef.current);
+
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
       cleanupFunctionRef.current = null;
@@ -187,6 +191,8 @@ const SideRays = ({
         containerRef.current.removeChild(containerRef.current.firstChild);
       }
       containerRef.current.appendChild(canvas);
+      debugLog("SideRays", "WebGL renderer created OK", { dpr: renderer.dpr });
+      logCanvasSize("SideRays", containerRef.current);
 
       const [flipX, flipY] = originToFlip(origin);
       const uniforms: UniformMap = {
@@ -212,10 +218,19 @@ const SideRays = ({
       const mesh = new Mesh(gl, { geometry, program });
       meshRef.current = mesh;
 
+      let zeroSizeLogged = false;
       const updateSize = () => {
         if (!containerRef.current) return;
         renderer.dpr = Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2);
         const { clientWidth: w, clientHeight: h } = containerRef.current;
+        if (w < 1 || h < 1) {
+          if (!zeroSizeLogged) {
+            zeroSizeLogged = true;
+            debugError("SideRays", "container has ZERO width/height", { width: w, height: h });
+          }
+        } else {
+          zeroSizeLogged = false;
+        }
         renderer.setSize(w, h);
         uniforms.iResolution.value = [w * renderer.dpr, h * renderer.dpr];
       };

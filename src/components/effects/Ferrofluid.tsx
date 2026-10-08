@@ -4,6 +4,7 @@ import { Renderer, Program, Mesh, Triangle } from "ogl";
 import "./Ferrofluid.css";
 import { withWebGLFallback } from "./WebGLGuard";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 const MAX_COLORS = 8;
 
@@ -248,6 +249,9 @@ const Ferrofluid = ({
     const container = containerRef.current;
     if (!container) return;
 
+    debugLog("Ferrofluid", "mount — creating WebGL renderer");
+    logContainerHealth("Ferrofluid", container);
+
     const renderer = new Renderer({
       dpr: Math.min(
         dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
@@ -264,6 +268,8 @@ const Ferrofluid = ({
     canvas.style.height = "100%";
     canvas.style.display = "block";
     container.appendChild(canvas);
+    debugLog("Ferrofluid", "WebGL renderer created OK", { dpr: renderer.dpr });
+    logCanvasSize("Ferrofluid", container);
 
     const { arr, count, avg } = prepColors(colors);
 
@@ -304,8 +310,20 @@ const Ferrofluid = ({
     const mesh = new Mesh(gl, { geometry, program });
     meshRef.current = mesh;
 
+    let zeroSizeLogged = false;
     const resize = () => {
       const rect = container.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) {
+        if (!zeroSizeLogged) {
+          zeroSizeLogged = true;
+          debugError("Ferrofluid", "container has ZERO width/height", {
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+      } else {
+        zeroSizeLogged = false;
+      }
       renderer.setSize(rect.width, rect.height);
       uniforms.iResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight, 1];
     };

@@ -1,18 +1,12 @@
 import { Component, useEffect, useState } from "react";
 import type { ComponentType, ErrorInfo, ReactNode } from "react";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logWebGLSupport } from "../../lib/webglDebug";
 import "./WebGLGuard.css";
 
-/** True when the browser can create a WebGL context at all. */
+/** True when the browser can create a WebGL context at all (logged once). */
 export function isWebGLSupported(): boolean {
-  try {
-    const canvas = document.createElement("canvas");
-    return Boolean(
-      canvas.getContext("webgl") || canvas.getContext("experimental-webgl"),
-    );
-  } catch {
-    return false;
-  }
+  return logWebGLSupport();
 }
 
 /** Reactive mobile check (re-evaluates on resize/orientation change). */
@@ -68,26 +62,42 @@ interface BoundaryProps {
 
 interface BoundaryState {
   failed: boolean;
+  message: string;
 }
 
 /**
- * Catches any error thrown while mounting/rendering a WebGL effect and swaps
- * it for the CSS fallback instead of unmounting the whole React tree.
+ * Catches any error thrown while mounting/rendering a WebGL effect, logs it,
+ * and swaps in the CSS fallback plus a VISIBLE error chip instead of leaving
+ * a white screen (or unmounting the whole React tree).
  */
 export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> {
-  state: BoundaryState = { failed: false };
+  state: BoundaryState = { failed: false, message: "" };
 
-  static getDerivedStateFromError(): BoundaryState {
-    return { failed: true };
+  static getDerivedStateFromError(error: Error): BoundaryState {
+    return {
+      failed: true,
+      message: `${error.name}: ${error.message}`,
+    };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.warn("WebGL effect failed; showing CSS fallback.", error, info.componentStack);
+    debugError(
+      "ErrorBoundary",
+      "WebGL effect threw — rendering CSS fallback + visible error chip",
+      { error: error.message, stack: error.stack, componentStack: info.componentStack },
+    );
   }
 
   render() {
     if (this.state.failed) {
-      return this.props.fallback ?? <CssFallbackBackground />;
+      return (
+        <>
+          {this.props.fallback ?? <CssFallbackBackground />}
+          <div role="alert" className="webgl-debug-error">
+            WebGL error: {this.state.message}
+          </div>
+        </>
+      );
     }
     return this.props.children;
   }
@@ -105,6 +115,12 @@ export function withWebGLFallback<P extends object>(
 ) {
   function Wrapped(props: P) {
     const [webgl] = useState(isWebGLSupported);
+    useEffect(() => {
+      debugLog(
+        `withWebGLFallback(${Component.displayName || Component.name || "Component"})`,
+        webgl ? "mounted — WebGL supported, effect will render" : "mounted — NO WebGL, rendering CSS fallback",
+      );
+    }, [webgl]);
     if (!webgl) {
       return <CssFallbackBackground variant={variant} />;
     }

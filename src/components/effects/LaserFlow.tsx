@@ -4,6 +4,7 @@ import * as THREE from "three";
 import "./LaserFlow.css";
 import { withWebGLFallback } from "./WebGLGuard";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 const VERT = `
 precision highp float;
@@ -343,6 +344,9 @@ export const LaserFlow = ({
     const mount = mountRef.current;
     if (!mount) return undefined;
 
+    debugLog("LaserFlow", "mount — creating three.js renderer");
+    logContainerHealth("LaserFlow", mount);
+
     const renderer = new THREE.WebGLRenderer({
       antialias: false,
       alpha: false,
@@ -382,6 +386,11 @@ export const LaserFlow = ({
     };
     applyBackgroundMode(backgroundColor);
     mount.appendChild(canvas);
+    debugLog("LaserFlow", "WebGL renderer created OK", {
+      dpr: currentDprRef.current,
+      threeRevision: THREE.REVISION,
+    });
+    logCanvasSize("LaserFlow", mount);
 
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -440,6 +449,12 @@ export const LaserFlow = ({
     const mouseSmooth = new THREE.Vector2(0, 0);
 
     const setSizeNow = () => {
+      if (mount.clientWidth < 1 || mount.clientHeight < 1) {
+        debugError("LaserFlow", "mount has ZERO width/height", {
+          width: mount.clientWidth,
+          height: mount.clientHeight,
+        });
+      }
       const w = mount.clientWidth || 1;
       const h = mount.clientHeight || 1;
       const pr = currentDprRef.current;

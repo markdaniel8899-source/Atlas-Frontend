@@ -8,6 +8,7 @@ import { PerspectiveCamera } from "@react-three/drei";
 import "./Beams.css";
 import { withWebGLFallback } from "./WebGLGuard";
 import { isMobile } from "../../lib/mobile";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 interface ExtendMaterialConfig {
   header: string;
@@ -71,6 +72,9 @@ const CanvasWrapper = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    debugLog("Beams", "CanvasWrapper mounted — checking container");
+    logContainerHealth("Beams", el);
+    logCanvasSize("Beams", el);
     const io = new IntersectionObserver(
       ([entry]) => setInView(entry.isIntersecting),
       { threshold: 0 },
@@ -85,6 +89,18 @@ const CanvasWrapper = ({ children }: { children: ReactNode }) => {
         dpr={[1, 1.5]}
         frameloop={inView ? "always" : "never"}
         className="beams-container"
+        onCreated={(state) => {
+          const { width, height } = state.size;
+          if (width < 1 || height < 1) {
+            debugError("Beams", "R3F Canvas created with ZERO size", state.size);
+          } else {
+            debugLog("Beams", "R3F Canvas created OK", {
+              width,
+              height,
+              dpr: state.gl.getPixelRatio(),
+            });
+          }
+        }}
       >
         {children}
       </Canvas>

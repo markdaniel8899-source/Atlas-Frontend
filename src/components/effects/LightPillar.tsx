@@ -5,6 +5,7 @@ import {
   CssFallbackBackground,
   withWebGLFallback,
 } from "./WebGLGuard";
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
 
 /**
  * LightPillar — raymarched ambient light pillar (from react-bits).
@@ -73,6 +74,7 @@ export const LightPillar = ({
     const gl =
       canvas.getContext("webgl") ||
       canvas.getContext("experimental-webgl");
+    debugLog("LightPillar", "WebGL support check", { supported: Boolean(gl) });
     if (!gl) {
       setWebGLSupported(false);
     }
@@ -82,8 +84,17 @@ export const LightPillar = ({
     const container = containerRef.current;
     if (!container || !webGLSupported) return undefined;
 
+    debugLog("LightPillar", "mount — creating three.js renderer");
+    logContainerHealth("LightPillar", container);
+
     const width = container.clientWidth;
     const height = container.clientHeight;
+    if (width < 1 || height < 1) {
+      debugError("LightPillar", "container has ZERO width/height at init", {
+        width,
+        height,
+      });
+    }
 
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -141,7 +152,8 @@ export const LightPillar = ({
         stencil: false,
         depth: false,
       });
-    } catch {
+    } catch (err) {
+      debugError("LightPillar", "WebGLRenderer construction FAILED", err);
       setWebGLSupported(false);
       return undefined;
     }
@@ -150,6 +162,13 @@ export const LightPillar = ({
     renderer.setPixelRatio(settings.pixelRatio);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
+    debugLog("LightPillar", "WebGL renderer created OK", {
+      width,
+      height,
+      quality: effectiveQuality,
+      pixelRatio: settings.pixelRatio,
+    });
+    logCanvasSize("LightPillar", container);
 
     const vertexShader = `
       varying vec2 vUv;

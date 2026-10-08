@@ -6,6 +6,7 @@ import { Renderer, Program, Mesh, Triangle, Texture, RenderTarget } from 'ogl';
 import './DitherVeil.css';
 import { withWebGLFallback } from './WebGLGuard';
 import { isMobile } from '../../lib/mobile';
+import { debugLog, debugError, logContainerHealth, logCanvasSize } from '../../lib/webglDebug';
 
 export interface DitherVeilProps {
   src?: string;
@@ -501,6 +502,9 @@ const DitherVeil = ({
     const container = containerRef.current;
     if (!container) return undefined;
 
+    debugLog('DitherVeil', 'mount — creating WebGL renderer');
+    logContainerHealth('DitherVeil', container);
+
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const renderer = new Renderer({
       dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
@@ -514,6 +518,11 @@ const DitherVeil = ({
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     container.appendChild(canvas);
+    debugLog('DitherVeil', 'WebGL renderer created OK', {
+      webgl2: renderer.isWebgl2,
+      dpr: renderer.dpr,
+    });
+    logCanvasSize('DitherVeil', container);
 
     const floatMask = renderer.isWebgl2 && !!renderer.getExtension('EXT_color_buffer_float');
     const geometry = new Triangle(gl);
@@ -615,7 +624,19 @@ const DitherVeil = ({
     const brush = { x: 0, y: 0, px: 0, py: 0 };
     const bursts: Array<{ x: number; y: number; start: number }> = [];
 
+    let zeroSizeLogged = false;
     const layout = () => {
+      if (container.clientWidth < 1 || container.clientHeight < 1) {
+        if (!zeroSizeLogged) {
+          zeroSizeLogged = true;
+          debugError('DitherVeil', 'container has ZERO width/height', {
+            width: container.clientWidth,
+            height: container.clientHeight,
+          });
+        }
+      } else {
+        zeroSizeLogged = false;
+      }
       width = Math.max(1, container.clientWidth);
       height = Math.max(1, container.clientHeight);
       renderer.setSize(width, height);
