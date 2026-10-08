@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import * as THREE from "three";
 import {
-  CssFallbackBackground,
   withWebGLFallback,
 } from "./WebGLGuard";
 import { debugLog, debugError, logContainerHealth, logCanvasSize } from "../../lib/webglDebug";
@@ -67,22 +66,21 @@ export const LightPillar = ({
   const mouseRef = useRef(new THREE.Vector2(0, 0));
   const timeRef = useRef(0);
   const rotationSpeedRef = useRef(rotationSpeed);
-  const [webGLSupported, setWebGLSupported] = useState(true);
 
+  // DEBUG-BYPASS: support detection is logged but never gates rendering.
   useEffect(() => {
     const canvas = document.createElement("canvas");
     const gl =
       canvas.getContext("webgl") ||
       canvas.getContext("experimental-webgl");
-    debugLog("LightPillar", "WebGL support check", { supported: Boolean(gl) });
-    if (!gl) {
-      setWebGLSupported(false);
-    }
+    debugLog("LightPillar", "WebGL support check (logged only, not gating)", {
+      supported: Boolean(gl),
+    });
   }, []);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !webGLSupported) return undefined;
+    if (!container) return undefined;
 
     debugLog("LightPillar", "mount — creating three.js renderer");
     logContainerHealth("LightPillar", container);
@@ -153,9 +151,9 @@ export const LightPillar = ({
         depth: false,
       });
     } catch (err) {
+      // DEBUG-BYPASS: surface the exact context error via the error boundary.
       debugError("LightPillar", "WebGLRenderer construction FAILED", err);
-      setWebGLSupported(false);
-      return undefined;
+      throw err;
     }
 
     renderer.setSize(width, height);
@@ -348,10 +346,14 @@ export const LightPillar = ({
         mat.uniforms.uRotSin.value = Math.sin(t * 0.3);
         try {
           rend.render(scn, cam);
-        } catch {
-          // Context lost mid-frame on mobile GPUs: fall back to the CSS
-          // gradient instead of letting the rAF loop keep throwing.
-          setWebGLSupported(false);
+        } catch (err) {
+          // Context lost mid-frame on mobile GPUs: stop the loop loudly
+          // instead of letting rAF keep throwing.
+          debugError(
+            "LightPillar",
+            "render threw (likely context lost) — stopping loop",
+            err,
+          );
           return;
         }
         lastTime = currentTime - (deltaTime % frameTime);
@@ -411,7 +413,7 @@ export const LightPillar = ({
       rafRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [webGLSupported, quality]);
+  }, [quality]);
 
   useEffect(() => {
     rotationSpeedRef.current = rotationSpeed;
@@ -467,17 +469,11 @@ export const LightPillar = ({
     const pillarRotRad = (pillarRotation * Math.PI) / 180;
     materialRef.current.uniforms.uPillarRotCos.value =
       Math.cos(pillarRotRad);
-    materialRef.current.uniforms.uPillarRotSin.value =
+      materialRef.current.uniforms.uPillarRotSin.value =
       Math.sin(pillarRotRad);
   }, [pillarRotation]);
 
-  if (!webGLSupported) {
-    debugError(
-      "LightPillar",
-      "CSS GRADIENT rendered (internal fallback) — real effect NOT running",
-    );
-    return <CssFallbackBackground className={className} variant="pillar" />;
-  }
+  // DEBUG-BYPASS: internal no-WebGL gradient render removed for the test.
 
   return (
     <div

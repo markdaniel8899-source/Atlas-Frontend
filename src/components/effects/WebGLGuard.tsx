@@ -90,13 +90,12 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 
   render() {
     if (this.state.failed) {
+      // DEBUG-BYPASS: CSS gradient fallback disabled for the false-negative
+      // test — show ONLY the visible error chip so failures are inspectable.
       return (
-        <>
-          {this.props.fallback ?? <CssFallbackBackground />}
-          <div role="alert" className="webgl-debug-error">
-            WebGL error: {this.state.message}
-          </div>
-        </>
+        <div role="alert" className="webgl-debug-error">
+          WebGL error: {this.state.message}
+        </div>
       );
     }
     return this.props.children;
@@ -114,23 +113,21 @@ export function withWebGLFallback<P extends object>(
   variant?: FallbackVariant,
 ) {
   function Wrapped(props: P) {
+    // DEBUG-BYPASS: support result is still probed+logged (and the detailed
+    // false-negative probe fires when it reports false), but it no longer
+    // gates rendering — the REAL effect always mounts, exactly like desktop.
     const [webgl] = useState(isWebGLSupported);
     useEffect(() => {
       debugLog(
         `withWebGLFallback(${Component.displayName || Component.name || "Component"})`,
-        webgl ? "mounted — WebGL supported, effect will render" : "mounted — NO WebGL, rendering CSS fallback",
+        webgl
+          ? "mounted — WebGL support: true, rendering real effect"
+          : "mounted — support reported FALSE but BYPASS active: forcing real effect",
+        { variant: variant ?? "none" },
       );
-    }, [webgl]);
-    if (!webgl) {
-      debugError(
-        "Fallback",
-        "CSS GRADIENT rendered (no-WebGL path) — real effect NOT running",
-        { component: Wrapped.displayName },
-      );
-      return <CssFallbackBackground variant={variant} />;
-    }
+    }, [webgl, variant]);
     return (
-      <WebGLErrorBoundary fallback={<CssFallbackBackground variant={variant} />}>
+      <WebGLErrorBoundary>
         <Component {...props} />
       </WebGLErrorBoundary>
     );

@@ -94,6 +94,75 @@ function installRuntimeProbes(): void {
   }, 2500);
 }
 
+let detailedProbed = false;
+
+/**
+ * Runs when the basic probe reports NO support: retries real context creation
+ * while capturing the browser's `webglcontextcreationerror` message, so we
+ * can tell a hardware/driver limit apart from a detection bug (false negative).
+ */
+export function logDetailedWebGLProbe(): void {
+  if (detailedProbed) return;
+  detailedProbed = true;
+
+  const attempts: Array<{ name: string; attrs?: WebGLContextAttributes }> = [
+    { name: "webgl2" },
+    { name: "webgl" },
+    { name: "webgl", attrs: { powerPreference: "high-performance" } },
+    { name: "webgl", attrs: { antialias: true, alpha: true } },
+    { name: "experimental-webgl" },
+  ];
+
+  for (const attempt of attempts) {
+    const canvas = document.createElement("canvas");
+    let creationError = "";
+    const onCreationError = (e: Event) => {
+      creationError =
+        (e as WebGLContextEvent).statusMessage || "(no statusMessage)";
+    };
+    canvas.addEventListener("webglcontextcreationerror", onCreationError, false);
+
+    let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
+    let threw: string | null = null;
+    try {
+      gl = canvas.getContext(
+        attempt.name,
+        attempt.attrs,
+      ) as WebGLRenderingContext | null;
+    } catch (err) {
+      threw = err instanceof Error ? err.message : String(err);
+    }
+    canvas.removeEventListener("webglcontextcreationerror", onCreationError);
+
+    if (gl) {
+      let renderer: string | "unknown" = "unknown";
+      try {
+        const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+        renderer = dbg
+          ? (gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) as string)
+          : (gl.getParameter(gl.RENDERER) as string);
+      } catch {
+        /* ignore */
+      }
+      debugLog(
+        "WebGLProbe",
+        `${attempt.name} SUCCEEDED on retry — basic probe was a FALSE NEGATIVE`,
+        { attrs: attempt.attrs ?? {}, renderer },
+      );
+      return;
+    }
+    debugError("WebGLProbe", `${attempt.name} context creation FAILED`, {
+      attrs: attempt.attrs ?? {},
+      browserCreationError: creationError || "(webglcontextcreationerror event did not fire)",
+      exception: threw,
+    });
+  }
+  debugError(
+    "WebGLProbe",
+    "all attempts failed — hardware/driver limit or WebGL blocked",
+  );
+}
+
 /** Detects real WebGL support and logs it exactly once. */
 export function logWebGLSupport(): boolean {
   if (supportLogged) {
@@ -136,7 +205,12 @@ export function logWebGLSupport(): boolean {
   if (supported) {
     debugLog("WebGLSupport", "WebGL available", payload);
   } else {
-    debugError("WebGLSupport", "NO WEBGL SUPPORT — CSS fallback will render", payload);
+    debugError(
+      "WebGLSupport",
+      "NO WEBGL SUPPORT reported — running detailed probe (false-negative test)",
+      payload,
+    );
+    logDetailedWebGLProbe();
   }
   return supported;
 }
