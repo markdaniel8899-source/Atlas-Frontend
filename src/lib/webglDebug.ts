@@ -24,6 +24,57 @@ export function debugError(scope: string, message: string, data?: unknown) {
 }
 
 let supportLogged = false;
+let probesInstalled = false;
+
+/**
+ * Post-init runtime probes — catches the "init OK, screen goes white later"
+ * failure mode:
+ *  - webglcontextlost (capture phase; the event never bubbles) on ANY canvas
+ *    → console.error the moment a context dies (dead context = white canvas)
+ *  - a delayed sweep of every <canvas> on the page → final real sizes (the
+ *    immediate post-paint probe can race R3F's first resize, e.g. Beams
+ *    300x150 default)
+ */
+function installRuntimeProbes(): void {
+  if (probesInstalled) return;
+  probesInstalled = true;
+
+  window.addEventListener(
+    "webglcontextlost",
+    (e) => {
+      const ev = e as WebGLContextEvent;
+      const canvas = e.target as HTMLCanvasElement | null;
+      debugError("Runtime", "WEBCONTEXT LOST — this canvas turns WHITE/BLANK", {
+        statusMessage: ev.statusMessage ?? "",
+        canvas: canvas ? `${canvas.width}x${canvas.height}` : "unknown",
+      });
+    },
+    true,
+  );
+  window.addEventListener(
+    "webglcontextrestored",
+    () => debugLog("Runtime", "webglcontextrestored — canvas should recover"),
+    true,
+  );
+
+  // Final canvas sweep after everything has settled.
+  window.setTimeout(() => {
+    const canvases = Array.from(document.querySelectorAll("canvas"));
+    debugLog(
+      "Runtime",
+      `final canvas sweep — ${canvases.length} canvas element(s) on page`,
+      canvases.map((c, i) => {
+        const rect = c.getBoundingClientRect();
+        return {
+          i,
+          css: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+          buffer: `${c.width}x${c.height}`,
+          zero: rect.width < 1 || rect.height < 1,
+        };
+      }),
+    );
+  }, 2500);
+}
 
 /** Detects real WebGL support and logs it exactly once. */
 export function logWebGLSupport(): boolean {
@@ -38,6 +89,7 @@ export function logWebGLSupport(): boolean {
     return cached;
   }
   supportLogged = true;
+  installRuntimeProbes();
 
   let webgl2 = false;
   let webgl = false;
