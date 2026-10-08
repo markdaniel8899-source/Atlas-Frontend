@@ -172,11 +172,11 @@ export function Hero({ intro = true }: HeroProps) {
               wispIntensity={10}
               flowSpeed={0.35}
               flowStrength={0.25}
-              fogIntensity={0.4}
+              fogIntensity={0.15}
               fogScale={0.4}
               fogFallSpeed={0.78}
               decay={1.1}
-              falloffStart={1.5}
+              falloffStart={1}
             />
           </div>
 
@@ -184,7 +184,7 @@ export function Hero({ intro = true }: HeroProps) {
         </div>
       </motion.div>
 
-      <div className="pointer-events-none relative z-20 mx-auto grid min-h-[95vh] w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-36 pb-44 sm:pb-24 lg:grid-cols-[1.06fr_0.94fr] lg:gap-10">
+      <div className="pointer-events-none relative z-20 mx-auto grid min-h-[95vh] w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-36 pb-44 sm:pb-24 lg:grid-cols-[1.06fr_0.94fr] lg:gap-10 2xl:max-w-7xl">
         {/* ─────────────── LEFT · CONTENT ─────────────── */}
         <motion.div
           style={scrollStyle}

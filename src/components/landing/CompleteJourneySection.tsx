@@ -257,13 +257,13 @@ function LevelText({ index, progress, frac, w, vh }: LevelTextProps) {
       style={{ width: Math.min(420, 0.56 * w - 16) }}
     >
       <motion.div style={{ x, y, opacity, filter, scale }}>
-        <span className="block text-[11px] font-semibold uppercase tracking-[0.26em] text-[#cf9eff] sm:text-[13px] sm:tracking-[0.3em]">
+        <span className="block text-[0.6875rem] font-semibold uppercase tracking-[0.26em] text-[#cf9eff] sm:text-[0.8125rem] sm:tracking-[0.3em]">
           {level.label}
         </span>
-        <h3 className="mt-2.5 text-[20px] font-bold leading-tight text-white sm:mt-3 sm:text-[28px]">
+        <h3 className="mt-2.5 text-[1.25rem] font-bold leading-tight text-white sm:mt-3 sm:text-[1.75rem]">
           {level.heading}
         </h3>
-        <p className="mt-2.5 text-[13px] leading-[1.55] text-gray-400 sm:mt-3 sm:text-[16px] sm:leading-[1.6]">
+        <p className="mt-2.5 text-[0.8125rem] leading-[1.55] text-gray-400 sm:mt-3 sm:text-[1rem] sm:leading-[1.6]">
           <span className="sm:hidden">{level.shortBody}</span>
           <span className="hidden sm:inline">{level.body}</span>
         </p>
@@ -642,17 +642,17 @@ export function CompleteJourneySection() {
         <header className="absolute inset-x-0 top-[7%] z-10 px-6 sm:px-12">
             <motion.div ref={headerRef} className="max-w-2xl text-left" style={{ x: headerX, opacity: headerOpacity, y: headerY }}>
               <ScrollReveal distance={20}>
-                <p className="bg-gradient-to-r from-[#7c5cff] via-[#b794ff] to-[#cf9eff] bg-clip-text text-[12px] font-semibold uppercase tracking-[0.16em] text-transparent [filter:drop-shadow(0_0_14px_rgba(207,158,255,0.4))] sm:text-[14px] sm:tracking-[0.2em]">
+                <p className="bg-gradient-to-r from-[#7c5cff] via-[#b794ff] to-[#cf9eff] bg-clip-text text-[0.75rem] font-semibold uppercase tracking-[0.16em] text-transparent [filter:drop-shadow(0_0_14px_rgba(207,158,255,0.4))] sm:text-[0.875rem] sm:tracking-[0.2em]">
                   What We Offer
                 </p>
               </ScrollReveal>
               <ScrollReveal distance={30} className="mt-4">
-                <h2 className="text-[26px] font-bold leading-[1.1] text-white sm:text-[36px] lg:text-[48px]">
+                <h2 className="text-[1.625rem] font-bold leading-[1.1] text-white sm:text-[2.25rem] lg:text-5xl">
                   Everything You Need to Master Any Subject
                 </h2>
               </ScrollReveal>
               <ScrollReveal distance={30} className="mt-4">
-                <p className="max-w-xl text-[14px] leading-relaxed text-gray-400 sm:text-[18px]">
+                <p className="max-w-xl text-[0.875rem] leading-relaxed text-gray-400 sm:text-[1.125rem]">
                   From your first goal to your final boss battle, ATLAS guides
                   every step of your journey.
                 </p>

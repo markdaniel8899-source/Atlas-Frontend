@@ -263,6 +263,38 @@ html.lenis body {
     scrollbar-gutter: auto;
   }
 
+  /* ---------------------------------------------------------------
+     LARGE DISPLAYS (27-32"+ LCDs → 1536-4K viewports): scale the
+     whole rem-based system (type, spacing, containers) up so the UI
+     keeps a comfortable physical size when sitting farther from a
+     big screen. px-based details (borders, charts, 1px rules) stay
+     put on purpose. Untouched below 1536px — phones/tablets/laptops
+     keep the exact original scale.
+  --------------------------------------------------------------- */
+  @media (min-width: 1536px) {
+    html {
+      font-size: 17px;
+    }
+  }
+
+  @media (min-width: 1920px) {
+    html {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 2560px) {
+    html {
+      font-size: 19px;
+    }
+  }
+
+  @media (min-width: 3800px) {
+    html {
+      font-size: 21px;
+    }
+  }
+
   body {
     position: relative;
     min-height: 100dvh;
@@ -352,6 +384,16 @@ html.lenis body {
     font-size: clamp(2.5rem, 4.4vw, 3.75rem);
     line-height: 1.02;
     letter-spacing: -0.03em;
+  }
+
+  /* Large displays (1536+): headings grow with the viewport instead of
+     pinning at 60px. Utilities (text-*) still override this — it covers
+     headings that rely on the base scale. */
+  @media (min-width: 1536px) {
+    h1,
+    h2 {
+      font-size: clamp(2.75rem, 3.4vw, 4.5rem);
+    }
   }
 
   p {
