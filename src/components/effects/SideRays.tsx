@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Renderer, Program, Triangle, Mesh } from "ogl";
 import "./SideRays.css";
+import { withWebGLFallback } from "./WebGLGuard";
 
 type RayOrigin = "top-left" | "top-right" | "bottom-right" | "bottom-left";
 
@@ -313,4 +314,4 @@ const SideRays = ({
   );
 };
 
-export default SideRays;
+export default withWebGLFallback(SideRays);

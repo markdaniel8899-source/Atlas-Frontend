@@ -1,0 +1,31 @@
+/* CSS-only ambient fallback used when WebGL is unsupported or crashes. */
+.webgl-fallback {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 20% 18%, rgba(82, 39, 255, 0.38), transparent 70%),
+    radial-gradient(52% 46% at 82% 28%, rgba(255, 159, 252, 0.16), transparent 72%),
+    radial-gradient(58% 55% at 50% 92%, rgba(64, 68, 204, 0.32), transparent 72%),
+    linear-gradient(160deg, #030305 0%, #0a0a1a 55%, #0b1026 100%);
+  animation: webgl-fallback-drift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes webgl-fallback-drift {
+  0% {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(1.5%, 1.5%, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-0.5%, 2%, 0) scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .webgl-fallback {
+    animation: none;
+  }
+}

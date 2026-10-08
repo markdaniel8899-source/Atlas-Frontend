@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties } from "react";
 import * as THREE from "three";
 
 import "./LaserFlow.css";
+import { withWebGLFallback } from "./WebGLGuard";
 
 const VERT = `
 precision highp float;
@@ -662,4 +663,4 @@ export const LaserFlow = ({
   return <div ref={mountRef} className={`laser-flow-container ${className || ""}`} style={style} />;
 };
 
-export default LaserFlow;
+export default withWebGLFallback(LaserFlow);

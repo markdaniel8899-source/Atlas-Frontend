@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import * as THREE from "three";
+import {
+  CssFallbackBackground,
+  withWebGLFallback,
+} from "./WebGLGuard";
 
 /**
  * LightPillar — raymarched ambient light pillar (from react-bits).
@@ -323,7 +327,14 @@ export const LightPillar = ({
         mat.uniforms.uTime.value = t;
         mat.uniforms.uRotCos.value = Math.cos(t * 0.3);
         mat.uniforms.uRotSin.value = Math.sin(t * 0.3);
-        rend.render(scn, cam);
+        try {
+          rend.render(scn, cam);
+        } catch {
+          // Context lost mid-frame on mobile GPUs: fall back to the CSS
+          // gradient instead of letting the rAF loop keep throwing.
+          setWebGLSupported(false);
+          return;
+        }
         lastTime = currentTime - (deltaTime % frameTime);
       }
 
@@ -442,27 +453,7 @@ export const LightPillar = ({
   }, [pillarRotation]);
 
   if (!webGLSupported) {
-    return (
-      <div
-        className={className}
-        style={{
-          mixBlendMode,
-          width: "100%",
-          height: "100%",
-          position: "absolute",
-          top: 0,
-          left: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "rgba(0, 0, 0, 0.1)",
-          color: "#888",
-          fontSize: 14,
-        }}
-      >
-        WebGL not supported
-      </div>
-    );
+    return <CssFallbackBackground className={className} />;
   }
 
   return (
@@ -481,4 +472,4 @@ export const LightPillar = ({
   );
 };
 
-export default LightPillar;
+export default withWebGLFallback(LightPillar);

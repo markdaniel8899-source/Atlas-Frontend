@@ -326,6 +326,9 @@ html.lenis body {
     position: relative;
     z-index: 10;
     min-height: 100dvh;
+    /* Second x-axis guard (body already clips): nothing inside the app
+       tree can introduce horizontal scroll on mobile. */
+    overflow-x: clip;
   }
 
   h1,
@@ -353,6 +356,37 @@ html.lenis body {
 
   p {
     text-wrap: pretty;
+  }
+
+  /* -------------------------------------------------------------
+     MOBILE (≤768px): readable type + hard guard against any
+     horizontal overflow. Lives in @layer base so Tailwind
+     utilities (text-*, spacing) still override these defaults.
+  ------------------------------------------------------------- */
+  @media (max-width: 768px) {
+    /* Desktop clamp floors (2.5rem+) overflow narrow phones. */
+    h1,
+    h2 {
+      font-size: clamp(1.875rem, 7vw, 2.75rem);
+    }
+
+    /* Media and canvases can never widen the page. */
+    img,
+    svg,
+    video,
+    canvas {
+      max-width: 100%;
+    }
+
+    /* Long tokens (URLs, code, emails) wrap instead of spilling. */
+    p,
+    li,
+    h1,
+    h2,
+    h3,
+    h4 {
+      overflow-wrap: break-word;
+    }
   }
 
   a {

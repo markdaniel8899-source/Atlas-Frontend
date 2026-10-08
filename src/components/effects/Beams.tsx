@@ -6,6 +6,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { PerspectiveCamera } from "@react-three/drei";
 
 import "./Beams.css";
+import { withWebGLFallback } from "./WebGLGuard";
 
 interface ExtendMaterialConfig {
   header: string;
@@ -369,4 +370,4 @@ const DirLight = ({ position, color }: { position: [number, number, number]; col
   return <directionalLight ref={dir} color={color} intensity={1} position={position} />;
 };
 
-export default Beams;
+export default withWebGLFallback(Beams);

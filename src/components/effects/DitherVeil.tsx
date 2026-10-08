@@ -4,6 +4,7 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { Renderer, Program, Mesh, Triangle, Texture, RenderTarget } from 'ogl';
 
 import './DitherVeil.css';
+import { withWebGLFallback } from './WebGLGuard';
 
 export interface DitherVeilProps {
   src?: string;
@@ -920,4 +921,4 @@ const DitherVeil = ({
   return <div ref={containerRef} className={`dither-veil ${className}`.trim()} style={style} />;
 };
 
-export default DitherVeil;
+export default withWebGLFallback(DitherVeil);

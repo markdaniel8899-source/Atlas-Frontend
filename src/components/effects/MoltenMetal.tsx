@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Renderer, Program, Mesh, Triangle } from "ogl";
 import "./MoltenMetal.css";
+import { withWebGLFallback } from "./WebGLGuard";
 
 const hexToRgb = (hex: string): number[] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -156,7 +157,7 @@ export interface MoltenMetalProps {
   className?: string;
 }
 
-export default function MoltenMetal({
+function MoltenMetal({
   color1 = "#5227FF",
   color2 = "#FF9FFC",
   color3 = "#FFFFFF",
@@ -398,3 +399,5 @@ export default function MoltenMetal({
     />
   );
 }
+
+export default withWebGLFallback(MoltenMetal);
