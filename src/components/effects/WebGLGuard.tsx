@@ -41,9 +41,9 @@ export type FallbackVariant =
   | "pillar";
 
 /**
- * Lightweight animated stand-in rendered when WebGL is unavailable,
- * unsupported, or the device is mobile. Each variant mirrors the exact
- * palette of the desktop shader it replaces (see WebGLGuard.css).
+ * Animated stand-in rendered only when WebGL is unsupported or an effect
+ * crashes. Each variant mirrors the exact palette of the desktop shader it
+ * replaces (see WebGLGuard.css).
  */
 export function CssFallbackBackground({
   className = "",
