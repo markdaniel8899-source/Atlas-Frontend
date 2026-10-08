@@ -1,15 +1,47 @@
-/* CSS-only ambient fallback used when WebGL is unsupported or crashes. */
+/* CSS-only ambient fallback used when WebGL is unsupported, crashes,
+   or the device is mobile. Palette mirrors the app theme:
+   void -> ink -> midnight with indigo / lilac / pink aurora blobs. */
 .webgl-fallback {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  opacity: 0;
   background:
-    radial-gradient(60% 50% at 20% 18%, rgba(82, 39, 255, 0.38), transparent 70%),
-    radial-gradient(52% 46% at 82% 28%, rgba(255, 159, 252, 0.16), transparent 72%),
-    radial-gradient(58% 55% at 50% 92%, rgba(64, 68, 204, 0.32), transparent 72%),
+    radial-gradient(
+      46% 42% at 18% 22%,
+      rgba(82, 39, 255, 0.42),
+      transparent 70%
+    ),
+    radial-gradient(
+      42% 38% at 82% 16%,
+      rgba(207, 158, 255, 0.2),
+      transparent 72%
+    ),
+    radial-gradient(
+      50% 46% at 72% 86%,
+      rgba(255, 159, 252, 0.12),
+      transparent 72%
+    ),
+    radial-gradient(
+      56% 50% at 28% 82%,
+      rgba(64, 68, 204, 0.34),
+      transparent 72%
+    ),
     linear-gradient(160deg, #030305 0%, #0a0a1a 55%, #0b1026 100%);
-  animation: webgl-fallback-drift 26s ease-in-out infinite alternate;
-  will-change: transform;
+  /* Smooth section fade-in on mount, then the slow aurora drift. */
+  animation:
+    webgl-fallback-fade 1s ease-out 0.05s both,
+    webgl-fallback-drift 26s ease-in-out 1.05s infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes webgl-fallback-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes webgl-fallback-drift {
@@ -27,5 +59,6 @@
 @media (prefers-reduced-motion: reduce) {
   .webgl-fallback {
     animation: none;
+    opacity: 1;
   }
 }

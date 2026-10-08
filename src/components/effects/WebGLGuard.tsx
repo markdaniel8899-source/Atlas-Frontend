@@ -1,5 +1,6 @@
-import { Component } from "react";
+import { Component, useEffect, useState } from "react";
 import type { ComponentType, ErrorInfo, ReactNode } from "react";
+import { isMobile } from "../../lib/mobile";
 import "./WebGLGuard.css";
 
 /** True when the browser can create a WebGL context at all. */
@@ -12,6 +13,21 @@ export function isWebGLSupported(): boolean {
   } catch {
     return false;
   }
+}
+
+/** Reactive mobile check (re-evaluates on resize/orientation change). */
+export function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(isMobile);
+  useEffect(() => {
+    const onChange = () =>
+      setMobile((prev) => {
+        const next = isMobile();
+        return next === prev ? prev : next;
+      });
+    window.addEventListener("resize", onChange, { passive: true });
+    return () => window.removeEventListener("resize", onChange);
+  }, []);
+  return mobile;
 }
 
 /**
@@ -60,9 +76,19 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
   }
 }
 
-/** Wraps a WebGL-dependent component so it degrades to the CSS fallback. */
+/**
+ * Wraps a WebGL-dependent component so it degrades to the CSS fallback.
+ * On mobile (UA or ≤768px viewport) or when WebGL is unavailable, the
+ * effect never mounts at all — the animated CSS gradient renders instead,
+ * so a failed shader can never leave a white section behind.
+ */
 export function withWebGLFallback<P extends object>(Component: ComponentType<P>) {
   function Wrapped(props: P) {
+    const mobile = useIsMobile();
+    const [webgl] = useState(isWebGLSupported);
+    if (mobile || !webgl) {
+      return <CssFallbackBackground />;
+    }
     return (
       <WebGLErrorBoundary>
         <Component {...props} />
