@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 import "./LaserFlow.css";
 import { withWebGLFallback } from "./WebGLGuard";
+import { isMobile } from "../../lib/mobile";
 
 const VERT = `
 precision highp float;
@@ -355,7 +356,10 @@ export const LaserFlow = ({
     });
     rendererRef.current = renderer;
 
-    baseDprRef.current = Math.min(dpr ?? (window.devicePixelRatio || 1), 2);
+    baseDprRef.current = Math.min(
+      dpr ?? (window.devicePixelRatio || 1),
+      isMobile() ? 1.5 : 2,
+    );
     currentDprRef.current = baseDprRef.current;
 
     renderer.setPixelRatio(currentDprRef.current);

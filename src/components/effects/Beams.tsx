@@ -7,6 +7,7 @@ import { PerspectiveCamera } from "@react-three/drei";
 
 import "./Beams.css";
 import { withWebGLFallback } from "./WebGLGuard";
+import { isMobile } from "../../lib/mobile";
 
 interface ExtendMaterialConfig {
   header: string;
@@ -79,9 +80,9 @@ const CanvasWrapper = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <div ref={wrapRef} className="absolute inset-0">
+    <div ref={wrapRef} className="absolute inset-0 min-h-[400px]">
       <Canvas
-        dpr={[1, 2]}
+        dpr={[1, 1.5]}
         frameloop={inView ? "always" : "never"}
         className="beams-container"
       >
@@ -267,10 +268,14 @@ const Beams = ({
     [beamColor, speed, noiseIntensity, scale, lightMode],
   );
 
+  const beamCount = isMobile()
+    ? Math.max(6, Math.round(beamNumber * 0.6))
+    : beamNumber;
+
   return (
     <CanvasWrapper>
       <group rotation={[0, 0, THREE.MathUtils.degToRad(rotation)]}>
-        <PlaneNoise material={beamMaterial} count={beamNumber} width={beamWidth} height={beamHeight} />
+        <PlaneNoise material={beamMaterial} count={beamCount} width={beamWidth} height={beamHeight} />
         <DirLight color={lightColor} position={[0, 3, 10]} />
       </group>
       <ambientLight intensity={1} />

@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Renderer, Program, Mesh, Triangle } from "ogl";
 import "./Ferrofluid.css";
 import { withWebGLFallback } from "./WebGLGuard";
+import { isMobile } from "../../lib/mobile";
 
 const MAX_COLORS = 8;
 
@@ -248,7 +249,10 @@ const Ferrofluid = ({
     if (!container) return;
 
     const renderer = new Renderer({
-      dpr: dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
+      dpr: Math.min(
+        dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
+        isMobile() ? 1.5 : Number.POSITIVE_INFINITY,
+      ),
       alpha: true,
       antialias: true,
     });

@@ -94,19 +94,18 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 }
 
 /**
- * Wraps a WebGL-dependent component so it degrades to a palette-matched
- * CSS fallback. On mobile (UA or ≤768px viewport) or when WebGL is
- * unavailable, the effect never mounts — the animated gradient renders
- * instead, so a failed shader can never leave a white section behind.
+ * Wraps a WebGL-dependent component. The effect ALWAYS renders (desktop and
+ * mobile alike); the guard only catches runtime failures (context loss,
+ * shader errors) and devices without any WebGL support, degrading to the
+ * palette-matched CSS gradient instead of crashing the section.
  */
 export function withWebGLFallback<P extends object>(
   Component: ComponentType<P>,
   variant?: FallbackVariant,
 ) {
   function Wrapped(props: P) {
-    const mobile = useIsMobile();
     const [webgl] = useState(isWebGLSupported);
-    if (mobile || !webgl) {
+    if (!webgl) {
       return <CssFallbackBackground variant={variant} />;
     }
     return (

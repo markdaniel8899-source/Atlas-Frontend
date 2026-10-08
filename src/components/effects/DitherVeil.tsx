@@ -5,6 +5,7 @@ import { Renderer, Program, Mesh, Triangle, Texture, RenderTarget } from 'ogl';
 
 import './DitherVeil.css';
 import { withWebGLFallback } from './WebGLGuard';
+import { isMobile } from '../../lib/mobile';
 
 export interface DitherVeilProps {
   src?: string;
@@ -502,7 +503,7 @@ const DitherVeil = ({
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
       alpha: true,
       premultipliedAlpha: false,
       antialias: false

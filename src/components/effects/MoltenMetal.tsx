@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Renderer, Program, Mesh, Triangle } from "ogl";
 import "./MoltenMetal.css";
 import { withWebGLFallback } from "./WebGLGuard";
+import { isMobile } from "../../lib/mobile";
 
 const hexToRgb = (hex: string): number[] => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -191,7 +192,7 @@ function MoltenMetal({
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
     });
 
     const gl = renderer.gl;
@@ -336,7 +337,7 @@ function MoltenMetal({
 
     u.uSpeed.value = speed;
     u.uScale.value = scale;
-    u.uDetail.value = detail;
+    u.uDetail.value = isMobile() ? Math.min(detail, 2) : detail;
     u.uGlow.value = glow;
     u.uCoreSize.value = Math.max(coreSize, 0.001);
     u.uSwirl.value = swirl;

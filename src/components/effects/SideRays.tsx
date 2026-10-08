@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Renderer, Program, Triangle, Mesh } from "ogl";
 import "./SideRays.css";
 import { withWebGLFallback } from "./WebGLGuard";
+import { isMobile } from "../../lib/mobile";
 
 type RayOrigin = "top-left" | "top-right" | "bottom-right" | "bottom-left";
 
@@ -172,7 +173,7 @@ const SideRays = ({
       if (cancelled || !containerRef.current) return;
 
       const renderer = new Renderer({
-        dpr: Math.min(window.devicePixelRatio, 2),
+        dpr: Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2),
         alpha: true,
       });
       rendererRef.current = renderer;
@@ -213,7 +214,7 @@ const SideRays = ({
 
       const updateSize = () => {
         if (!containerRef.current) return;
-        renderer.dpr = Math.min(window.devicePixelRatio, 2);
+        renderer.dpr = Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2);
         const { clientWidth: w, clientHeight: h } = containerRef.current;
         renderer.setSize(w, h);
         uniforms.iResolution.value = [w * renderer.dpr, h * renderer.dpr];
