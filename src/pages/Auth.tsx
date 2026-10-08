@@ -109,7 +109,7 @@ export default function Auth() {
       {/* Ambient light pillar backdrop (LightPillar). */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
+            className="pointer-events-none absolute inset-0 max-sm:max-h-screen"
       >
         <LightPillar
           topColor="#5227FF"
