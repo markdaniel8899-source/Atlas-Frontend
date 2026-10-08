@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 
 const rawBase: string =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
   (import.meta.env.VITE_AI_API_URL as string | undefined) ??
   "http://localhost:8000";
 
