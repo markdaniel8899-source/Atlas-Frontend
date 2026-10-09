@@ -141,13 +141,17 @@ uniform float uFade;
     float sp=min(d,1.0),ep=max(d-1.0,0.0);
     float fm=flareY(max(y,0.0)),rm=clamp(1.0-(y/max(W_CURVE_RANGE,EPS)),0.0,1.0),cm=fm*rm;
     const float G=0.05; float xS=1.0+(FLARE_AMOUNT*W_CURVE_AMOUNT*G)*cm;
+    float latW=W_AA;
+#ifdef GL_OES_standard_derivatives
+    latW=max(W_AA,fwidth(uv.x)*1.5);
+#endif
     float sPix=clamp(y/R_V,0.0,1.0),bGain=pow(1.0-sPix,W_BOTTOM_EXP),sum=0.0;
     for(int s=0;s<2;++s){
         float sgn=s==0?-1.0:1.0;
         for(int i=0;i<W_LANES;++i){
             if(i>=lanes) break;
             float off=W_BASE_X+float(i)*W_LAYER_GAP,xc=sgn*(off*xS);
-            float dx=abs(uv.x-xc),lat=1.0-smoothstep(W_HALF,W_HALF+W_AA,dx),amp=exp(-off*W_SIDE_DECAY);
+            float dx=abs(uv.x-xc),lat=1.0-smoothstep(W_HALF,W_HALF+latW,dx),amp=exp(-off*W_SIDE_DECAY);
             float seed=h21(vec2(off,sgn*17.0)),yf2=yf+seed*7.0,ci=floor(yf2),fy=fract(yf2);
             float seg=mix(W_SEG_MIN,W_SEG_MAX,h21(vec2(ci,off*2.3)));
             float spR=h21(vec2(ci,off+sgn*31.0)),seg1=rGate(fy,seg)*step(spR,sp);
@@ -156,7 +160,7 @@ uniform float uFade;
         }
     }
     float span=smoothstep(-3.0,0.0,y)*(1.0-smoothstep(R_V-6.0,R_V,y));
-    return uWIntensity*sum*topF*bGain*span;
+    return uWIntensity*sum*topF*bGain*span*smoothstep(2.0,45.0,y);
 }
 
 void mainImage(out vec4 fc,in vec2 frag){
