@@ -24,7 +24,7 @@ const rgb = (hexColor: string, intensity = 1): RGB => {
 
 const PALETTES: Record<
   FallbackVariant | "default",
-  { base: RGB; a: RGB; b: RGB; c: RGB }
+  { base: RGB; a: RGB; b: RGB; c: RGB; beam?: number }
 > = {
   default: {
     base: rgb("#030305"),
@@ -46,9 +46,10 @@ const PALETTES: Record<
   },
   laser: {
     base: rgb("#030305"),
-    a: rgb("#cf9eff", 0.5),
-    b: rgb("#cf9eff", 0.3),
-    c: rgb("#cf9eff", 0.22),
+    a: rgb("#cf9eff", 0.75),
+    b: rgb("#cf9eff", 0.5),
+    c: rgb("#cf9eff", 0.38),
+    beam: 1,
   },
   dither: {
     base: rgb("#120f17"),
@@ -96,6 +97,7 @@ precision mediump float;
 varying vec2 vUv;
 uniform float uPhase;
 uniform float uAspect;
+uniform float uBeam;
 uniform vec3 uBase;
 uniform vec3 uA;
 uniform vec3 uB;
@@ -103,12 +105,29 @@ uniform vec3 uC;
 void main() {
   vec2 uv = vUv;
   float p = uPhase;
-  vec2 pa = vec2(0.24 + 0.05 * sin(p), 0.28 + 0.04 * cos(p));
-  vec2 pb = vec2(0.78 + 0.04 * cos(2.0 * p), 0.20 + 0.05 * sin(2.0 * p));
-  vec2 pc = vec2(0.58 + 0.04 * sin(3.0 * p), 0.80 + 0.04 * cos(3.0 * p));
-  vec2 da = vec2((uv.x - pa.x) * uAspect, uv.y - pa.y);
-  vec2 db = vec2((uv.x - pb.x) * uAspect, uv.y - pb.y);
-  vec2 dc = vec2((uv.x - pc.x) * uAspect, uv.y - pc.y);
+  // uBeam=0: scattered aurora blobs. uBeam=1: soft vertical beam column
+  // (the hero's LaserFlow slot is a tall narrow box — scattered blobs
+  // would sit almost entirely outside the visible viewport there).
+  vec2 c1 = mix(
+    vec2(0.24 + 0.05 * sin(p), 0.28 + 0.04 * cos(p)),
+    vec2(0.50, 0.16),
+    uBeam
+  );
+  vec2 c2 = mix(
+    vec2(0.78 + 0.04 * cos(2.0 * p), 0.20 + 0.05 * sin(2.0 * p)),
+    vec2(0.50 + 0.02 * sin(2.0 * p), 0.50),
+    uBeam
+  );
+  vec2 c3 = mix(
+    vec2(0.58 + 0.04 * sin(3.0 * p), 0.80 + 0.04 * cos(3.0 * p)),
+    vec2(0.50, 0.84),
+    uBeam
+  );
+  // Beam mode squeezes the blobs horizontally into a column.
+  float fx = 1.0 + 1.6 * uBeam;
+  vec2 da = vec2((uv.x - c1.x) * uAspect * fx, uv.y - c1.y);
+  vec2 db = vec2((uv.x - c2.x) * uAspect * fx, uv.y - c2.y);
+  vec2 dc = vec2((uv.x - c3.x) * uAspect * fx, uv.y - c3.y);
   vec3 col = uBase;
   col += uA / (1.0 + dot(da, da) * 9.0);
   col += uB / (1.0 + dot(db, db) * 11.0);
@@ -156,6 +175,7 @@ export function SimpleShaderGradient({
       const uniforms = {
         uPhase: { value: 0 },
         uAspect: { value: 1 },
+        uBeam: { value: palette.beam ?? 0 },
         uBase: { value: palette.base },
         uA: { value: palette.a },
         uB: { value: palette.b },
