@@ -48,7 +48,7 @@ export const PAGES = {
     path: "/blog",
     title: "Blog | ATLAS Learning OS",
     description:
-      "Notes on learning, focus and craft from the ATLAS team. New posts coming soon.",
+      "ATLAS insights on learning, focus and craft: study systems, AI tools and habits that make mastery stick.",
     index: true,
   },
   privacy: {

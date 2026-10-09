@@ -19,6 +19,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const AboutPage = lazy(() => import("./pages/site/AboutPage"));
 const ContactPage = lazy(() => import("./pages/site/ContactPage"));
 const BlogPage = lazy(() => import("./pages/site/BlogPage"));
+const BlogPostPage = lazy(() => import("./pages/site/BlogPostPage"));
 const PrivacyPage = lazy(() => import("./pages/site/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/site/TermsPage"));
 const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
@@ -154,6 +155,15 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/blog/:slug"
+            element={
+              <GroupTransition variant="landing">
+                {/* Per-post Seo is set inside BlogPostPage once the row loads. */}
+                <BlogPostPage />
+              </GroupTransition>
+            }
+          />
+          <Route
             path="/privacy"
             element={
               <GroupTransition variant="landing">
@@ -241,6 +251,7 @@ export default function App() {
         import("./pages/site/AboutPage"),
         import("./pages/site/ContactPage"),
         import("./pages/site/BlogPage"),
+        import("./pages/site/BlogPostPage"),
         import("./pages/site/PrivacyPage"),
         import("./pages/site/TermsPage"),
         import("./layouts/DashboardLayout"),

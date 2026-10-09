@@ -6,10 +6,13 @@ export function SecondaryPage({
   children,
   wide = false,
   glow,
+  maxWidthClass,
 }: {
   children: ReactNode;
   wide?: boolean;
   glow?: "contact";
+  /** Overrides the wide/narrow preset when a page needs a custom measure. */
+  maxWidthClass?: string;
 }) {
   return (
     <div className="relative min-h-dvh w-full overflow-hidden bg-[#030305] text-left">
@@ -31,7 +34,7 @@ export function SecondaryPage({
         <Navbar />
         <main
           className={`mx-auto w-full flex-1 px-6 pt-32 pb-24 sm:px-10 sm:pt-36 ${
-            wide ? "max-w-5xl" : "max-w-3xl"
+            maxWidthClass ?? (wide ? "max-w-5xl" : "max-w-3xl")
           }`}
         >
           {children}
