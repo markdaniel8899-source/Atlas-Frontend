@@ -14,14 +14,14 @@ import { Reveal } from "../../components/site/Reveal";
 import { fetchPosts, type BlogPost } from "../../lib/blog";
 
 const BLOG_GRID =
-  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[300px] md:auto-rows-[350px] grid-flow-row-dense";
+  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[240px] md:auto-rows-[260px] grid-flow-row-dense";
 
-/** Magazine/masonry spans by index (MITRAVEL reference). */
+/** MITRAVEL reference layout: featured = wide 1-row banner, tall = portrait. */
 function gridSpan(index: number): string {
-  if (index === 0) return "col-span-1 md:col-span-2 row-span-2"; // Featured (large)
-  if (index === 1) return "row-span-2"; // Tall vertical
+  if (index === 0) return "col-span-1 md:col-span-2"; // Featured: 2 cols, 1 row
+  if (index === 1) return "row-span-2"; // Tall portrait: 1 col, 2 rows
   if (index === 4) return "col-span-1 md:col-span-2"; // Wide horizontal
-  return "col-span-1 row-span-1"; // Normal
+  return "col-span-1 row-span-1"; // Normal square
 }
 
 export default function BlogPage() {
