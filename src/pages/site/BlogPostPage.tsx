@@ -34,10 +34,11 @@ const PROSE_CLASS = [
   "[&_ol]:mt-5 [&_ol]:list-decimal [&_ol]:space-y-2.5 [&_ol]:pl-6 [&_ol]:marker:text-[#cf9eff]/60",
   "[&_li]:text-white/65",
   "[&_blockquote]:mt-8 [&_blockquote]:border-l-2 [&_blockquote]:border-[#cf9eff]/50 [&_blockquote]:pl-5 [&_blockquote]:text-white/75 [&_blockquote]:italic",
-  "[&_figure]:mt-10 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-white/10 [&_figure]:bg-white/[0.03]",
-  "[&_figure_img]:block [&_figure_img]:h-auto [&_figure_img]:w-full",
+  // Legacy <figure> wrappers render as invisible boxes (display:contents) so
+  // in-article images sit directly in the flow — no framed div around them.
+  "[&_figure]:contents",
   "[&_figcaption]:hidden",
-  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-white/10",
+  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full",
 ].join(" ");
 
 function ShareIcon({ path }: { path: string }) {
@@ -313,7 +314,7 @@ export default function BlogPostPage() {
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[240px] md:auto-rows-[260px]">
             {related.map((item, index) => (
               <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)}>
-                <BlogCard post={item} minimal variant="h-full w-full" />
+                <BlogCard post={item} stacked variant="h-full w-full" />
               </Reveal>
             ))}
           </div>
