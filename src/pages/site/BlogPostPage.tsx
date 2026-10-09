@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   ArrowLeft,
   CalendarDays,
@@ -15,7 +14,6 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Reveal } from "../../components/site/Reveal";
 import { Seo } from "../../seo/Seo";
 import { sanitizeHtml } from "../../lib/notes";
-import { EASE } from "../../lib/motion";
 import {
   fetchPostBySlug,
   fetchRelatedPosts,
@@ -26,21 +24,20 @@ import {
 } from "../../lib/blog";
 
 const PROSE_CLASS = [
-  // Full-width container: text keeps a readable measure, images go edge-to-edge.
-  "mt-10 text-base leading-[1.9] text-white/65 max-w-none",
-  "[&_h2]:mt-14 [&_h2]:max-w-3xl [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-white",
-  "[&_h3]:mt-10 [&_h3]:max-w-3xl [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-white/90",
-  "[&_p]:mt-5 [&_p]:max-w-3xl",
+  "mt-10 text-base leading-[1.9] text-white/65",
+  "[&_h2]:mt-14 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-[-0.02em] [&_h2]:text-white",
+  "[&_h3]:mt-10 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-white/90",
+  "[&_p]:mt-5",
   "[&_strong]:font-semibold [&_strong]:text-white/90",
   "[&_a]:text-[#cf9eff] [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-white",
-  "[&_ul]:mt-5 [&_ul]:max-w-3xl [&_ul]:list-disc [&_ul]:space-y-2.5 [&_ul]:pl-6 [&_ul]:marker:text-[#cf9eff]/60",
-  "[&_ol]:mt-5 [&_ol]:max-w-3xl [&_ol]:list-decimal [&_ol]:space-y-2.5 [&_ol]:pl-6 [&_ol]:marker:text-[#cf9eff]/60",
+  "[&_ul]:mt-5 [&_ul]:list-disc [&_ul]:space-y-2.5 [&_ul]:pl-6 [&_ul]:marker:text-[#cf9eff]/60",
+  "[&_ol]:mt-5 [&_ol]:list-decimal [&_ol]:space-y-2.5 [&_ol]:pl-6 [&_ol]:marker:text-[#cf9eff]/60",
   "[&_li]:text-white/65",
-  "[&_blockquote]:mt-8 [&_blockquote]:max-w-3xl [&_blockquote]:border-l-2 [&_blockquote]:border-[#cf9eff]/50 [&_blockquote]:pl-5 [&_blockquote]:text-white/75 [&_blockquote]:italic",
-  "[&_figure]:mt-10 [&_figure]:w-full [&_figure]:max-w-full [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-white/10 [&_figure]:bg-white/[0.03]",
-  "[&_figure_img]:block [&_figure_img]:h-auto [&_figure_img]:w-full [&_figure_img]:max-w-full",
+  "[&_blockquote]:mt-8 [&_blockquote]:border-l-2 [&_blockquote]:border-[#cf9eff]/50 [&_blockquote]:pl-5 [&_blockquote]:text-white/75 [&_blockquote]:italic",
+  "[&_figure]:mt-10 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-white/10 [&_figure]:bg-white/[0.03]",
+  "[&_figure_img]:block [&_figure_img]:h-auto [&_figure_img]:w-full",
   "[&_figcaption]:hidden",
-  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-white/10",
+  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-white/10",
 ].join(" ");
 
 function ShareIcon({ path }: { path: string }) {
@@ -148,45 +145,34 @@ export default function BlogPostPage() {
     window.open(href, "_blank", "noopener,noreferrer");
 
   return (
-    // Full-width page wrapper: remounts on slug change so the ENTIRE screen
-    // fades in (outside the inner max-w containers — not just the center
-    // content column). Runs under/after the double curtain on post->post nav.
-    <motion.div
-      key={slug}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5, ease: EASE }}
-      className="min-h-dvh"
-    >
-      <SecondaryPage maxWidthClass="max-w-none">
-        <Seo
-          path={`/blog/${post.slug}`}
-          title={`${post.title} | ATLAS Blog`}
-          description={post.excerpt}
-        />
+    <SecondaryPage maxWidthClass="max-w-4xl">
+      <Seo
+        path={`/blog/${post.slug}`}
+        title={`${post.title} | ATLAS Blog`}
+        description={post.excerpt}
+      />
 
-        <Reveal>
-          <nav aria-label="Breadcrumb" className="mx-auto max-w-4xl">
-            <ol className="flex items-center gap-2 text-sm text-white/45">
-              <li>
-                <CurtainLink to="/" className="transition-colors hover:text-white/80">
-                  Home
-                </CurtainLink>
-              </li>
-              <li aria-hidden className="flex items-center gap-2">
-                <ChevronRight className="size-3.5" />
-                <CurtainLink to="/blog" className="transition-colors hover:text-white/80">
-                  Blog
-                </CurtainLink>
-              </li>
-              <li aria-hidden className="flex min-w-0 items-center gap-2">
-                <ChevronRight className="size-3.5 shrink-0" />
-                <span className="truncate text-white/70">{post.title}</span>
-              </li>
-            </ol>
-          </nav>
-        </Reveal>
+      <Reveal>
+        <nav aria-label="Breadcrumb">
+          <ol className="flex items-center gap-2 text-sm text-white/45">
+            <li>
+              <CurtainLink to="/" className="transition-colors hover:text-white/80">
+                Home
+              </CurtainLink>
+            </li>
+            <li aria-hidden className="flex items-center gap-2">
+              <ChevronRight className="size-3.5" />
+              <CurtainLink to="/blog" className="transition-colors hover:text-white/80">
+                Blog
+              </CurtainLink>
+            </li>
+            <li aria-hidden className="flex min-w-0 items-center gap-2">
+              <ChevronRight className="size-3.5 shrink-0" />
+              <span className="truncate text-white/70">{post.title}</span>
+            </li>
+          </ol>
+        </nav>
+      </Reveal>
 
       <Reveal delay={0.08}>
         <header className="relative mt-6 overflow-hidden rounded-3xl border border-white/10">
@@ -224,7 +210,7 @@ export default function BlogPostPage() {
                   ))}
                 </div>
               )}
-              <h1 className="mt-4 max-w-3xl text-3xl leading-[1.1] font-bold tracking-[-0.03em] text-white sm:text-4xl lg:text-[2.75rem]">
+              <h1 className="mt-4 text-3xl leading-[1.1] font-bold tracking-[-0.03em] text-white sm:text-4xl lg:text-[2.75rem]">
                 {post.title}
               </h1>
               <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/55">
@@ -243,7 +229,7 @@ export default function BlogPostPage() {
       </Reveal>
 
       <Reveal delay={0.12}>
-        <div className="mx-auto mt-8 flex max-w-4xl justify-start">
+        <div className="mt-8 flex justify-start">
           <CurtainLink
             to="/blog"
             className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 py-2.5 text-sm text-white/80 transition-colors hover:border-[#cf9eff]/50 hover:text-white"
@@ -260,7 +246,7 @@ export default function BlogPostPage() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <div className="mx-auto mt-14 flex max-w-4xl flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
+          <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
             <p className="text-[11px] font-medium tracking-[0.3em] text-white/45 uppercase">
               Share this article
             </p>
@@ -287,7 +273,7 @@ export default function BlogPostPage() {
         </Reveal>
 
         <Reveal delay={0.1}>
-          <section className="mx-auto mt-10 max-w-4xl rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
+          <section className="mt-10 rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8">
             <div className="flex items-center gap-4">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl border border-star/50 bg-star/15 shadow-[0_0_24px_rgba(157,180,255,0.35)]">
                 <span className="size-3 rotate-45 rounded-[2px] border border-star/90 bg-star/40" />
@@ -318,13 +304,13 @@ export default function BlogPostPage() {
       </article>
 
       {related.length > 0 && (
-        <section className="mx-auto mt-16 max-w-6xl">
+        <section className="mt-16">
           <Reveal>
             <h2 className="text-xl font-semibold tracking-[-0.01em] text-white sm:text-2xl">
               Related articles
             </h2>
           </Reveal>
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[300px]">
+          <div className="mt-6 grid grid-cols-1 gap-4 auto-rows-[300px] sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item, index) => (
               <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)}>
                 <BlogCard post={item} variant="h-full w-full" />
@@ -333,7 +319,6 @@ export default function BlogPostPage() {
           </div>
         </section>
       )}
-      </SecondaryPage>
-    </motion.div>
+    </SecondaryPage>
   );
 }
