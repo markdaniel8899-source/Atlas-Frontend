@@ -8,6 +8,7 @@ import {
   isLowEndWebGLDevice,
 } from "../../lib/webglDebug";
 import "./WebGLGuard.css";
+import { SimpleShaderGradient } from "./SimpleShaderGradient";
 
 /** True when the browser can create a WebGL context at all (logged once). */
 export function isWebGLSupported(): boolean {
@@ -111,21 +112,20 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 }
 
 /**
- * Wraps a WebGL-dependent component with two safety layers:
+ * Wraps a WebGL-dependent component in a three-tier degradation ladder so
+ * a section NEVER shows a white canvas:
  *
- *  1. LOW-END GATE — budget devices (≤2 GB memory) and software-only GPUs
- *     (SwiftShader / llvmpipe) never mount the effect at all: heavy
- *     full-screen shaders overflow mediump precision or evict GPU contexts
- *     there, turning the canvas WHITE and washing out the whole section.
- *     They get the palette-matched CSS gradient fallback instead.
- *  2. RUNTIME SWAP — `webglcontextlost` does not throw, so the
- *     ErrorBoundary can never see it; a context that dies mid-session would
- *     leave a permanent white canvas. A capture-phase listener watches for
- *     context loss inside this wrapper's subtree and swaps in the CSS
- *     fallback the moment it happens.
+ *   1. HEAVY   — the real cinematic effect (desktop / capable GPUs).
+ *   2. SIMPLE  — SimpleShaderGradient: a tiny mediump-safe gradient shader
+ *               that runs even on low-end and software GPUs. Used when the
+ *               device is detected as low-end up front, when the heavy
+ *               effect throws, or when its context is lost mid-session.
+ *   3. CSS     — the palette-matched static gradient, for devices where no
+ *               WebGL context can be created at all.
  *
- * The effect still mounts when the basic support probe is unsure (mobile
- * false-negative history) — the ErrorBoundary stays as the last resort.
+ * `webglcontextlost` never throws, so the ErrorBoundary alone can't see a
+ * dead (white) canvas — a capture-phase window listener watches every canvas
+ * inside this wrapper's subtree and steps the ladder down the moment one dies.
  */
 export function withWebGLFallback<P extends object>(
   Component: ComponentType<P>,
@@ -133,24 +133,27 @@ export function withWebGLFallback<P extends object>(
 ) {
   const name = `withWebGLFallback(${Component.displayName || Component.name || "Component"})`;
 
+  type Phase = "heavy" | "simple" | "css";
+
   function Wrapped(props: P) {
     const [webgl] = useState(isWebGLSupported);
-    const [lowEnd] = useState(isLowEndWebGLDevice);
-    const [ctxLost, setCtxLost] = useState(false);
+    // Low-end / software-GPU devices start at the simple gradient shader.
+    const [phase, setPhase] = useState<Phase>(() =>
+      isLowEndWebGLDevice() ? "simple" : "heavy",
+    );
     const hostRef = useRef<HTMLDivElement>(null);
 
     // webglcontextlost never bubbles — capture on window, then check whether
-    // the dying canvas lives inside THIS wrapper's subtree.
+    // the dying canvas lives inside THIS wrapper's subtree (probe canvases
+    // and other sections' canvases are ignored by the contains() check).
     useEffect(() => {
       const onContextLost = (e: Event) => {
         const canvas = e.target as HTMLCanvasElement | null;
         if (canvas && hostRef.current?.contains(canvas)) {
-          debugError(
-            name,
-            "webglcontextlost inside this effect — swapping white canvas for CSS fallback",
-            { variant: variant ?? "none" },
-          );
-          setCtxLost(true);
+          debugError(name, "webglcontextlost inside subtree — stepping down", {
+            variant: variant ?? "none",
+          });
+          setPhase((p) => (p === "heavy" ? "simple" : "css"));
         }
       };
       window.addEventListener("webglcontextlost", onContextLost, true);
@@ -159,26 +162,33 @@ export function withWebGLFallback<P extends object>(
     }, []);
 
     useEffect(() => {
-      debugLog(
-        name,
-        lowEnd
-          ? "mounted — LOW-END/SOFTWARE GPU detected, rendering CSS fallback"
-          : `mounted — WebGL support: ${webgl}, rendering real effect`,
-        { variant: variant ?? "none", ctxLost },
-      );
-    }, [webgl, variant, lowEnd, ctxLost]);
-
-    if (lowEnd || ctxLost) {
-      return <CssFallbackBackground variant={variant} />;
-    }
+      debugLog(name, `mounted — phase: ${phase}`, {
+        variant: variant ?? "none",
+        webgl,
+      });
+    }, [webgl, variant, phase]);
 
     return (
       <div ref={hostRef} style={{ display: "contents" }}>
-        <WebGLErrorBoundary
-          fallback={<CssFallbackBackground variant={variant} />}
-        >
-          <Component {...props} />
-        </WebGLErrorBoundary>
+        {phase === "css" ? (
+          <CssFallbackBackground variant={variant} />
+        ) : phase === "simple" ? (
+          <SimpleShaderGradient
+            variant={variant}
+            onDead={() => setPhase("css")}
+          />
+        ) : (
+          <WebGLErrorBoundary
+            fallback={
+              <SimpleShaderGradient
+                variant={variant}
+                onDead={() => setPhase("css")}
+              />
+            }
+          >
+            <Component {...props} />
+          </WebGLErrorBoundary>
+        )}
       </div>
     );
   }

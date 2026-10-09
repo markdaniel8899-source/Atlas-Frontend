@@ -1,0 +1,231 @@
+import { useEffect, useRef } from "react";
+import { Renderer, Triangle, Program, Mesh } from "ogl";
+import { debugLog, debugError } from "../../lib/webglDebug";
+import type { FallbackVariant } from "./WebGLGuard";
+
+/**
+ * Ultra-light gradient shader for devices where the heavy effects cannot
+ * run (low-end GPUs, software rasterizers, lost contexts). One fullscreen
+ * triangle, one draw call, mediump precision, no textures/FBOs/loops — the
+ * cheapest thing a WebGL context can do, so it survives where the cinematic
+ * shaders white out. Uses the same per-variant palette as the CSS fallback.
+ */
+
+type RGB = [number, number, number];
+
+const rgb = (hexColor: string, intensity = 1): RGB => {
+  const n = parseInt(hexColor.replace("#", ""), 16);
+  return [
+    (((n >> 16) & 255) / 255) * intensity,
+    (((n >> 8) & 255) / 255) * intensity,
+    ((n & 255) / 255) * intensity,
+  ];
+};
+
+const PALETTES: Record<
+  FallbackVariant | "default",
+  { base: RGB; a: RGB; b: RGB; c: RGB }
+> = {
+  default: {
+    base: rgb("#030305"),
+    a: rgb("#5227ff", 0.7),
+    b: rgb("#cf9eff", 0.4),
+    c: rgb("#ff9ffc", 0.3),
+  },
+  beams: {
+    base: rgb("#04040a"),
+    a: rgb("#cf9eff", 0.45),
+    b: rgb("#4044cc", 0.5),
+    c: rgb("#cf9eff", 0.25),
+  },
+  molten: {
+    base: rgb("#030308"),
+    a: rgb("#4044cc", 0.65),
+    b: rgb("#cf9eff", 0.35),
+    c: rgb("#160c46", 1),
+  },
+  laser: {
+    base: rgb("#030305"),
+    a: rgb("#cf9eff", 0.5),
+    b: rgb("#cf9eff", 0.3),
+    c: rgb("#cf9eff", 0.22),
+  },
+  dither: {
+    base: rgb("#120f17"),
+    a: rgb("#f4f1ea", 0.2),
+    b: rgb("#a78bfa", 0.38),
+    c: rgb("#f4f1ea", 0.12),
+  },
+  ferro: {
+    base: rgb("#04040a"),
+    a: rgb("#cf9eff", 0.55),
+    b: rgb("#cf9eff", 0.32),
+    c: rgb("#cf9eff", 0.22),
+  },
+  siderays: {
+    base: rgb("#030305"),
+    a: rgb("#cf9eff", 0.45),
+    b: rgb("#96c8ff", 0.38),
+    c: rgb("#cf9eff", 0.22),
+  },
+  pillar: {
+    base: rgb("#030305"),
+    a: rgb("#5227ff", 0.65),
+    b: rgb("#ff9ffc", 0.5),
+    c: rgb("#5227ff", 0.3),
+  },
+};
+
+const VERT = `
+attribute vec2 position;
+varying vec2 vUv;
+void main() {
+  vUv = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+// mediump only (old Mali/Adreno fragment shaders default to mediump and
+// choke on highp). Squared distances + 1/(1+d) falloff — no sqrt, no
+// smoothstep, no loops. All intermediate values stay well under 2.0.
+const FRAG = `
+precision mediump float;
+varying vec2 vUv;
+uniform float uTime;
+uniform float uAspect;
+uniform vec3 uBase;
+uniform vec3 uA;
+uniform vec3 uB;
+uniform vec3 uC;
+void main() {
+  vec2 uv = vUv;
+  vec2 pa = vec2(0.24 + 0.05 * sin(uTime * 0.13), 0.28 + 0.04 * cos(uTime * 0.11));
+  vec2 pb = vec2(0.78 + 0.04 * cos(uTime * 0.09), 0.20 + 0.05 * sin(uTime * 0.10));
+  vec2 pc = vec2(0.58 + 0.04 * sin(uTime * 0.07), 0.80 + 0.04 * cos(uTime * 0.12));
+  vec2 da = vec2((uv.x - pa.x) * uAspect, uv.y - pa.y);
+  vec2 db = vec2((uv.x - pb.x) * uAspect, uv.y - pb.y);
+  vec2 dc = vec2((uv.x - pc.x) * uAspect, uv.y - pc.y);
+  vec3 col = uBase;
+  col += uA / (1.0 + dot(da, da) * 9.0);
+  col += uB / (1.0 + dot(db, db) * 11.0);
+  col += uC / (1.0 + dot(dc, dc) * 10.0);
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+export function SimpleShaderGradient({
+  variant,
+  onDead,
+}: {
+  variant?: FallbackVariant;
+  /** Called when this shader cannot start or its context dies — caller should degrade to CSS. */
+  onDead?: () => void;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const onDeadRef = useRef(onDead);
+  onDeadRef.current = onDead;
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return undefined;
+
+    let raf = 0;
+    let cleanup: (() => void) | null = null;
+
+    try {
+      const palette = PALETTES[variant ?? "default"];
+      const renderer = new Renderer({
+        dpr: 1,
+        alpha: false,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        powerPreference: "low-power",
+      });
+      const gl = renderer.gl;
+      const canvas = gl.canvas;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.display = "block";
+      host.appendChild(canvas);
+
+      const uniforms = {
+        uTime: { value: 0 },
+        uAspect: { value: 1 },
+        uBase: { value: palette.base },
+        uA: { value: palette.a },
+        uB: { value: palette.b },
+        uC: { value: palette.c },
+      };
+
+      const geometry = new Triangle(gl);
+      const program = new Program(gl, { vertex: VERT, fragment: FRAG, uniforms });
+      const mesh = new Mesh(gl, { geometry, program });
+
+      const onCtxLost = (e: Event) => {
+        e.preventDefault();
+        debugError("SimpleShaderGradient", "context lost — degrade to CSS");
+        onDeadRef.current?.();
+      };
+      canvas.addEventListener("webglcontextlost", onCtxLost, false);
+
+      const updateSize = () => {
+        const w = host.clientWidth || 1;
+        const h = host.clientHeight || 1;
+        renderer.setSize(w, h);
+        uniforms.uAspect.value = w / Math.max(1, h);
+      };
+      updateSize();
+      const ro = new ResizeObserver(updateSize);
+      ro.observe(host);
+
+      const loop = (t: number) => {
+        raf = requestAnimationFrame(loop);
+        if (document.hidden) return;
+        // Wrap time so mediump sin/cos never drift into coarse ranges.
+        uniforms.uTime.value = (t * 0.001) % 600;
+        try {
+          renderer.render({ scene: mesh });
+        } catch (err) {
+          debugError("SimpleShaderGradient", "render threw — degrade to CSS", err);
+          cancelAnimationFrame(raf);
+          onDeadRef.current?.();
+        }
+      };
+      raf = requestAnimationFrame(loop);
+      debugLog("SimpleShaderGradient", "mounted", { variant: variant ?? "default" });
+
+      cleanup = () => {
+        cancelAnimationFrame(raf);
+        ro.disconnect();
+        canvas.removeEventListener("webglcontextlost", onCtxLost);
+        try {
+          gl.getExtension("WEBGL_lose_context")?.loseContext();
+        } catch {
+          /* ignore */
+        }
+        if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      };
+    } catch (err) {
+      debugError("SimpleShaderGradient", "init failed — degrade to CSS", err);
+      onDeadRef.current?.();
+    }
+
+    return () => {
+      cleanup?.();
+    };
+  }, [variant]);
+
+  return (
+    <div
+      ref={hostRef}
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
