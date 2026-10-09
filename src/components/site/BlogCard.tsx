@@ -1,113 +1,73 @@
 import { ArrowUpRight } from "lucide-react";
 import { CurtainLink } from "../PageCurtain";
-import {
-  formatPostDate,
-  readingTimeMinutes,
-  type BlogPost,
-} from "../../lib/blog";
+import { type BlogPost } from "../../lib/blog";
 
 const FALLBACK_IMAGE = "/fallback-blog.svg";
 
-export type BlogCardVariant = "default" | "featured" | "wide";
-
+/** MITRAVEL-style card: 100% image with text + arrow floating OVER it.
+ *  `variant` carries the grid span classes (col-span/row-span). */
 export function BlogCard({
   post,
   priority = false,
-  variant = "default",
+  variant = "",
 }: {
   post: BlogPost;
   priority?: boolean;
-  variant?: BlogCardVariant;
+  variant?: string;
 }) {
-  const minutes = readingTimeMinutes(post.content);
-  const tag = post.tags[0];
-  const shortExcerpt = post.excerpt
-    ? post.excerpt.length > 120
-      ? `${post.excerpt.slice(0, 120).trimEnd()}...`
-      : post.excerpt
-    : "";
-
-  const isFeatured = variant === "featured";
-  const isWide = variant === "wide";
+  const tag = (post.tags[0] || "ARTICLE").toUpperCase();
 
   return (
     <CurtainLink
       to={`/blog/${post.slug}`}
-      className={`group flex h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-white/20 ${
-        isWide ? "flex-col sm:flex-row" : "flex-col"
-      }`}
+      className={`group relative block h-full w-full cursor-pointer overflow-hidden rounded-2xl ${variant}`}
     >
-      <div
-        className={`w-full shrink-0 overflow-hidden ${
-          isWide
-            ? "aspect-video sm:aspect-auto sm:w-1/2 sm:self-stretch"
-            : isFeatured
-              ? "aspect-video lg:aspect-auto lg:min-h-[16rem] lg:flex-1"
-              : "aspect-video"
-        }`}
-      >
-        {post.cover_image_url ? (
-          <img
-            src={post.cover_image_url}
-            alt={post.title}
-            loading={priority ? "eager" : "lazy"}
-            width={800}
-            height={450}
-            decoding="async"
-            onError={(e) => {
-              const img = e.currentTarget;
-              if (!img.src.endsWith(FALLBACK_IMAGE)) img.src = FALLBACK_IMAGE;
-            }}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="h-full w-full bg-[radial-gradient(70%_60%_at_50%_20%,rgba(207,158,255,0.2),transparent_70%)]" />
-        )}
-      </div>
-      <div
-        className={`flex flex-1 flex-col p-6 ${isWide ? "sm:w-1/2 sm:justify-center" : ""}`}
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] tracking-[0.18em] text-white/45 uppercase">
-          {tag && (
-            <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold tracking-[0.22em] text-white/85">
-              {tag}
-            </span>
-          )}
-          <span>
-            {formatPostDate(post.published_at)} · {minutes} min read
-          </span>
-        </div>
-        <h2
-          className={`mt-3 line-clamp-2 font-semibold tracking-[-0.02em] text-white ${
-            isFeatured ? "text-xl sm:text-2xl" : "text-lg"
-          }`}
-        >
-          {post.title}
-        </h2>
-        {shortExcerpt && (
-          <p className="mt-2 line-clamp-3 text-sm text-gray-400">
-            {shortExcerpt}
-          </p>
-        )}
-        <span className="mt-auto flex items-center gap-1.5 pt-4 text-sm text-white/60 transition-colors duration-300 group-hover:text-[#cf9eff]">
-          Read article
-          <ArrowUpRight className="size-4" />
+      {/* 1. Background image fills the entire card */}
+      {post.cover_image_url ? (
+        <img
+          src={post.cover_image_url}
+          alt={post.title}
+          loading={priority ? "eager" : "lazy"}
+          width={1200}
+          height={800}
+          decoding="async"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (!img.src.endsWith(FALLBACK_IMAGE)) img.src = FALLBACK_IMAGE;
+          }}
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_20%,rgba(207,158,255,0.25),transparent_70%)]" />
+      )}
+
+      {/* 2. Dark gradient overlay, bottom to top, for text readability */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+
+      {/* 3. Text content, bottom left, OVER the image — tag + title only */}
+      <div className="absolute bottom-0 left-0 z-10 max-w-[85%] p-6 md:p-8">
+        <span className="mb-2 block text-[10px] font-bold tracking-widest text-white/70 uppercase md:text-xs">
+          {tag}
         </span>
+        <h3 className="line-clamp-2 text-lg leading-tight font-bold text-white drop-shadow-md md:text-xl lg:text-2xl">
+          {post.title}
+        </h3>
+      </div>
+
+      {/* 4. Arrow button, bottom right, OVER the image */}
+      <div className="absolute right-6 bottom-6 z-10 md:right-8 md:bottom-8">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white group-hover:text-black md:h-10 md:w-10">
+          <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+        </div>
       </div>
     </CurtainLink>
   );
 }
 
-export function BlogCardSkeleton() {
+export function BlogCardSkeleton({ variant = "" }: { variant?: string }) {
   return (
-    <div className="h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm">
-      <div className="aspect-video w-full animate-pulse bg-white/[0.06]" />
-      <div className="flex flex-1 flex-col p-6">
-        <div className="h-3 w-28 rounded-full bg-white/[0.07]" />
-        <div className="mt-4 h-5 w-3/4 rounded-full bg-white/[0.09]" />
-        <div className="mt-3 h-4 w-full rounded-full bg-white/[0.06]" />
-        <div className="mt-2 h-4 w-5/6 rounded-full bg-white/[0.06]" />
-      </div>
-    </div>
+    <div
+      className={`h-full w-full animate-pulse overflow-hidden rounded-2xl bg-white/[0.06] ${variant}`}
+    />
   );
 }

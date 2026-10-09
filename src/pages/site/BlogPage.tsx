@@ -8,27 +8,20 @@ import {
 import {
   BlogCard,
   BlogCardSkeleton,
-  type BlogCardVariant,
 } from "../../components/site/BlogCard";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Reveal } from "../../components/site/Reveal";
 import { fetchPosts, type BlogPost } from "../../lib/blog";
 
 const BLOG_GRID =
-  "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8";
+  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[300px] md:auto-rows-[350px] grid-flow-row-dense";
 
-/** Magazine rhythm: featured spans 2 cols (+ 2 rows on lg), every 4th card
- *  is a horizontal wide card, everything else is a normal vertical card. */
-function cardVariant(index: number): BlogCardVariant {
-  if (index === 0) return "featured";
-  if (index % 4 === 3) return "wide";
-  return "default";
-}
-
-function gridClass(index: number): string {
-  if (index === 0) return "md:col-span-2 lg:row-span-2";
-  if (index % 4 === 3) return "md:col-span-2";
-  return "";
+/** Magazine/masonry spans by index (MITRAVEL reference). */
+function gridSpan(index: number): string {
+  if (index === 0) return "col-span-1 md:col-span-2 row-span-2"; // Featured (large)
+  if (index === 1) return "row-span-2"; // Tall vertical
+  if (index === 4) return "col-span-1 md:col-span-2"; // Wide horizontal
+  return "col-span-1 row-span-1"; // Normal
 }
 
 export default function BlogPage() {
@@ -68,12 +61,9 @@ export default function BlogPage() {
       <div className="mt-12 sm:mt-14">
         {posts === null ? (
           <div className={BLOG_GRID}>
-            <BlogCardSkeleton />
-            <BlogCardSkeleton />
-            <BlogCardSkeleton />
-            <BlogCardSkeleton />
-            <BlogCardSkeleton />
-            <BlogCardSkeleton />
+            {Array.from({ length: 6 }, (_, i) => (
+              <BlogCardSkeleton key={i} variant={gridSpan(i)} />
+            ))}
           </div>
         ) : posts.length === 0 ? (
           failed ? (
@@ -97,12 +87,12 @@ export default function BlogPage() {
               <Reveal
                 key={post.id}
                 delay={Math.min(index * 0.06, 0.3)}
-                className={`h-full ${gridClass(index)}`}
+                className={gridSpan(index)}
               >
                 <BlogCard
                   post={post}
                   priority={index === 0}
-                  variant={cardVariant(index)}
+                  variant="h-full w-full"
                 />
               </Reveal>
             ))}

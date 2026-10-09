@@ -310,10 +310,10 @@ export default function BlogPostPage() {
               Related articles
             </h2>
           </Reveal>
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 auto-rows-[300px] sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item, index) => (
-              <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)} className="h-full">
-                <BlogCard post={item} />
+              <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)}>
+                <BlogCard post={item} variant="h-full w-full" />
               </Reveal>
             ))}
           </div>
