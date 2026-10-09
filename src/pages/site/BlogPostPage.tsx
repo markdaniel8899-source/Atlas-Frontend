@@ -180,10 +180,18 @@ export default function BlogPostPage() {
             {post.cover_image_url ? (
               <img
                 src={post.cover_image_url}
-                alt=""
+                alt={post.title}
                 className="absolute inset-0 h-full w-full object-cover"
+                width={1200}
+                height={630}
                 loading="eager"
                 decoding="async"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.src.endsWith("/fallback-blog.svg")) {
+                    img.src = "/fallback-blog.svg";
+                  }
+                }}
               />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(70%_70%_at_50%_15%,rgba(207,158,255,0.28),transparent_75%)]" />
@@ -302,9 +310,9 @@ export default function BlogPostPage() {
               Related articles
             </h2>
           </Reveal>
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item, index) => (
-              <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)}>
+              <Reveal key={item.id} delay={Math.min(index * 0.06, 0.2)} className="h-full">
                 <BlogCard post={item} />
               </Reveal>
             ))}

@@ -13,6 +13,9 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Reveal } from "../../components/site/Reveal";
 import { fetchPosts, type BlogPost } from "../../lib/blog";
 
+const BLOG_GRID =
+  "grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8";
+
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -49,8 +52,9 @@ export default function BlogPage() {
 
       <div className="mt-12 sm:mt-14">
         {posts === null ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-            <BlogCardSkeleton featured />
+          <div className={BLOG_GRID}>
+            <BlogCardSkeleton />
+            <BlogCardSkeleton />
             <BlogCardSkeleton />
             <BlogCardSkeleton />
             <BlogCardSkeleton />
@@ -73,14 +77,14 @@ export default function BlogPage() {
             />
           )
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+          <div className={BLOG_GRID}>
             {posts.map((post, index) => (
               <Reveal
                 key={post.id}
                 delay={Math.min(index * 0.06, 0.3)}
-                className={index === 0 ? "sm:col-span-2 lg:row-span-2" : ""}
+                className="h-full"
               >
-                <BlogCard post={post} featured={index === 0} priority={index === 0} />
+                <BlogCard post={post} priority={index === 0} />
               </Reveal>
             ))}
           </div>
