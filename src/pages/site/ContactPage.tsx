@@ -7,9 +7,9 @@ import {
 } from "../../components/site/SecondaryPage";
 import { Reveal } from "../../components/site/Reveal";
 
-const EMAIL = "hmzain2k5@gmail.com";
-const PHONE_DISPLAY = "+92 300 0000000";
-const PHONE_HREF = "tel:+923000000000";
+const EMAIL = "hafizmzain786@gmail.com";
+const PHONE_DISPLAY = "+92-3074477250";
+const PHONE_HREF = "tel:+923074477250";
 const MAPS_HREF =
   "https://www.google.com/maps/search/?api=1&query=Lahore%2C+Pakistan";
 

@@ -22,6 +22,11 @@ export function BlogCard({
   const [loaded, setLoaded] = useState(false);
   const minutes = readingTimeMinutes(post.content);
   const tag = post.tags[0];
+  const shortExcerpt = post.excerpt
+    ? post.excerpt.length > 120
+      ? `${post.excerpt.slice(0, 120).trimEnd()}...`
+      : post.excerpt
+    : "";
 
   return (
     <CurtainLink
@@ -74,9 +79,9 @@ export function BlogCard({
             >
               {post.title}
             </h2>
-            {featured && post.excerpt && (
+            {featured && shortExcerpt && (
               <p className="mt-2 line-clamp-2 max-w-xl text-sm text-white/55">
-                {post.excerpt}
+                {shortExcerpt}
               </p>
             )}
           </div>

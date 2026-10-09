@@ -17,7 +17,7 @@ export default function TermsPage() {
         <p className={PAGE_LEAD}>
           These terms control your use of ATLAS. By creating an account or
           using the service you accept them. Questions can be sent to
-          hmzain2k5@gmail.com.
+          hafizmzain786@gmail.com.
         </p>
       </Reveal>
 
@@ -86,7 +86,7 @@ export default function TermsPage() {
       <Reveal>
         <h2 className={PAGE_H2}>Contact</h2>
         <p className={PAGE_P}>
-          Questions about these terms can be sent to hmzain2k5@gmail.com.
+          Questions about these terms can be sent to hafizmzain786@gmail.com.
         </p>
       </Reveal>
     </SecondaryPage>

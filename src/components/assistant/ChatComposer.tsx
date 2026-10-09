@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { ArrowUp, Loader2, RotateCcw } from "lucide-react";
 
@@ -22,7 +22,18 @@ export function ChatComposer({
   onDraftChange,
 }: ChatComposerProps) {
   const [focused, setFocused] = useState(false);
+  const [narrow, setNarrow] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  // Short placeholder on small screens so it never wraps and overlaps the
+  // send/retry buttons inside the single-row composer.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
@@ -59,7 +70,11 @@ export function ChatComposer({
           rows={1}
           value={draft}
           maxLength={MAX_LENGTH}
-          placeholder="Ask about your course, a concept, or your next step…"
+          placeholder={
+            narrow
+              ? "Ask ATLAS anything…"
+              : "Ask about your course, a concept, or your next step…"
+          }
           aria-label="Message ATLAS"
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -68,7 +83,7 @@ export function ChatComposer({
             grow();
           }}
           onKeyDown={handleKeyDown}
-          className="max-h-[180px] min-h-[44px] flex-1 resize-none bg-transparent py-2.5 text-sm leading-relaxed text-white outline-none placeholder:text-white/30"
+          className="max-h-[180px] min-h-[44px] w-full min-w-0 flex-1 resize-none bg-transparent py-2.5 text-sm leading-relaxed text-white outline-none placeholder:text-white/30"
         />
 
         {canRetry && !draft.trim() && (
@@ -76,7 +91,7 @@ export function ChatComposer({
             type="button"
             onClick={onRetry}
             disabled={disabled}
-            className="mb-1 flex size-9 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-[border-color,color] hover:border-[#cf9eff]/45 hover:text-white disabled:opacity-40"
+            className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-[border-color,color] hover:border-[#cf9eff]/45 hover:text-white disabled:opacity-40"
             aria-label="Retry last message"
             title="Retry"
           >

@@ -18,7 +18,7 @@ const SOCIALS = [
   { label: "X / Twitter", href: "#", Icon: AtSign },
   { label: "Discord", href: "#", Icon: MessageCircle },
   { label: "YouTube", href: "#", Icon: Video },
-  { label: "Email", href: "mailto:hmzain2k5@gmail.com", Icon: Mail },
+  { label: "Email", href: "mailto:hafizmzain786@gmail.com", Icon: Mail },
 ];
 
 export function Footer() {

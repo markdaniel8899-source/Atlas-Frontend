@@ -476,7 +476,7 @@ export default function DashboardLayout() {
           isSidebarOpen ? "md:pl-64" : "md:pl-20"
         }`}
       >
-        <div className="mx-auto max-w-6xl px-5 py-8 md:px-10 md:py-12">
+        <div className="mx-auto w-full max-w-[1920px] px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
           {PAGES.filter(({ path }) => visited.has(path)).map(
             ({ path, Component }) => (
               <PageSlot
@@ -487,7 +487,7 @@ export default function DashboardLayout() {
             ),
           )}
         </div>
-        <div className="mx-auto max-w-6xl px-5 pb-8 md:px-10">
+        <div className="mx-auto w-full max-w-[1920px] px-4 pb-8 sm:px-6 md:px-8 lg:px-12">
           <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/[0.06] pt-6 text-xs text-zinc-500 sm:justify-end">
             <CurtainLink
               to="/privacy"

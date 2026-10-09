@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <p className={PAGE_LEAD}>
           This policy explains what ATLAS collects, how it is used and the
           choices you have. ATLAS is operated by HM. Zain ("we"). Questions
-          about your data can be sent to hmzain2k5@gmail.com.
+          about your data can be sent to hafizmzain786@gmail.com.
         </p>
       </Reveal>
 
@@ -67,7 +67,7 @@ export default function PrivacyPage() {
           <li>Deleting a course also removes its roadmap, topics and notes.</li>
           <li>
             You can request full deletion of your account and everything tied
-            to it by emailing hmzain2k5@gmail.com. We remove your data after
+            to it by emailing hafizmzain786@gmail.com. We remove your data after
             we confirm the request comes from the account owner.
           </li>
         </ul>
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
           <li>
             Where applicable data-protection law grants you further rights, you
             can exercise them through the same address:
-            hmzain2k5@gmail.com.
+            hafizmzain786@gmail.com.
           </li>
         </ul>
       </Reveal>
@@ -100,7 +100,7 @@ export default function PrivacyPage() {
         <h2 className={PAGE_H2}>Questions</h2>
         <p className={PAGE_P}>
           For anything about this policy or your data, email
-          hmzain2k5@gmail.com and we will reply.
+          hafizmzain786@gmail.com and we will reply.
         </p>
       </Reveal>
     </SecondaryPage>
