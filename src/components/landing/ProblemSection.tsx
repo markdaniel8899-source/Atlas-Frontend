@@ -4,7 +4,6 @@ import { ScrollWords } from "../ScrollWords";
 import { useRef } from "react";
 import { ScrollReveal } from "./ScrollReveal";
 import DitherVeil from "../effects/DitherVeil";
-import { useIsMobile } from "../effects/WebGLGuard";
 // Bundled locally: incognito has a cold cache, so the third-party Unsplash
 // fetch was slow/failed and the veil stayed blank (it only draws once the
 // image loads). Same-origin asset = no CDN dependency, no CORS-taint risk.
@@ -30,10 +29,6 @@ const PAINS = [
 
 export function ProblemSection() {
   const ref = useRef<HTMLDivElement>(null);
-  // DitherVeil's halftone shader renders as glitchy lines on mobile GPUs
-  // (and its fallback dither pattern reads the same way) — the whole
-  // artwork panel is desktop-only.
-  const mobile = useIsMobile();
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start 85%", "start 30%"],
@@ -108,41 +103,39 @@ export function ProblemSection() {
           </ScrollReveal>
         </div>
 
-        {!mobile && (
-          <motion.div
-            style={{
-              y: panelY,
-              rotate: panelRotate,
-              opacity: panelOpacity,
-            }}
-            role="img"
-            aria-label="Dithered portrait illustration representing scattered study material coming into focus"
-            className="mt-16 h-[22rem] w-full overflow-hidden rounded-2xl sm:mt-24 sm:h-[26rem] lg:mt-0 lg:h-[28rem] lg:overflow-visible lg:rounded-none xl:h-[32rem]"
-          >
-            <DitherVeil
-              src={ditherProblemImage}
-              pattern="floyd"
-              pixelSize={2}
-              inkColor="#120f17"
-              paperColor="#f4f1ea"
-              revealRadius={200}
-              softness={0.6}
-              linger={1}
-              fit="contain"
-              bgKey={0.12}
-              bgKeySoft={0.14}
-              rimColor="#a78bfa"
-              palette="duotone"
-              levels={2}
-              contrast={1.15}
-              brightness={0}
-              rim={0}
-              reverse={false}
-              wander
-              clickBurst
-            />
-          </motion.div>
-        )}
+        <motion.div
+          style={{
+            y: panelY,
+            rotate: panelRotate,
+            opacity: panelOpacity,
+          }}
+          role="img"
+          aria-label="Dithered portrait illustration representing scattered study material coming into focus"
+          className="mt-16 h-[22rem] w-full overflow-hidden rounded-2xl sm:mt-24 sm:h-[26rem] lg:mt-0 lg:h-[28rem] lg:overflow-visible lg:rounded-none xl:h-[32rem]"
+        >
+          <DitherVeil
+            src={ditherProblemImage}
+            pattern="floyd"
+            pixelSize={2}
+            inkColor="#120f17"
+            paperColor="#f4f1ea"
+            revealRadius={200}
+            softness={0.6}
+            linger={1}
+            fit="contain"
+            bgKey={0.12}
+            bgKeySoft={0.14}
+            rimColor="#a78bfa"
+            palette="duotone"
+            levels={2}
+            contrast={1.15}
+            brightness={0}
+            rim={0}
+            reverse={false}
+            wander
+            clickBurst
+          />
+        </motion.div>
       </div>
     </div>
   );

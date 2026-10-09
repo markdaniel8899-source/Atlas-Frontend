@@ -119,7 +119,7 @@ export const LightPillar = ({
       high: {
         iterations: 80,
         waveIterations: 4,
-        pixelRatio: Math.min(window.devicePixelRatio, 2),
+        pixelRatio: Math.min(window.devicePixelRatio, 1.5),
         precision: "highp",
         stepMultiplier: 1.0,
       },
@@ -133,14 +133,13 @@ export const LightPillar = ({
       renderer = new THREE.WebGLRenderer({
         antialias: false,
         alpha: true,
-        powerPreference:
-          effectiveQuality === "high" ? "high-performance" : "low-power",
+        powerPreference: "low-power",
         precision: settings.precision,
         stencil: false,
         depth: false,
       });
     } catch (err) {
-      // Surface the exact context error via the error boundary (CSS fallback).
+      // Surface the exact context error via the error boundary (solid dark).
       debugError("LightPillar", "WebGLRenderer construction FAILED", err);
       throw err;
     }

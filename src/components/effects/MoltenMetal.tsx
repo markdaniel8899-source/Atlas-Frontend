@@ -196,6 +196,8 @@ function MoltenMetal({
       alpha: true,
       premultipliedAlpha: true,
       antialias: false,
+      stencil: false,
+      powerPreference: "low-power",
       dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
     });
 

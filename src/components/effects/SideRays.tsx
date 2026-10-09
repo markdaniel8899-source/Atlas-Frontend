@@ -179,6 +179,9 @@ const SideRays = ({
       const renderer = new Renderer({
         dpr: Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2),
         alpha: true,
+        antialias: false,
+        stencil: false,
+        powerPreference: "low-power",
       });
       rendererRef.current = renderer;
 

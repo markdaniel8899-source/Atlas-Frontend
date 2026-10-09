@@ -77,7 +77,7 @@ const KERNELS: Record<string, number[][]> = {
   ]
 };
 
-const MASK_SCALE = 0.5;
+const MASK_SCALE = isMobile() ? 0.25 : 0.5;
 const MAX_BURSTS = 4;
 const BURST_SECONDS = 1.2;
 const HOLD = 1.6;
@@ -510,7 +510,9 @@ const DitherVeil = ({
       dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
       alpha: true,
       premultipliedAlpha: false,
-      antialias: false
+      antialias: false,
+      stencil: false,
+      powerPreference: "low-power"
     });
     const gl = renderer.gl;
     const canvas = gl.canvas as HTMLCanvasElement;

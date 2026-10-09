@@ -1,6 +1,7 @@
 /**
  * True for phone/tablet user agents or narrow viewports.
- * Used to skip heavy WebGL effects and show the CSS fallback instead.
+ * Used ONLY to optimize the real WebGL effects (cap DPR, lower quality /
+ * particle counts) — never to hide an effect or swap in a CSS fallback.
  */
 export const isMobile = (): boolean => {
   return (

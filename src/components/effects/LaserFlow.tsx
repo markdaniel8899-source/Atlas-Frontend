@@ -352,7 +352,7 @@ export const LaserFlow = ({
       alpha: false,
       depth: false,
       stencil: false,
-      powerPreference: "high-performance",
+      powerPreference: "low-power",
       premultipliedAlpha: false,
       preserveDrawingBuffer: false,
       failIfMajorPerformanceCaveat: false,

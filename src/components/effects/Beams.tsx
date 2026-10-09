@@ -89,6 +89,12 @@ const CanvasWrapper = ({ children }: { children: ReactNode }) => {
         dpr={[1, 1.5]}
         frameloop={inView ? "always" : "never"}
         className="beams-container"
+        gl={{
+          powerPreference: "low-power",
+          stencil: false,
+          antialias: false,
+          alpha: false,
+        }}
         onCreated={(state) => {
           const { width, height } = state.size;
           if (width < 1 || height < 1) {

@@ -1,14 +1,8 @@
 import { Component, useEffect, useRef, useState } from "react";
 import type { ComponentType, ErrorInfo, ReactNode } from "react";
 import { isMobile } from "../../lib/mobile";
-import {
-  debugLog,
-  debugError,
-  logWebGLSupport,
-  isLowEndWebGLDevice,
-} from "../../lib/webglDebug";
+import { debugLog, debugError, logWebGLSupport } from "../../lib/webglDebug";
 import "./WebGLGuard.css";
-import { SimpleShaderGradient } from "./SimpleShaderGradient";
 
 /** True when the browser can create a WebGL context at all (logged once). */
 export function isWebGLSupported(): boolean {
@@ -30,7 +24,7 @@ export function useIsMobile(): boolean {
   return mobile;
 }
 
-/** Per-effect fallback variants — gradients use each effect's exact colors. */
+/** Effect variant label — used only for diagnostics logs. */
 export type FallbackVariant =
   | "beams"
   | "molten"
@@ -41,22 +35,21 @@ export type FallbackVariant =
   | "pillar";
 
 /**
- * Animated stand-in rendered only when WebGL is unsupported or an effect
- * crashes. Each variant mirrors the exact palette of the desktop shader it
- * replaces (see WebGLGuard.css).
+ * The ONLY safety-net background: a solid dark box. Rendered exclusively
+ * when a WebGL context genuinely fails to initialize (or dies mid-session) —
+ * no animated CSS gradients, no shader stand-ins.
  */
-export function CssFallbackBackground({
-  className = "",
-  variant,
-}: {
-  className?: string;
-  variant?: FallbackVariant;
-}) {
-  const variantClass = variant ? ` webgl-fallback--${variant}` : "";
+export function SolidDarkBackground({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`webgl-fallback${variantClass} ${className}`.trim()}
+      className={className}
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "#000000",
+        pointerEvents: "none",
+      }}
     />
   );
 }
@@ -72,9 +65,10 @@ interface BoundaryState {
 }
 
 /**
- * Catches any error thrown while mounting/rendering a WebGL effect, logs it,
- * and swaps in the CSS fallback instead of leaving a white screen (or
- * unmounting the whole React tree). Dev builds also show an error chip.
+ * Catches errors thrown while mounting/rendering a WebGL effect (context
+ * creation failure, shader compile crash, etc.), logs it, and swaps in a
+ * solid dark background instead of leaving a white screen (or unmounting
+ * the whole React tree). Dev builds also show an error chip.
  */
 export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   state: BoundaryState = { failed: false, message: "" };
@@ -89,7 +83,7 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
   componentDidCatch(error: Error, info: ErrorInfo) {
     debugError(
       "ErrorBoundary",
-      "WebGL effect threw — rendering CSS fallback",
+      "WebGL effect threw — rendering solid dark background",
       { error: error.message, stack: error.stack, componentStack: info.componentStack },
     );
   }
@@ -98,7 +92,7 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
     if (this.state.failed) {
       return (
         <>
-          {this.props.fallback ?? <CssFallbackBackground />}
+          {this.props.fallback ?? <SolidDarkBackground />}
           {import.meta.env.DEV && (
             <div role="alert" className="webgl-debug-error">
               WebGL error: {this.state.message}
@@ -112,20 +106,15 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 }
 
 /**
- * Wraps a WebGL-dependent component in a three-tier degradation ladder so
- * a section NEVER shows a white canvas:
+ * Safety net around a REAL WebGL effect. The effect mounts on every device
+ * (desktop and mobile alike) — nothing is hidden, nothing degrades to CSS.
  *
- *   1. HEAVY   — the real cinematic effect (desktop / capable GPUs).
- *   2. SIMPLE  — SimpleShaderGradient: a tiny mediump-safe gradient shader
- *               that runs even on low-end and software GPUs. Used when the
- *               device is detected as low-end up front, when the heavy
- *               effect throws, or when its context is lost mid-session.
- *   3. CSS     — the palette-matched static gradient, for devices where no
- *               WebGL context can be created at all.
- *
- * `webglcontextlost` never throws, so the ErrorBoundary alone can't see a
- * dead (white) canvas — a capture-phase window listener watches every canvas
- * inside this wrapper's subtree and steps the ladder down the moment one dies.
+ *  - React errors during mount/render (context creation failure, shader
+ *    crash) are caught by the ErrorBoundary → solid dark background.
+ *  - `webglcontextlost` never throws and never bubbles, so a capture-phase
+ *    window listener watches this wrapper's subtree and swaps to the solid
+ *    dark background the moment a canvas's context dies mid-session
+ *    (prevents the classic white/blank canvas).
  */
 export function withWebGLFallback<P extends object>(
   Component: ComponentType<P>,
@@ -133,27 +122,22 @@ export function withWebGLFallback<P extends object>(
 ) {
   const name = `withWebGLFallback(${Component.displayName || Component.name || "Component"})`;
 
-  type Phase = "heavy" | "simple" | "css";
-
   function Wrapped(props: P) {
     const [webgl] = useState(isWebGLSupported);
-    // Low-end / software-GPU devices start at the simple gradient shader.
-    const [phase, setPhase] = useState<Phase>(() =>
-      isLowEndWebGLDevice() ? "simple" : "heavy",
-    );
+    const [contextLost, setContextLost] = useState(false);
     const hostRef = useRef<HTMLDivElement>(null);
 
     // webglcontextlost never bubbles — capture on window, then check whether
-    // the dying canvas lives inside THIS wrapper's subtree (probe canvases
-    // and other sections' canvases are ignored by the contains() check).
+    // the dying canvas lives inside THIS wrapper's subtree (other sections'
+    // canvases are ignored by the contains() check).
     useEffect(() => {
       const onContextLost = (e: Event) => {
         const canvas = e.target as HTMLCanvasElement | null;
         if (canvas && hostRef.current?.contains(canvas)) {
-          debugError(name, "webglcontextlost inside subtree — stepping down", {
+          debugError(name, "webglcontextlost inside subtree — solid dark background", {
             variant: variant ?? "none",
           });
-          setPhase((p) => (p === "heavy" ? "simple" : "css"));
+          setContextLost(true);
         }
       };
       window.addEventListener("webglcontextlost", onContextLost, true);
@@ -162,33 +146,25 @@ export function withWebGLFallback<P extends object>(
     }, []);
 
     useEffect(() => {
-      debugLog(name, `mounted — phase: ${phase}`, {
+      debugLog(name, "mounted — real WebGL effect", {
         variant: variant ?? "none",
         webgl,
       });
-    }, [webgl, variant, phase]);
+    }, [webgl, variant]);
+
+    if (contextLost) {
+      return (
+        <div ref={hostRef} style={{ display: "contents" }}>
+          <SolidDarkBackground />
+        </div>
+      );
+    }
 
     return (
       <div ref={hostRef} style={{ display: "contents" }}>
-        {phase === "css" ? (
-          <CssFallbackBackground variant={variant} />
-        ) : phase === "simple" ? (
-          <SimpleShaderGradient
-            variant={variant}
-            onDead={() => setPhase("css")}
-          />
-        ) : (
-          <WebGLErrorBoundary
-            fallback={
-              <SimpleShaderGradient
-                variant={variant}
-                onDead={() => setPhase("css")}
-              />
-            }
-          >
-            <Component {...props} />
-          </WebGLErrorBoundary>
-        )}
+        <WebGLErrorBoundary>
+          <Component {...props} />
+        </WebGLErrorBoundary>
       </div>
     );
   }

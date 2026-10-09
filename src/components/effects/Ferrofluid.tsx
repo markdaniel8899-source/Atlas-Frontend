@@ -255,10 +255,12 @@ const Ferrofluid = ({
     const renderer = new Renderer({
       dpr: Math.min(
         dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
-        isMobile() ? 1.5 : Number.POSITIVE_INFINITY,
+        isMobile() ? 1.5 : 2,
       ),
       alpha: true,
-      antialias: true,
+      antialias: false,
+      stencil: false,
+      powerPreference: "low-power",
     });
     rendererRef.current = renderer;
     const gl = renderer.gl;
