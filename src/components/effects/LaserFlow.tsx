@@ -54,7 +54,7 @@ uniform float uFade;
 #define R_H 150.0
 #define R_V 150.0
 #define FLARE_HEIGHT 16.0
-#define FLARE_AMOUNT 8.0
+#define FLARE_AMOUNT 2.5
 #define FLARE_EXP 2.0
 #define TOP_FADE_START 0.1
 #define TOP_FADE_EXP 1.0
@@ -81,7 +81,7 @@ uniform float uFade;
 #define FOG_SPEED_U 0.1
 #define FOG_SPEED_V -0.1
 #define FOG_OCTAVES 5
-#define FOG_BOTTOM_BIAS 0.8
+#define FOG_BOTTOM_BIAS 0.45
 #define FOG_TILT_TO_MOUSE 0.05
 #define FOG_TILT_DEADZONE 0.01
 #define FOG_TILT_MAX_X 0.35
@@ -222,7 +222,7 @@ void mainImage(out vec4 fc,in vec2 frag){
     float bBias=mix(1.0,1.0-sPix,FOG_BOTTOM_BIAS);
     float browserFogIntensity = uFogIntensity;
     browserFogIntensity *= 1.8;
-    float radialFade = 1.0 - smoothstep(0.0, 0.7, length(uvc) / 120.0);
+    float radialFade = 1.0 - smoothstep(0.0, 0.6, length(uvc) / 85.0);
     float safariFog = n * browserFogIntensity * bBias * bm * hW * radialFade;
     fog = safariFog;
 #endif
