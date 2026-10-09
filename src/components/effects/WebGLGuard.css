@@ -186,11 +186,130 @@
   padding: 6px 10px;
   border: 1px solid #ff6b6b;
   border-radius: 8px;
-  background: rgba(120, 0, 20, 0.92);
+  background: #780014;
   color: #fff;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   line-height: 1.4;
   word-break: break-word;
   pointer-events: none;
+}
+
+/* ============================================================================
+   OPERA MOBILE FIX (≤768px).
+   Opera Mobile dims semi-transparent layers, mishandles mix-blend-mode
+   compositing and renders fixed / low-alpha gradients faint, dark and
+   washed out. On phone-sized viewports every fallback variant is
+   re-declared with fully opaque solid HEX color stops (no rgba or
+   rgb-slash alpha anywhere), blend modes and filters are stripped, and
+   GPU layer hints force correct compositing. Desktop keeps the original
+   translucent palette above untouched.
+============================================================================= */
+@media (max-width: 768px) {
+  .webgl-fallback {
+    mix-blend-mode: normal;
+    filter: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    background:
+      radial-gradient(46% 42% at 18% 22%, #5227ff, transparent 70%),
+      radial-gradient(42% 38% at 82% 16%, #cf9eff, transparent 72%),
+      radial-gradient(50% 46% at 72% 86%, #ff9ffc, transparent 72%),
+      radial-gradient(56% 50% at 28% 82%, #4044cc, transparent 72%),
+      linear-gradient(160deg, #030305 0%, #0a0a1a 55%, #0b1026 100%);
+    background-attachment: scroll;
+  }
+
+  /* --- Beams / plasma ------------------------------------------------- */
+  .webgl-fallback--beams {
+    background:
+      repeating-linear-gradient(
+        90deg,
+        transparent 0 44px,
+        #cf9eff 44px 48px,
+        transparent 48px 96px
+      ),
+      radial-gradient(75% 55% at 50% -8%, #cf9eff, transparent 66%),
+      radial-gradient(95% 60% at 50% 112%, #000000, transparent 72%),
+      linear-gradient(#04040a, #04040a);
+  }
+
+  /* --- MoltenMetal ----------------------------------------------------- */
+  .webgl-fallback--molten {
+    background:
+      radial-gradient(52% 48% at 30% 32%, #4044cc, transparent 70%),
+      radial-gradient(46% 42% at 74% 62%, #cf9eff, transparent 72%),
+      radial-gradient(72% 58% at 52% 104%, #160c46, transparent 76%),
+      radial-gradient(40% 36% at 16% 78%, #160c46, transparent 74%),
+      linear-gradient(#030308, #030308);
+  }
+
+  /* --- LaserFlow -------------------------------------------------------- */
+  .webgl-fallback--laser {
+    background:
+      linear-gradient(
+        90deg,
+        transparent 36%,
+        #cf9eff 44%,
+        #cf9eff 50%,
+        #cf9eff 56%,
+        transparent 64%
+      ),
+      radial-gradient(38% 62% at 50% 46%, #cf9eff, transparent 72%),
+      radial-gradient(
+        130% 42% at 50% 52%,
+        #cf9eff,
+        transparent 78%
+      ),
+      linear-gradient(#030305, #030305);
+  }
+
+  /* --- DitherVeil -------------------------------------------------------
+     The 18px micro-dither cells keep a solid pre-composited tone (#363339 =
+     paper #f4f1ea lifted over ink #120f17) instead of a full-contrast cream
+     checkerboard; the blooms go fully opaque. */
+  .webgl-fallback--dither {
+    background:
+      conic-gradient(#363339 0 25%, transparent 0 50%, #363339 0 75%, transparent 0)
+        0 0 / 18px 18px,
+      radial-gradient(58% 52% at 50% 44%, #f4f1ea, transparent 70%),
+      radial-gradient(
+        88% 78% at 50% 50%,
+        transparent 56%,
+        #a78bfa 80%,
+        transparent 96%
+      ),
+      linear-gradient(#120f17, #120f17);
+  }
+
+  /* --- Ferrofluid -------------------------------------------------------- */
+  .webgl-fallback--ferro {
+    background:
+      radial-gradient(46% 40% at 50% 58%, #cf9eff, transparent 68%),
+      radial-gradient(68% 56% at 46% 66%, #cf9eff, transparent 74%),
+      radial-gradient(95% 55% at 52% 112%, #cf9eff, transparent 70%),
+      linear-gradient(#04040a, #04040a);
+  }
+
+  /* --- SideRays ---------------------------------------------------------- */
+  .webgl-fallback--siderays {
+    background:
+      linear-gradient(135deg, #cf9eff 0%, transparent 44%),
+      linear-gradient(135deg, transparent 26%, #96c8ff 52%, transparent 74%),
+      linear-gradient(135deg, transparent 54%, #cf9eff 80%, transparent 97%),
+      linear-gradient(#030305, #030305);
+  }
+
+  /* --- LightPillar: screen blend is what Opera dims hardest --------------- */
+  .webgl-fallback--pillar {
+    mix-blend-mode: normal;
+    background:
+      radial-gradient(24% 78% at 50% 24%, #5227ff, transparent 74%),
+      radial-gradient(24% 78% at 50% 76%, #ff9ffc, transparent 74%),
+      radial-gradient(42% 100% at 50% 50%, #5227ff, transparent 80%),
+      linear-gradient(#030305, #030305);
+  }
 }

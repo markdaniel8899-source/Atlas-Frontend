@@ -613,3 +613,53 @@ a:not([class*="rounded"]):not(:has(button)):hover {
     animation: none !important;
   }
 }
+
+/* ---------------------------------------------------------------
+   OPERA MOBILE FIX (≤768px)
+   Opera Mobile dims semi-transparent layers, mishandles
+   backdrop-filter and renders fixed low-alpha gradients faint,
+   dark and washed out. Phone-sized viewports get fully opaque
+   solid HEX gradient stops, no backdrop-filter, a lighter film
+   grain and GPU layer hints on the fixed mesh background.
+   Desktop keeps the original palette; on Chrome Mobile these
+   rules are visually neutral (opaque stops over the same dark
+   base, translateZ/will-change are no-ops).
+   Declared in @layer utilities so it overrides the base-layer
+   body::before/body::after and the .glass utility, while
+   component utilities (e.g. hover:border-*) still win.
+--------------------------------------------------------------- */
+@layer utilities {
+  @media (max-width: 768px) {
+    /* Cinematic mesh background: solid opaque stops + GPU hints so Opera
+       stops dimming the fixed layer. background-attachment: scroll keeps
+       Opera from special-casing (and dimming) fixed backgrounds. */
+    body::before {
+      background:
+        radial-gradient(42% 38% at 22% 24%, #1e2260, transparent 72%),
+        radial-gradient(46% 42% at 78% 18%, #0f1a48, transparent 72%),
+        radial-gradient(50% 46% at 68% 82%, #0b2246, transparent 72%),
+        radial-gradient(34% 32% at 28% 78%, #2c1a52, transparent 72%),
+        linear-gradient(160deg, #030305 0%, #0a0a1a 48%, #0b1026 100%);
+      background-attachment: scroll;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: transform;
+    }
+
+    /* Film grain: Opera renders the SVG turbulence filter heavier and
+       darker — keep only a whisper of texture on phones. */
+    body::after {
+      opacity: 0.02;
+    }
+
+    /* Glass cards: backdrop-filter is exactly what Opera dims. Swap to a
+       solid near-black surface so cards stay crisp (blur adds nothing
+       once the backdrop is opaque). */
+    .glass {
+      background-color: #0c0c16;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-color: #24242f;
+    }
+  }
+}
