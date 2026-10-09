@@ -1,7 +1,12 @@
-import { Component, useEffect, useState } from "react";
+import { Component, useEffect, useRef, useState } from "react";
 import type { ComponentType, ErrorInfo, ReactNode } from "react";
 import { isMobile } from "../../lib/mobile";
-import { debugLog, debugError, logWebGLSupport } from "../../lib/webglDebug";
+import {
+  debugLog,
+  debugError,
+  logWebGLSupport,
+  isLowEndWebGLDevice,
+} from "../../lib/webglDebug";
 import "./WebGLGuard.css";
 
 /** True when the browser can create a WebGL context at all (logged once). */
@@ -106,34 +111,77 @@ export class WebGLErrorBoundary extends Component<BoundaryProps, BoundaryState> 
 }
 
 /**
- * Wraps a WebGL-dependent component. The effect ALWAYS renders (desktop and
- * mobile alike); the guard only catches runtime failures (context loss,
- * shader errors) and devices without any WebGL support, degrading to the
- * palette-matched CSS gradient instead of crashing the section.
+ * Wraps a WebGL-dependent component with two safety layers:
+ *
+ *  1. LOW-END GATE — budget devices (≤2 GB memory) and software-only GPUs
+ *     (SwiftShader / llvmpipe) never mount the effect at all: heavy
+ *     full-screen shaders overflow mediump precision or evict GPU contexts
+ *     there, turning the canvas WHITE and washing out the whole section.
+ *     They get the palette-matched CSS gradient fallback instead.
+ *  2. RUNTIME SWAP — `webglcontextlost` does not throw, so the
+ *     ErrorBoundary can never see it; a context that dies mid-session would
+ *     leave a permanent white canvas. A capture-phase listener watches for
+ *     context loss inside this wrapper's subtree and swaps in the CSS
+ *     fallback the moment it happens.
+ *
+ * The effect still mounts when the basic support probe is unsure (mobile
+ * false-negative history) — the ErrorBoundary stays as the last resort.
  */
 export function withWebGLFallback<P extends object>(
   Component: ComponentType<P>,
   variant?: FallbackVariant,
 ) {
+  const name = `withWebGLFallback(${Component.displayName || Component.name || "Component"})`;
+
   function Wrapped(props: P) {
     const [webgl] = useState(isWebGLSupported);
+    const [lowEnd] = useState(isLowEndWebGLDevice);
+    const [ctxLost, setCtxLost] = useState(false);
+    const hostRef = useRef<HTMLDivElement>(null);
+
+    // webglcontextlost never bubbles — capture on window, then check whether
+    // the dying canvas lives inside THIS wrapper's subtree.
+    useEffect(() => {
+      const onContextLost = (e: Event) => {
+        const canvas = e.target as HTMLCanvasElement | null;
+        if (canvas && hostRef.current?.contains(canvas)) {
+          debugError(
+            name,
+            "webglcontextlost inside this effect — swapping white canvas for CSS fallback",
+            { variant: variant ?? "none" },
+          );
+          setCtxLost(true);
+        }
+      };
+      window.addEventListener("webglcontextlost", onContextLost, true);
+      return () =>
+        window.removeEventListener("webglcontextlost", onContextLost, true);
+    }, []);
+
     useEffect(() => {
       debugLog(
-        `withWebGLFallback(${Component.displayName || Component.name || "Component"})`,
-        webgl
-          ? "mounted — WebGL support: true, rendering real effect"
-          : "mounted — support reported false but effect still mounted (boundary guards failures)",
-        { variant: variant ?? "none" },
+        name,
+        lowEnd
+          ? "mounted — LOW-END/SOFTWARE GPU detected, rendering CSS fallback"
+          : `mounted — WebGL support: ${webgl}, rendering real effect`,
+        { variant: variant ?? "none", ctxLost },
       );
-    }, [webgl, variant]);
+    }, [webgl, variant, lowEnd, ctxLost]);
+
+    if (lowEnd || ctxLost) {
+      return <CssFallbackBackground variant={variant} />;
+    }
+
     return (
-      <WebGLErrorBoundary
-        fallback={<CssFallbackBackground variant={variant} />}
-      >
-        <Component {...props} />
-      </WebGLErrorBoundary>
+      <div ref={hostRef} style={{ display: "contents" }}>
+        <WebGLErrorBoundary
+          fallback={<CssFallbackBackground variant={variant} />}
+        >
+          <Component {...props} />
+        </WebGLErrorBoundary>
+      </div>
     );
   }
-  Wrapped.displayName = `withWebGLFallback(${Component.displayName || Component.name || "Component"})`;
+  Wrapped.displayName = name;
   return Wrapped;
 }
