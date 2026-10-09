@@ -19,6 +19,7 @@ import {
   fetchRelatedPosts,
   formatPostDate,
   readingTimeMinutes,
+  tidyDashes,
   type BlogPost,
 } from "../../lib/blog";
 
@@ -95,7 +96,10 @@ export default function BlogPostPage() {
     };
   }, [slug]);
 
-  const html = useMemo(() => (post ? sanitizeHtml(post.content) : ""), [post]);
+  const html = useMemo(
+    () => (post ? sanitizeHtml(tidyDashes(post.content)) : ""),
+    [post],
+  );
 
   if (post === undefined) {
     return (
@@ -275,9 +279,9 @@ export default function BlogPostPage() {
             </div>
             <p className="mt-5 text-sm leading-relaxed text-white/55">
               We build ATLAS, the AI learning OS that turns one goal into a
-              step-by-step plan — roadmaps, quizzes, notes and focus sessions in
-              one place. We write about learning systems, study craft and the AI
-              tools worth your time.
+              step-by-step plan with roadmaps, quizzes, notes and focus sessions
+              in one place. We write about learning systems, study craft and the
+              AI tools worth your time.
             </p>
             <div className="mt-6">
               <CurtainLink

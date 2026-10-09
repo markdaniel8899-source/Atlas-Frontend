@@ -21,12 +21,16 @@ export interface BlogPost {
 const SELECT_COLUMNS =
   "id, title, slug, excerpt, content, cover_image_url, tags, keywords, published_at, content_images";
 
+export function tidyDashes(text: string): string {
+  return text.replace(/\s*—\s*/g, ", ").replace(/,\s*,/g, ",");
+}
+
 function normalize(row: Record<string, unknown>): BlogPost {
   return {
     id: String(row.id ?? ""),
-    title: String(row.title ?? ""),
+    title: tidyDashes(String(row.title ?? "")),
     slug: String(row.slug ?? ""),
-    excerpt: String(row.excerpt ?? ""),
+    excerpt: tidyDashes(String(row.excerpt ?? "")),
     content: String(row.content ?? ""),
     cover_image_url: row.cover_image_url ? String(row.cover_image_url) : null,
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],

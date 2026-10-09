@@ -42,7 +42,7 @@ export default function BlogPage() {
         </p>
         <h1 className={`${PAGE_H1} mt-4`}>Latest Articles</h1>
         <p className={PAGE_LEAD}>
-          Notes on learning, focus and craft from the ATLAS team — plus fresh
+          Notes on learning, focus and craft from the ATLAS team, plus fresh
           takes on the AI tools reshaping how students study.
         </p>
       </Reveal>
