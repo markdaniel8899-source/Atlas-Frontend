@@ -10,10 +10,13 @@ export function BlogCard({
   post,
   priority = false,
   variant = "",
+  minimal = false,
 }: {
   post: BlogPost;
   priority?: boolean;
   variant?: string;
+  /** Image + title only (no tag, no arrow) — for related-articles cards. */
+  minimal?: boolean;
 }) {
   const tag = (post.tags[0] || "ARTICLE").toUpperCase();
 
@@ -46,20 +49,24 @@ export function BlogCard({
 
       {/* 3. Text content, bottom left, OVER the image — tag + title only */}
       <div className="absolute bottom-0 left-0 z-10 max-w-[85%] p-6 md:p-8">
-        <span className="mb-2 block text-[10px] font-bold tracking-widest text-white/70 uppercase md:text-xs">
-          {tag}
-        </span>
+        {!minimal && (
+          <span className="mb-2 block text-[10px] font-bold tracking-widest text-white/70 uppercase md:text-xs">
+            {tag}
+          </span>
+        )}
         <h3 className="line-clamp-2 text-lg leading-tight font-bold text-white drop-shadow-md md:text-xl lg:text-2xl">
           {post.title}
         </h3>
       </div>
 
       {/* 4. Arrow button, bottom right, OVER the image */}
-      <div className="absolute right-6 bottom-6 z-10 md:right-8 md:bottom-8">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white group-hover:text-black md:h-10 md:w-10">
-          <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+      {!minimal && (
+        <div className="absolute right-6 bottom-6 z-10 md:right-8 md:bottom-8">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-white/20 text-white backdrop-blur-md transition-all duration-300 group-hover:bg-white group-hover:text-black md:h-10 md:w-10">
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+          </div>
         </div>
-      </div>
+      )}
     </CurtainLink>
   );
 }

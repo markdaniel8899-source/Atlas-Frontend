@@ -16,11 +16,12 @@ import { fetchPosts, type BlogPost } from "../../lib/blog";
 const BLOG_GRID =
   "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[240px] md:auto-rows-[260px] grid-flow-row-dense";
 
-/** MITRAVEL reference layout: featured = wide 1-row banner, tall = portrait. */
+/** MITRAVEL reference layout: featured = wide 1-row banner, first vertical
+ *  card sits on the LEFT and spans 3 rows (taller than before). */
 function gridSpan(index: number): string {
   if (index === 0) return "col-span-1 md:col-span-2"; // Featured: 2 cols, 1 row
-  if (index === 1) return "row-span-2"; // Tall portrait: 1 col, 2 rows
-  if (index === 4) return "col-span-1 md:col-span-2"; // Wide horizontal
+  if (index === 2) return "row-span-3"; // Left vertical: 1 col, 3 rows (tall)
+  if (index === 3) return "col-span-1 md:col-span-2"; // Wide horizontal
   return "col-span-1 row-span-1"; // Normal square
 }
 
