@@ -54,7 +54,7 @@ uniform float uFade;
 #define R_H 150.0
 #define R_V 150.0
 #define FLARE_HEIGHT 16.0
-#define FLARE_AMOUNT 8.0
+#define FLARE_AMOUNT 0.0
 #define FLARE_EXP 2.0
 #define TOP_FADE_START 0.1
 #define TOP_FADE_EXP 1.0
@@ -164,15 +164,8 @@ void mainImage(out vec4 fc,in vec2 frag){
     vec2 sc=(512.0/iResolution.xy)*.4;
     vec2 uv=(frag-C)*sc,off=vec2(uBeamXFrac*iResolution.x*sc.x,uBeamYFrac*iResolution.y*sc.y);
     vec2 uvc = uv - off;
-    float a=0.0,b=0.0;
+    float b=0.0;
     float basePhase=1.5*PI+uDecay*.5; float tauMin=basePhase-uDecay; float tauMax=basePhase;
-    float cx=clamp(uvc.x/(R_H*uHLenFactor),-1.0,1.0),tH=clamp(TWO_PI-acos(cx),tauMin,tauMax);
-    for(int k=-TAP_RADIUS;k<=TAP_RADIUS;++k){
-        float tu=tH+float(k)*DT_LOCAL,wt=tauWf(tu,tauMin,tauMax); if(wt<=0.0) continue;
-        float spd=max(abs(sin(tu)),0.02),u=clamp((basePhase-tu)/max(uDecay,EPS),0.0,1.0),env=pow(1.0-abs(u*2.0-1.0),0.8);
-        vec2 p=vec2((R_H*uHLenFactor)*cos(tu),0.0);
-        a+=wt*bs(uvc,p,env*spd);
-    }
     float yPix=uvc.y,cy=clamp(-yPix/(R_V*uVLenFactor),-1.0,1.0),tV=clamp(TWO_PI-acos(cy),tauMin,tauMax);
     for(int k=-TAP_RADIUS;k<=TAP_RADIUS;++k){
         float tu=tV+float(k)*DT_LOCAL,wt=tauWf(tu,tauMin,tauMax); if(wt<=0.0) continue;
@@ -188,7 +181,7 @@ void mainImage(out vec4 fc,in vec2 frag){
         b+=wt*bsa(uvc,p,mask*env,sig);
     }
     float sPix=clamp(yPix/R_V,0.0,1.0),topA=pow(1.0-smoothstep(TOP_FADE_START,1.0,sPix),TOP_FADE_EXP);
-    float L=a+b*topA;
+    float L=b*topA;
     float w=vWisps(vec2(uvc.x,yPix),topA);
     float fog=0.0;
 #if FOG_ON
