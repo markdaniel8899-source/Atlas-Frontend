@@ -223,17 +223,13 @@
     background-attachment: scroll;
   }
 
-  /* --- Beams / plasma ------------------------------------------------- */
+  /* --- Beams / plasma -----------------------------------------------------
+     Smooth blooms only — repeating solid pinstripes read as "weird lines"
+     on phones, so the stripe layer is desktop-only. */
   .webgl-fallback--beams {
     background:
-      repeating-linear-gradient(
-        90deg,
-        transparent 0 44px,
-        #cf9eff 44px 48px,
-        transparent 48px 96px
-      ),
       radial-gradient(75% 55% at 50% -8%, #cf9eff, transparent 66%),
-      radial-gradient(95% 60% at 50% 112%, #000000, transparent 72%),
+      radial-gradient(70% 50% at 50% 108%, #4044cc, transparent 72%),
       linear-gradient(#04040a, #04040a);
   }
 
@@ -247,17 +243,12 @@
       linear-gradient(#030308, #030308);
   }
 
-  /* --- LaserFlow -------------------------------------------------------- */
+  /* --- LaserFlow --------------------------------------------------------
+     One soft peak at 50% — the flat solid middle band read as a hard
+     blocky "line" on phones. */
   .webgl-fallback--laser {
     background:
-      linear-gradient(
-        90deg,
-        transparent 36%,
-        #cf9eff 44%,
-        #cf9eff 50%,
-        #cf9eff 56%,
-        transparent 64%
-      ),
+      linear-gradient(90deg, transparent 36%, #cf9eff 50%, transparent 64%),
       radial-gradient(38% 62% at 50% 46%, #cf9eff, transparent 72%),
       radial-gradient(
         130% 42% at 50% 52%,
@@ -268,13 +259,10 @@
   }
 
   /* --- DitherVeil -------------------------------------------------------
-     The 18px micro-dither cells keep a solid pre-composited tone (#363339 =
-     paper #f4f1ea lifted over ink #120f17) instead of a full-contrast cream
-     checkerboard; the blooms go fully opaque. */
+     Smooth blooms only — the conic micro-dither cells rendered as a
+     grid of weird lines on mobile GPUs. */
   .webgl-fallback--dither {
     background:
-      conic-gradient(#363339 0 25%, transparent 0 50%, #363339 0 75%, transparent 0)
-        0 0 / 18px 18px,
       radial-gradient(58% 52% at 50% 44%, #f4f1ea, transparent 70%),
       radial-gradient(
         88% 78% at 50% 50%,

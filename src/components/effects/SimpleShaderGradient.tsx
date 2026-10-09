@@ -88,10 +88,13 @@ void main() {
 // mediump only (old Mali/Adreno fragment shaders default to mediump and
 // choke on highp). Squared distances + 1/(1+d) falloff — no sqrt, no
 // smoothstep, no loops. All intermediate values stay well under 2.0.
+// Blob positions oscillate on integer multiples of uPhase so the loop
+// wraps seamlessly; uPhase itself stays in [0, 2π) where mediump sin/cos
+// is accurate on every GPU (large args = step/line artifacts on old ones).
 const FRAG = `
 precision mediump float;
 varying vec2 vUv;
-uniform float uTime;
+uniform float uPhase;
 uniform float uAspect;
 uniform vec3 uBase;
 uniform vec3 uA;
@@ -99,9 +102,10 @@ uniform vec3 uB;
 uniform vec3 uC;
 void main() {
   vec2 uv = vUv;
-  vec2 pa = vec2(0.24 + 0.05 * sin(uTime * 0.13), 0.28 + 0.04 * cos(uTime * 0.11));
-  vec2 pb = vec2(0.78 + 0.04 * cos(uTime * 0.09), 0.20 + 0.05 * sin(uTime * 0.10));
-  vec2 pc = vec2(0.58 + 0.04 * sin(uTime * 0.07), 0.80 + 0.04 * cos(uTime * 0.12));
+  float p = uPhase;
+  vec2 pa = vec2(0.24 + 0.05 * sin(p), 0.28 + 0.04 * cos(p));
+  vec2 pb = vec2(0.78 + 0.04 * cos(2.0 * p), 0.20 + 0.05 * sin(2.0 * p));
+  vec2 pc = vec2(0.58 + 0.04 * sin(3.0 * p), 0.80 + 0.04 * cos(3.0 * p));
   vec2 da = vec2((uv.x - pa.x) * uAspect, uv.y - pa.y);
   vec2 db = vec2((uv.x - pb.x) * uAspect, uv.y - pb.y);
   vec2 dc = vec2((uv.x - pc.x) * uAspect, uv.y - pc.y);
@@ -150,7 +154,7 @@ export function SimpleShaderGradient({
       host.appendChild(canvas);
 
       const uniforms = {
-        uTime: { value: 0 },
+        uPhase: { value: 0 },
         uAspect: { value: 1 },
         uBase: { value: palette.base },
         uA: { value: palette.a },
@@ -182,8 +186,9 @@ export function SimpleShaderGradient({
       const loop = (t: number) => {
         raf = requestAnimationFrame(loop);
         if (document.hidden) return;
-        // Wrap time so mediump sin/cos never drift into coarse ranges.
-        uniforms.uTime.value = (t * 0.001) % 600;
+        // Phase stays in [0, 2π): seamless loop AND mediump-safe (old GPUs
+        // produce step/line artifacts from sin/cos of large arguments).
+        uniforms.uPhase.value = (t * 0.0001) % (Math.PI * 2);
         try {
           renderer.render({ scene: mesh });
         } catch (err) {
