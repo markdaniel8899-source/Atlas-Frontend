@@ -8,12 +8,16 @@ import {
 
 const FALLBACK_IMAGE = "/fallback-blog.svg";
 
+export type BlogCardVariant = "default" | "featured" | "wide";
+
 export function BlogCard({
   post,
   priority = false,
+  variant = "default",
 }: {
   post: BlogPost;
   priority?: boolean;
+  variant?: BlogCardVariant;
 }) {
   const minutes = readingTimeMinutes(post.content);
   const tag = post.tags[0];
@@ -23,12 +27,25 @@ export function BlogCard({
       : post.excerpt
     : "";
 
+  const isFeatured = variant === "featured";
+  const isWide = variant === "wide";
+
   return (
     <CurtainLink
       to={`/blog/${post.slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-white/20"
+      className={`group flex h-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-white/20 ${
+        isWide ? "flex-col sm:flex-row" : "flex-col"
+      }`}
     >
-      <div className="aspect-video w-full overflow-hidden">
+      <div
+        className={`w-full shrink-0 overflow-hidden ${
+          isWide
+            ? "aspect-video sm:aspect-auto sm:w-1/2 sm:self-stretch"
+            : isFeatured
+              ? "aspect-video lg:aspect-auto lg:min-h-[16rem] lg:flex-1"
+              : "aspect-video"
+        }`}
+      >
         {post.cover_image_url ? (
           <img
             src={post.cover_image_url}
@@ -47,7 +64,9 @@ export function BlogCard({
           <div className="h-full w-full bg-[radial-gradient(70%_60%_at_50%_20%,rgba(207,158,255,0.2),transparent_70%)]" />
         )}
       </div>
-      <div className="flex flex-1 flex-col p-6">
+      <div
+        className={`flex flex-1 flex-col p-6 ${isWide ? "sm:w-1/2 sm:justify-center" : ""}`}
+      >
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] tracking-[0.18em] text-white/45 uppercase">
           {tag && (
             <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold tracking-[0.22em] text-white/85">
@@ -58,7 +77,11 @@ export function BlogCard({
             {formatPostDate(post.published_at)} · {minutes} min read
           </span>
         </div>
-        <h2 className="mt-3 line-clamp-2 text-lg font-semibold tracking-[-0.02em] text-white">
+        <h2
+          className={`mt-3 line-clamp-2 font-semibold tracking-[-0.02em] text-white ${
+            isFeatured ? "text-xl sm:text-2xl" : "text-lg"
+          }`}
+        >
           {post.title}
         </h2>
         {shortExcerpt && (

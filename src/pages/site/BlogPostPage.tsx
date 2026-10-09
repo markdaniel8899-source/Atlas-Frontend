@@ -36,7 +36,7 @@ const PROSE_CLASS = [
   "[&_blockquote]:mt-8 [&_blockquote]:border-l-2 [&_blockquote]:border-[#cf9eff]/50 [&_blockquote]:pl-5 [&_blockquote]:text-white/75 [&_blockquote]:italic",
   "[&_figure]:mt-10 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-white/10 [&_figure]:bg-white/[0.03]",
   "[&_figure_img]:block [&_figure_img]:h-auto [&_figure_img]:w-full",
-  "[&_figcaption]:px-5 [&_figcaption]:py-3 [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:italic [&_figcaption]:text-white/45",
+  "[&_figcaption]:hidden",
   "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-white/10",
 ].join(" ");
 
