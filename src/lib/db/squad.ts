@@ -1,6 +1,6 @@
 ﻿import { getUser } from "../auth";
 import { supabase } from "../supabase";
-import { levelProgress } from "./types";
+import { getRankFromXP } from "../gamification";
 
 export type SquadStatus = "studying" | "online" | "offline";
 export type Relationship = "friend" | "outgoing" | "incoming";
@@ -137,7 +137,7 @@ export async function fetchSquad(): Promise<SquadMember[]> {
 
     const displayName = profile.display_name.trim() || profile.username;
     const { status, label } = statusFrom(profile.last_active_date);
-    const progress = levelProgress(profile.xp);
+    const rankData = getRankFromXP(profile.xp);
     const relationship: Relationship =
       link.status === "accepted"
         ? "friend"
@@ -157,7 +157,7 @@ export async function fetchSquad(): Promise<SquadMember[]> {
       streak: profile.streak,
       level: profile.level,
       xp: profile.xp,
-      progressPercent: Math.round(progress.percent),
+      progressPercent: Math.round(rankData.percent),
       avatarUrl: profile.avatar_url,
       relationship,
     });

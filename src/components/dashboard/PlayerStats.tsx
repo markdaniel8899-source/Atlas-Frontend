@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Flame, Hexagon } from "lucide-react";
+import { Flame } from "lucide-react";
 import type { ReactNode } from "react";
 import { Card } from "../ui/Card";
 import { EASE } from "../../lib/motion";
-import { levelProgress } from "../../lib/db/types";
+import { getRankFromXP } from "../../lib/gamification";
 import type { Profile } from "../../lib/db/types";
+import { RankBadge } from "../gamification/RankBadge";
+import { RankProgressionModal } from "../gamification/RankProgressionModal";
 
 interface PlayerStatsProps {
   profile: Profile | null;
@@ -40,6 +43,8 @@ function Cell({
 }
 
 export function PlayerStats({ profile, loading }: PlayerStatsProps) {
+  const [rankModalOpen, setRankModalOpen] = useState(false);
+
   if (loading) {
     return (
       <Card className="p-6 sm:p-7">
@@ -54,66 +59,84 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
     );
   }
 
-  const stats = levelProgress(profile?.xp ?? 0);
+  const rankData = getRankFromXP(profile?.xp ?? 0);
   const streak = profile?.streak ?? 0;
 
   return (
-    <Card className="relative overflow-hidden p-6 sm:p-7">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-28 -right-16 size-72 rounded-full bg-[#cf9eff]/12 blur-3xl"
-      />
-
-      <div className="relative flex flex-wrap items-center gap-x-10 gap-y-6">
-        <Cell
-          tone="border-orange-400/25 bg-orange-400/[0.08]"
-          icon={<Flame className="size-5 text-[#ff8f52]" />}
-          value={String(streak)}
-          label="day streak"
-        />
-
-        <span
+    <>
+      <Card className="relative overflow-hidden p-6 sm:p-7">
+        <div
           aria-hidden="true"
-          className="hidden h-11 w-px bg-white/[0.08] sm:block"
+          className="pointer-events-none absolute -top-28 -right-16 size-72 rounded-full bg-[#cf9eff]/12 blur-3xl"
         />
 
-        <Cell
-          tone="border-[#cf9eff]/30 bg-[#cf9eff]/10"
-          icon={<Hexagon className="size-5 text-[#cf9eff]" />}
-          value={String(stats.level)}
-          label="level"
-        />
-
-        <div className="ml-auto text-right leading-tight">
-          <p className="font-mono text-lg tabular-nums text-white">
-            {stats.into}
-            <span className="text-white/30"> / {stats.need}</span>
-            <span className="ml-1.5 text-xs text-[#cf9eff]">XP</span>
-          </p>
-          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
-            to level {stats.level + 1}
-          </p>
-        </div>
-      </div>
-
-      <div className="relative mt-6">
-        <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${stats.percent}%` }}
-            transition={{ duration: 1, ease: EASE, delay: 0.15 }}
-            className="h-full rounded-full bg-gradient-to-r from-[#7b8ee8] via-[#a58cff] to-[#cf9eff] shadow-[0_0_18px_rgba(207,158,255,0.55)]"
+        <div className="relative flex flex-wrap items-center gap-x-10 gap-y-6">
+          <Cell
+            tone="border-orange-400/25 bg-orange-400/[0.08]"
+            icon={<Flame className="size-5 text-[#ff8f52]" />}
+            value={String(streak)}
+            label="day streak"
           />
+
+          <span
+            aria-hidden="true"
+            className="hidden h-11 w-px bg-white/[0.08] sm:block"
+          />
+
+          {/* Rank badge - clickable to open progression modal */}
+          <button
+            type="button"
+            onClick={() => setRankModalOpen(true)}
+            className="flex items-center gap-3 rounded-xl border border-transparent p-1 transition-colors hover:border-white/10 hover:bg-white/[0.03]"
+            aria-label="View rank progression"
+            title="Click to view rank progression"
+          >
+            <RankBadge rank={rankData.current} size={44} />
+            <div className="text-left leading-tight">
+              <p className="text-lg font-semibold text-white">{rankData.name}</p>
+              <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
+                current rank
+              </p>
+            </div>
+          </button>
+
+          <div className="ml-auto text-right leading-tight">
+            <p className="font-mono text-lg tabular-nums text-white">
+              {rankData.xpInto}
+              <span className="text-white/30"> / {rankData.xpNeed}</span>
+              <span className="ml-1.5 text-xs text-[#cf9eff]">XP</span>
+            </p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
+              to {rankData.nextRankName ?? "max rank"}
+            </p>
+          </div>
         </div>
-        <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-white/35">
-          <span className="min-w-0 truncate">
-            {Math.round(stats.percent)}% of level {stats.level} complete
-          </span>
-          <span className="shrink-0 truncate text-white/50">
-            {profile ? `@${profile.username}` : "unlinked profile"}
-          </span>
+
+        <div className="relative mt-6">
+          <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${rankData.percent}%` }}
+              transition={{ duration: 1, ease: EASE, delay: 0.15 }}
+              className={`h-full rounded-full bg-gradient-to-r ${rankData.tier.gradient}`}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-white/35">
+            <span className="min-w-0 truncate">
+              {Math.round(rankData.percent)}% of {rankData.name} complete
+            </span>
+            <span className="shrink-0 truncate text-white/50">
+              {profile ? `@${profile.username}` : "unlinked profile"}
+            </span>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <RankProgressionModal
+        open={rankModalOpen}
+        onClose={() => setRankModalOpen(false)}
+        currentRank={rankData}
+      />
+    </>
   );
 }

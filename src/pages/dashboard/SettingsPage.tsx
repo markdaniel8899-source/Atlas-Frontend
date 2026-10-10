@@ -17,18 +17,15 @@ import { fetchProfile, notifyProfileChanged, updateProfile } from "../../lib/db/
 import { apiSelectAvatar } from "../../lib/gamificationApi";
 import { deleteCourse, topicCounts } from "../../lib/db/courses";
 import {
-  XP_PER_LEVEL,
-  levelProgress,
   type Course,
   type Profile,
 } from "../../lib/db/types";
-import { rankForLevel } from "../../lib/gamification";
+import { getRankFromXP } from "../../lib/gamification";
 import { RevealText } from "../../components/RevealText";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { CourseEditorModal } from "../../components/courses/CourseEditorModal";
 import { AvatarPickerModal } from "../../components/profile/AvatarPickerModal";
-import { AchievementsPanel } from "../../components/profile/AchievementsPanel";
 import { useCourses } from "../../hooks/useCourses";
 import { EASE } from "../../lib/motion";
 
@@ -213,9 +210,7 @@ export default function SettingsPage() {
   };
 
   const showAvatar = avatarUrl;
-  const progress = levelProgress(profile?.xp ?? 0);
-  const rank = rankForLevel(profile?.level ?? 1);
-  const RankIcon = rank.icon;
+  const rankData = getRankFromXP(profile?.xp ?? 0);
   const initials =
     (displayName || profile?.display_name || user?.name || "A")
       .trim()
@@ -249,9 +244,7 @@ export default function SettingsPage() {
 
                 <div className="mt-6 flex flex-wrap items-center gap-5">
                   <div className="relative">
-                    <span
-                      className={`flex size-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3d4f9e] to-[#7b8ee8] text-lg font-semibold text-white ring-2 ring-offset-2 ring-offset-[#0d0d16] ${rank.ring}`}
-                    >
+                    <span className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3d4f9e] to-[#7b8ee8] text-lg font-semibold text-white">
                       {showAvatar ? (
                         <img
                           src={showAvatar}
@@ -300,10 +293,9 @@ export default function SettingsPage() {
                         </button>
                       )}
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${rank.border} ${rank.bg} ${rank.text} ${rank.glow}`}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${rankData.tier.border} ${rankData.tier.bg} ${rankData.tier.text}`}
                       >
-                        <RankIcon className="size-3.5" />
-                        {rank.label} · Lvl {profile?.level ?? 1}
+                        {rankData.name}
                       </span>
                     </div>
                   </div>
@@ -537,16 +529,11 @@ export default function SettingsPage() {
             </div>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-white/45">Level</dt>
-                <dd className="text-white/80">{profile?.level ?? 1}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
                 <dt className="text-white/45">Rank</dt>
                 <dd
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium ${rank.border} ${rank.bg} ${rank.text} ${rank.glow}`}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium ${rankData.tier.border} ${rankData.tier.bg} ${rankData.tier.text}`}
                 >
-                  <RankIcon className="size-3.5" />
-                  {rank.label}
+                  {rankData.name}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -564,24 +551,14 @@ export default function SettingsPage() {
             </dl>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className={`h-full rounded-full bg-gradient-to-r ${rank.gradient}`}
-                style={{ width: `${progress.percent}%` }}
+                className={`h-full rounded-full bg-gradient-to-r ${rankData.tier.gradient}`}
+                style={{ width: `${rankData.percent}%` }}
               />
             </div>
             <p className="mt-2 text-[11px] text-white/35">
-              {XP_PER_LEVEL - progress.into} XP to level {progress.level + 1}
+              {rankData.xpToNext} XP to {rankData.nextRankName ?? "max rank"}
             </p>
           </Card>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.18, ease: EASE }}
-          >
-            <Card className="p-6">
-              <AchievementsPanel userId={user?.id ?? ""} />
-            </Card>
-          </motion.div>
         </motion.div>
       </div>
 

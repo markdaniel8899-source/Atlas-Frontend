@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
-import { rankForLevel } from "../../lib/gamification";
+import { getRankFromXP } from "../../lib/gamification";
 import {
   acceptInvite,
   declineInvite,
@@ -38,13 +38,11 @@ const STATUS_DOT: Record<SquadStatus, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Friend card (tall gradient card)                                    */
+/* Friend card (glassmorphism)                                         */
 /* ------------------------------------------------------------------ */
 
 function FriendCard({ member, index }: { member: SquadMember; index: number }) {
-  const rank = rankForLevel(member.level);
-  const RankIcon = rank.icon;
-  const pct = Math.min(100, Math.max(0, member.progressPercent));
+  const rank = getRankFromXP(member.xp);
 
   return (
     <motion.article
@@ -52,18 +50,11 @@ function FriendCard({ member, index }: { member: SquadMember; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.06, ease: EASE }}
       whileHover={{ y: -5 }}
-      className="group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900 to-black p-6 transition-all duration-300 hover:border-white/10 sm:p-7"
+      className="rounded-xl bg-white/5 p-4 backdrop-blur-md border border-white/10 transition-all hover:bg-white/[0.07]"
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent"
-      />
-
-      <div className="relative flex items-center gap-4">
+      <div className="flex items-center gap-4">
         <div className="relative">
-          <span
-            className={`flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br text-base font-semibold text-white ring-2 ring-offset-2 ring-offset-black ${member.avatar} ${rank.ring}`}
-          >
+          <span className={`flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br text-base font-semibold text-white ${member.avatar}`}>
             {member.avatarUrl ? (
               <img
                 src={member.avatarUrl}
@@ -93,15 +84,13 @@ function FriendCard({ member, index }: { member: SquadMember; index: number }) {
         </div>
 
         <span
-          title={`${rank.label} rank`}
-          className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold tracking-wide ${rank.border} ${rank.bg} ${rank.text} ${rank.glow}`}
+          className={`inline-flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-semibold tracking-wide ${rank.tier.border} ${rank.tier.bg} ${rank.tier.text}`}
         >
-          <RankIcon className="size-3" />
-          Lvl {member.level}
+          {rank.name}
         </span>
       </div>
 
-      <div className="relative mt-6 space-y-3">
+      <div className="mt-5 space-y-3">
         <div className="flex items-center justify-between text-xs">
           <span className="flex items-center gap-1.5 text-white/50">
             <Zap className="size-3.5 text-blue-300/80" />
@@ -119,16 +108,16 @@ function FriendCard({ member, index }: { member: SquadMember; index: number }) {
         <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
+            animate={{ width: `${rank.percent}%` }}
             transition={{ duration: 0.9, delay: 0.2 + index * 0.06, ease: EASE }}
-            className={`h-full rounded-full bg-gradient-to-r ${rank.gradient}`}
+            className={`h-full rounded-full bg-gradient-to-r ${rank.tier.gradient}`}
           />
         </div>
 
         <div className="flex items-center justify-between text-[11px] text-white/35">
-          <span className="uppercase tracking-wider">{rank.label}</span>
+          <span className="uppercase tracking-wider">{rank.tier.label}</span>
           <span>
-            {pct}% to Lvl {member.level + 1}
+            {rank.xpToNext} XP to {rank.nextRankName ?? "max"}
           </span>
         </div>
       </div>
@@ -160,11 +149,11 @@ function RequestRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.35, ease: EASE }}
-      className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900 to-black px-5 py-4"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white/5 px-5 py-4 backdrop-blur-md border border-white/10"
     >
       <div className="flex min-w-0 items-center gap-3">
         <span
-          className={`flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br text-sm font-semibold text-white ring-1 ring-white/10 ${member.avatar}`}
+          className={`flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br text-sm font-semibold text-white ${member.avatar}`}
         >
           {member.avatarUrl ? (
             <img
@@ -362,7 +351,7 @@ export default function SquadPage() {
         </form>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.02] p-1">
+      <div className="flex flex-wrap items-center gap-1 rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.07] p-1">
         {TABS.map((entry) => {
           const active = tab === entry.id;
           const count =
@@ -380,7 +369,7 @@ export default function SquadPage() {
                 <motion.span
                   layoutId="friends-tab-pill"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  className="absolute inset-0 rounded-lg border border-white/10 bg-white/[0.07]"
+                  className="absolute inset-0 rounded-lg bg-white/[0.07]"
                 />
               )}
               <span className="relative inline-flex items-center gap-2">
@@ -436,7 +425,7 @@ export default function SquadPage() {
               Loading friends…
             </p>
           ) : friends.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center sm:p-10">
+            <div className="rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 p-8 text-center sm:p-10">
               <Users className="mx-auto size-7 text-white/25" />
               <h2 className="mt-4 text-lg font-semibold tracking-tight text-white">
                 No friends yet
@@ -447,7 +436,7 @@ export default function SquadPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {friends.map((member, index) => (
                 <FriendCard key={member.friendshipId} member={member} index={index} />
               ))}
@@ -468,7 +457,7 @@ export default function SquadPage() {
               )}
             </p>
             {incoming.length === 0 ? (
-              <p className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-4 text-sm text-white/40">
+              <p className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.07] px-5 py-4 text-sm text-white/40">
                 No incoming requests right now.
               </p>
             ) : (
@@ -497,7 +486,7 @@ export default function SquadPage() {
               )}
             </p>
             {outgoing.length === 0 ? (
-              <p className="rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-4 text-sm text-white/40">
+              <p className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.07] px-5 py-4 text-sm text-white/40">
                 No invitations waiting for a reply.
               </p>
             ) : (

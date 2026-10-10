@@ -4,8 +4,6 @@ export type CourseStatus =
   | "paused"
   | "completed";
 
-export const XP_PER_LEVEL = 200;
-
 export interface Profile {
   id: string;
   username: string;
@@ -21,8 +19,6 @@ export interface Profile {
   total_xp?: number | null;
   /** Streak alias (generated column mirroring `streak`). */
   day_streak?: number | null;
-  /** Rank tier label (generated column from `level`). */
-  rank?: string | null;
 }
 
 export interface HeatmapDay {
@@ -59,23 +55,4 @@ export interface Course extends FocusCourse {
   topics: CourseTopic[];
   /** Lifetime focused seconds for this course (courses.total_focus_seconds). */
   total_focus_seconds: number;
-}
-
-export interface LevelProgress {
-  level: number;
-  into: number;
-  need: number;
-  percent: number;
-}
-
-export function levelProgress(xp: number): LevelProgress {
-  const safeXp = Math.max(0, Math.floor(xp));
-  const level = Math.floor(safeXp / XP_PER_LEVEL) + 1;
-  const into = safeXp % XP_PER_LEVEL;
-  return {
-    level,
-    into,
-    need: XP_PER_LEVEL,
-    percent: (into / XP_PER_LEVEL) * 100,
-  };
 }
