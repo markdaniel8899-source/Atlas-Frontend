@@ -3,7 +3,7 @@ import { supabase } from "../supabase";
 import type { Profile } from "./types";
 
 const PROFILE_COLUMNS =
-  "id, username, display_name, streak, xp, level, avatar_url, last_active_date";
+  "id, username, display_name, streak, xp, level, avatar_url, last_active_date, weekly_xp, total_xp, day_streak, rank";
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase

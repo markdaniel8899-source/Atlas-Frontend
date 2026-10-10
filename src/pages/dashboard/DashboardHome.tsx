@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ActivityHeatmap } from "../../components/dashboard/ActivityHeatmap";
 import { FocusTimerWidget } from "../../components/dashboard/FocusTimerWidget";
 import { PlayerStats } from "../../components/dashboard/PlayerStats";
@@ -5,6 +6,7 @@ import { TodayFocus } from "../../components/dashboard/TodayFocus";
 import { RevealText } from "../../components/RevealText";
 import { useDashboard } from "../../hooks/useDashboard";
 import { getUser } from "../../lib/auth";
+import { runAchievementChecks } from "../../lib/db/achievements";
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -20,6 +22,22 @@ export default function DashboardHome() {
 
   const fullName = profile?.display_name || user?.name || "";
   const firstName = fullName.split(" ")[0]?.trim() || "Explorer";
+
+  // Daily-login achievement sweep (streaks, night owl, quiz wizard...).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const idle: (cb: () => void) => void =
+      "requestIdleCallback" in window
+        ? (cb) => window.requestIdleCallback(() => cb(), { timeout: 4000 })
+        : (cb) => window.setTimeout(cb, 1500);
+    idle(() => {
+      if (!cancelled) void runAchievementChecks().catch(() => undefined);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   return (
     <div className="space-y-5">

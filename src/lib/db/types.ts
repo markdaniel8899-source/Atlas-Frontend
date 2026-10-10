@@ -15,6 +15,14 @@ export interface Profile {
   level: number;
   avatar_url: string | null;
   last_active_date: string | null;
+  /** XP earned since the last weekly reset (Monday, UTC). */
+  weekly_xp?: number | null;
+  /** Lifetime XP alias (generated column mirroring `xp`). */
+  total_xp?: number | null;
+  /** Streak alias (generated column mirroring `streak`). */
+  day_streak?: number | null;
+  /** Rank tier label (generated column from `level`). */
+  rank?: string | null;
 }
 
 export interface HeatmapDay {

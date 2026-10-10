@@ -7,7 +7,6 @@ import type {
   QuizQuestion,
   QuizResult,
 } from "./ai";
-import { supabase } from "./supabase";
 
 export type QuizAnswer = AiAnswer;
 export type KindChoice = QuizKind | "mixed";
@@ -177,12 +176,6 @@ export function summarize(attempts: QuizAttempt[]): QuizSummary {
     percent: total > 0 ? Math.round((correct / total) * 100) : 0,
     xp: correct * XP_PER_CORRECT,
   };
-}
-
-export async function awardQuizXp(xp: number): Promise<boolean> {
-  if (xp <= 0) return false;
-  const { error } = await supabase.rpc("record_activity", { p_xp: xp });
-  return !error;
 }
 
 export function initialAnswer(question: QuizQuestion): QuizAnswer {

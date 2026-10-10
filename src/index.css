@@ -35,6 +35,9 @@
   --font-outfit: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-syne: "Syne", "Syne Variable", ui-sans-serif, system-ui, sans-serif;
 
+  /* Extra-large display tier above 2xl (>=1920px). */
+  --breakpoint-3xl: 1920px;
+
   /* ATLAS deep-space palette */
   --color-void: #030305;
   --color-ink: #0a0a1a;

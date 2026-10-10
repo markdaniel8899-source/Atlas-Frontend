@@ -1,24 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   BookOpen,
-  Camera,
   Check,
   GraduationCap,
   Loader2,
   Pencil,
   Save,
+  Sparkles,
   Trash2,
   UserRound,
 } from "lucide-react";
 import { getUser } from "../../lib/auth";
 import { fetchProfile, notifyProfileChanged, updateProfile } from "../../lib/db/profile";
-import {
-  uploadAvatar,
-  validateAvatar,
-} from "../../lib/db/avatars";
+import { apiSelectAvatar } from "../../lib/gamificationApi";
 import { deleteCourse, topicCounts } from "../../lib/db/courses";
 import {
   XP_PER_LEVEL,
@@ -26,10 +22,13 @@ import {
   type Course,
   type Profile,
 } from "../../lib/db/types";
+import { rankForLevel } from "../../lib/gamification";
 import { RevealText } from "../../components/RevealText";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { CourseEditorModal } from "../../components/courses/CourseEditorModal";
+import { AvatarPickerModal } from "../../components/profile/AvatarPickerModal";
+import { AchievementsPanel } from "../../components/profile/AchievementsPanel";
 import { useCourses } from "../../hooks/useCourses";
 import { EASE } from "../../lib/motion";
 
@@ -37,15 +36,13 @@ const USERNAME_RE = /^[a-z0-9_]{3,24}$/;
 
 export default function SettingsPage() {
   const user = getUser();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [stagedFile, setStagedFile] = useState<File | null>(null);
-  const [stagedPreview, setStagedPreview] = useState<string | null>(null);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,48 +105,61 @@ export default function SettingsPage() {
     };
   }, [user]);
 
-  useEffect(() => {
-    return () => {
-      if (stagedPreview) URL.revokeObjectURL(stagedPreview);
-    };
-  }, [stagedPreview]);
-
-  const handlePick = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    const invalid = validateAvatar(file);
-    if (invalid) {
-      setError(invalid);
-      return;
-    }
-    if (stagedPreview) URL.revokeObjectURL(stagedPreview);
+  const handleAvatarSelected = async (url: string): Promise<boolean> => {
+    if (!user) return false;
+    setSaving(true);
     setError(null);
     setSaved(false);
-    setStagedFile(file);
-    setStagedPreview(URL.createObjectURL(file));
-  };
 
-  const clearStaged = useCallback(() => {
-    if (stagedPreview) URL.revokeObjectURL(stagedPreview);
-    setStagedFile(null);
-    setStagedPreview(null);
-    if (fileRef.current) fileRef.current.value = "";
-  }, [stagedPreview]);
+    // Prefer the FastAPI endpoint (validates + stores server-side); fall
+    // back to a direct profile update when the AI service is offline.
+    let nextAvatar = url;
+    let failure: string | null = null;
+    const viaApi = await apiSelectAvatar(url);
+    if (viaApi && viaApi.ok === false) {
+      failure = (viaApi.error as string | undefined) ?? "Couldn't save that avatar.";
+    } else if (!viaApi) {
+      const { profile: updated, error: saveError } = await updateProfile(user.id, {
+        avatar_url: url,
+      });
+      if (saveError) failure = saveError;
+      else if (updated) setProfile(updated);
+    } else {
+      const { profile: updated } = await updateProfile(user.id, {
+        avatar_url: url,
+      });
+      if (updated) setProfile(updated);
+    }
+
+    setSaving(false);
+
+    if (failure) {
+      setError(failure);
+      return false;
+    }
+
+    setAvatarUrl(nextAvatar);
+    notifyProfileChanged();
+    setSaved(true);
+    return true;
+  };
 
   const removeAvatar = async () => {
     if (!user) return;
-    clearStaged();
     setAvatarUrl(null);
     setSaving(true);
     setError(null);
     setSaved(false);
+    const viaApi = await apiSelectAvatar(null);
     const { profile: updated, error: saveError } = await updateProfile(user.id, {
       avatar_url: null,
     });
     setSaving(false);
-    if (saveError) {
-      setError(saveError);
+    if (saveError || (viaApi && viaApi.ok === false)) {
+      setError(
+        saveError ??
+          ((viaApi?.error as string | undefined) ?? "Couldn't remove the avatar."),
+      );
       return;
     }
     setProfile(updated);
@@ -181,21 +191,10 @@ export default function SettingsPage() {
     setError(null);
     setSaved(false);
 
-    let nextAvatar = avatarUrl;
-    if (stagedFile && user) {
-      const upload = await uploadAvatar(user.id, stagedFile);
-      if (upload.error) {
-        setSaving(false);
-        setError(upload.error);
-        return;
-      }
-      nextAvatar = upload.url;
-    }
-
     const { profile: updated, error: saveError } = await updateProfile(user.id, {
       display_name: name,
       username: handle,
-      avatar_url: nextAvatar,
+      avatar_url: avatarUrl,
     });
 
     setSaving(false);
@@ -206,16 +205,17 @@ export default function SettingsPage() {
     }
 
     setProfile(updated);
-    setAvatarUrl(nextAvatar);
+    setAvatarUrl(avatarUrl);
     setDisplayName(updated?.display_name ?? name);
     setUsername(updated?.username ?? handle);
-    clearStaged();
     notifyProfileChanged();
     setSaved(true);
   };
 
-  const showAvatar = stagedPreview ?? avatarUrl;
+  const showAvatar = avatarUrl;
   const progress = levelProgress(profile?.xp ?? 0);
+  const rank = rankForLevel(profile?.level ?? 1);
+  const RankIcon = rank.icon;
   const initials =
     (displayName || profile?.display_name || user?.name || "A")
       .trim()
@@ -249,12 +249,14 @@ export default function SettingsPage() {
 
                 <div className="mt-6 flex flex-wrap items-center gap-5">
                   <div className="relative">
-                    <span className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3d4f9e] to-[#7b8ee8] text-lg font-semibold text-white ring-1 ring-white/10">
+                    <span
+                      className={`flex size-20 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#3d4f9e] to-[#7b8ee8] text-lg font-semibold text-white ring-2 ring-offset-2 ring-offset-[#0d0d16] ${rank.ring}`}
+                    >
                       {showAvatar ? (
                         <img
                           src={showAvatar}
                           alt=""
-                          className="size-full object-cover"
+                          className="size-full rounded-full object-cover"
                         />
                       ) : (
                         initials
@@ -262,32 +264,34 @@ export default function SettingsPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => fileRef.current?.click()}
+                      onClick={() => setAvatarPickerOpen(true)}
                       disabled={loading}
                       className="absolute -right-1 -bottom-1 flex size-7 items-center justify-center rounded-full border border-[#cf9eff]/45 bg-[#0a0a14] text-white/70 transition-colors hover:border-[#cf9eff]/70 hover:text-white"
-                      aria-label="Choose a new avatar"
-                      title="Choose a new avatar"
+                      aria-label="Edit avatar"
+                      title="Edit avatar"
                     >
-                      <Camera className="size-3.5" />
+                      <Sparkles className="size-3.5" />
                     </button>
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-white/55">
-                      PNG, JPG or WebP, up to 2 MB.
+                      Unique generated avatars via DiceBear - pick a style that
+                      fits your rank.
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={() => fileRef.current?.click()}
-                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/65 transition-colors hover:border-[#cf9eff]/45 hover:text-white"
+                        onClick={() => setAvatarPickerOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#cf9eff]/40 bg-[#cf9eff]/10 px-3 py-1.5 text-xs font-medium text-white/80 transition-colors hover:border-[#cf9eff]/70 hover:text-white"
                       >
-                        {showAvatar ? "Change photo" : "Upload photo"}
+                        <Sparkles className="size-3.5" />
+                        Edit avatar
                       </button>
-                      {(stagedFile || avatarUrl) && (
+                      {avatarUrl && (
                         <button
                           type="button"
-                          onClick={removeAvatar}
+                          onClick={() => void removeAvatar()}
                           disabled={saving}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/55 transition-colors hover:border-rose-300/40 hover:text-rose-200"
                         >
@@ -295,29 +299,15 @@ export default function SettingsPage() {
                           Remove
                         </button>
                       )}
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${rank.border} ${rank.bg} ${rank.text} ${rank.glow}`}
+                      >
+                        <RankIcon className="size-3.5" />
+                        {rank.label} · Lvl {profile?.level ?? 1}
+                      </span>
                     </div>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={handlePick}
-                    />
                   </div>
                 </div>
-
-                <AnimatePresence>
-                  {stagedFile && (
-                    <motion.p
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-4 overflow-hidden text-xs text-amber-300/80"
-                    >
-                      New photo selected: hit Save changes to apply it.
-                    </motion.p>
-                  )}
-                </AnimatePresence>
 
                 <div className="mt-7 grid gap-5 sm:grid-cols-2">
                   <label className="block">
@@ -551,8 +541,21 @@ export default function SettingsPage() {
                 <dd className="text-white/80">{profile?.level ?? 1}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
+                <dt className="text-white/45">Rank</dt>
+                <dd
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium ${rank.border} ${rank.bg} ${rank.text} ${rank.glow}`}
+                >
+                  <RankIcon className="size-3.5" />
+                  {rank.label}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
                 <dt className="text-white/45">XP</dt>
                 <dd className="text-white/80">{profile?.xp ?? 0}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-white/45">Weekly XP</dt>
+                <dd className="text-white/80">{profile?.weekly_xp ?? 0}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-white/45">Streak</dt>
@@ -561,7 +564,7 @@ export default function SettingsPage() {
             </dl>
             <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#cf9eff]/70 to-[#cf9eff]"
+                className={`h-full rounded-full bg-gradient-to-r ${rank.gradient}`}
                 style={{ width: `${progress.percent}%` }}
               />
             </div>
@@ -569,6 +572,16 @@ export default function SettingsPage() {
               {XP_PER_LEVEL - progress.into} XP to level {progress.level + 1}
             </p>
           </Card>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.18, ease: EASE }}
+          >
+            <Card className="p-6">
+              <AchievementsPanel userId={user?.id ?? ""} />
+            </Card>
+          </motion.div>
         </motion.div>
       </div>
 
@@ -576,6 +589,14 @@ export default function SettingsPage() {
         course={editingCourse}
         onClose={() => setEditingCourse(null)}
         onSaved={() => void reloadCourses()}
+      />
+
+      <AvatarPickerModal
+        open={avatarPickerOpen}
+        currentUrl={avatarUrl}
+        userId={user?.id ?? ""}
+        onClose={() => setAvatarPickerOpen(false)}
+        onSelect={handleAvatarSelected}
       />
     </div>
   );

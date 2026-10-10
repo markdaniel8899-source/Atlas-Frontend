@@ -142,6 +142,7 @@ export default function Auth() {
         </CurtainLink>
       </motion.div>
 
+      <div className="flex w-full flex-col items-center justify-center origin-center transition-transform duration-300 2xl:scale-90 3xl:scale-75">
       <motion.div
         initial={{ opacity: 0, y: 28, scale: 0.97 }}
         animate={
@@ -309,6 +310,7 @@ export default function Auth() {
           </>
         )}
       </motion.button>
+      </div>
     </div>
   );
 }

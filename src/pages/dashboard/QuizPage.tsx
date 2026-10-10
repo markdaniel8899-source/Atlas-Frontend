@@ -8,6 +8,7 @@ import {
   Loader2,
   RefreshCw,
   Sparkles,
+  Trophy,
 } from "lucide-react";
 import { CodeBlock } from "../../components/quiz/CodeBlock";
 import { QuestionInput } from "../../components/quiz/QuestionInput";
@@ -20,7 +21,6 @@ import { useCourses } from "../../hooks/useCourses";
 import { AiError } from "../../lib/ai";
 import type { Evaluation } from "../../lib/ai";
 import {
-  awardQuizXp,
   canSubmit,
   evaluateAnswer,
   initialAnswer,
@@ -33,9 +33,17 @@ import type {
   QuizAnswer,
   QuizAttempt,
 } from "../../lib/quiz";
+import { saveQuizSession } from "../../lib/db/quizSessions";
 import { EASE } from "../../lib/motion";
 
 const TIMEOUT_MESSAGE = "The request timed out. Please try again.";
+
+const ACHIEVEMENT_TITLES: Record<string, string> = {
+  first_quiz: "First Steps",
+  streak_master: "7-Day Streak Master",
+  night_owl: "Night Owl",
+  quiz_wizard: "Quiz Wizard",
+};
 
 type Phase = "setup" | "loading" | "running" | "done";
 
@@ -62,6 +70,7 @@ export default function QuizPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
+  const [unlocked, setUnlocked] = useState<string[]>([]);
 
   const question = attempts[index]?.question ?? null;
   const KindIcon = KIND_ICON[question?.kind ?? "mixed"];
@@ -121,7 +130,14 @@ export default function QuizPage() {
   const goNext = async () => {
     if (index >= attempts.length - 1) {
       const result = summarize(attempts);
-      await awardQuizXp(result.xp);
+      const codes = await saveQuizSession({
+        topic,
+        kind: "mixed",
+        correct: result.correct,
+        total: result.total,
+        xp: result.xp,
+      });
+      setUnlocked(codes);
       setPhase("done");
       return;
     }
@@ -166,6 +182,7 @@ export default function QuizPage() {
     setEvaluation(null);
     setError(null);
     setTopic("");
+    setUnlocked([]);
     setPhase("setup");
   };
 
@@ -400,6 +417,28 @@ export default function QuizPage() {
       {phase === "done" && (
         <>
           {alert && <div className="mb-5">{alert}</div>}
+          {unlocked.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: EASE }}
+              className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] px-4 py-3.5 shadow-[0_0_28px_-8px_rgba(251,191,36,0.4)]"
+            >
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-amber-400/40 bg-amber-400/10">
+                <Trophy className="size-4.5 text-amber-300" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">
+                  Achievement{unlocked.length > 1 ? "s" : ""} unlocked
+                </p>
+                <p className="truncate text-xs text-white/50">
+                  {unlocked
+                    .map((code) => ACHIEVEMENT_TITLES[code] ?? code)
+                    .join(" · ")}
+                </p>
+              </div>
+            </motion.div>
+          )}
           <QuizResults
             summary={summary}
             attempts={attempts}

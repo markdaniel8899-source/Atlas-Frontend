@@ -14,7 +14,7 @@ import { Reveal } from "../../components/site/Reveal";
 import { fetchPosts, type BlogPost } from "../../lib/blog";
 
 const BLOG_GRID =
-  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[240px] md:auto-rows-[260px] [grid-template-rows:280px] md:[grid-template-rows:320px] grid-flow-row-dense";
+  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-[240px] md:auto-rows-[260px] [grid-template-rows:280px] md:[grid-template-rows:320px] grid-flow-row-dense";
 
 /** MITRAVEL reference layout: featured = wide banner (slightly taller row 1),
  *  tall = 1-col portrait on the right, wide = 2-col horizontal. */
