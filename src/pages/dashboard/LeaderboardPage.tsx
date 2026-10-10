@@ -9,16 +9,48 @@ import {
 } from "../../lib/db/leaderboard";
 import { EASE } from "../../lib/motion";
 
-/** Podium accent styles: subtle left-border + icon color only */
-const PODIUM_ACCENT: Record<number, { border: string; icon: string }> = {
-  2: { border: "border-l-4 border-zinc-400", icon: "text-zinc-300" },
-  3: { border: "border-l-4 border-cyan-400", icon: "text-cyan-300" },
-};
-
-const PODIUM_ICON: Record<number, string> = {
-  1: "🥇",
-  2: "🥈",
-  3: "🥉",
+/** Premium glassy card configs for podium positions (1st, 2nd, 3rd) */
+const PODIUM_STYLE: Record<
+  number,
+  {
+    container: string;
+    shine: string;
+    positionColor: string;
+    icon: string;
+    zapColor: string;
+    weeklyColor: string;
+  }
+> = {
+  1: {
+    container:
+      "relative overflow-hidden bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-xl p-4 flex items-center justify-between group",
+    shine:
+      "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] animate-[shine_2.5s_infinite] pointer-events-none",
+    positionColor: "text-yellow-400",
+    icon: "🥇",
+    zapColor: "text-yellow-300",
+    weeklyColor: "text-yellow-200/70",
+  },
+  2: {
+    container:
+      "relative overflow-hidden bg-gray-400/10 backdrop-blur-md border border-gray-400/30 rounded-xl p-4 flex items-center justify-between group",
+    shine:
+      "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg] animate-[shine_3s_infinite] pointer-events-none",
+    positionColor: "text-gray-300",
+    icon: "🥈",
+    zapColor: "text-gray-300",
+    weeklyColor: "text-gray-200/70",
+  },
+  3: {
+    container:
+      "relative overflow-hidden bg-purple-500/10 backdrop-blur-md border border-purple-500/30 rounded-xl p-4 flex items-center justify-between group",
+    shine:
+      "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-purple-200/30 to-transparent skew-x-[-20deg] animate-[shine_3.5s_infinite] pointer-events-none",
+    positionColor: "text-purple-400",
+    icon: "🥉",
+    zapColor: "text-purple-300",
+    weeklyColor: "text-purple-200/70",
+  },
 };
 
 function LeaderRow({
@@ -31,25 +63,26 @@ function LeaderRow({
   index: number;
 }) {
   const rank = getRankFromXP(entry.totalXp);
-  const accent = PODIUM_ACCENT[place];
   const isYou = entry.isYou;
-  const isFirst = place === 1;
+  const podium = PODIUM_STYLE[place];
 
-  // Premium glassy gold card for 1st place with shine effect
-  if (isFirst) {
+  // Premium glassy card for podium positions (1st, 2nd, 3rd)
+  if (podium) {
     return (
       <motion.article
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, delay: Math.min(index, 8) * 0.05, ease: EASE }}
-        className="relative overflow-hidden bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-xl p-4 flex items-center justify-between group"
+        className={podium.container}
       >
         {/* Shine reflection animation */}
-        <div className="absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] animate-[shine_2.5s_infinite] pointer-events-none" />
+        <div className={podium.shine} />
 
         {/* Position */}
-        <span className="relative flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 text-yellow-400">
-          <span className="text-lg leading-none">🥇</span>
+        <span
+          className={`relative flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 ${podium.positionColor}`}
+        >
+          <span className="text-lg leading-none">{podium.icon}</span>
           <span className="text-base font-bold tracking-tight sm:text-lg">
             {place}
           </span>
@@ -97,10 +130,10 @@ function LeaderRow({
         {/* Score */}
         <div className="relative shrink-0 text-right">
           <p className="flex items-center justify-end gap-1.5 text-lg font-bold tracking-tight text-white sm:text-xl">
-            <Zap className="size-4 text-yellow-300" />
+            <Zap className={`size-4 ${podium.zapColor}`} />
             {entry.weeklyXp.toLocaleString()}
           </p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-200/70">
+          <p className={`text-[10px] font-medium uppercase tracking-[0.18em] ${podium.weeklyColor}`}>
             weekly XP
           </p>
         </div>
@@ -108,24 +141,18 @@ function LeaderRow({
     );
   }
 
+  // Regular glass card for 4th+ positions
   return (
     <motion.article
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: Math.min(index, 8) * 0.05, ease: EASE }}
       className={`flex w-full items-center gap-4 rounded-xl bg-white/5 p-4 backdrop-blur-md border border-white/10 transition-all hover:bg-white/[0.07] ${
-        accent ? accent.border : ""
-      } ${isYou ? "ring-1 ring-star/40" : ""}`}
+        isYou ? "ring-1 ring-star/40" : ""
+      }`}
     >
       {/* Position */}
-      <span
-        className={`flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 ${
-          accent ? accent.icon : "text-white/40"
-        }`}
-      >
-        {accent ? (
-          <span className="text-lg leading-none">{PODIUM_ICON[place]}</span>
-        ) : null}
+      <span className="flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 text-white/40">
         <span className="text-base font-bold tracking-tight sm:text-lg">
           {place}
         </span>
