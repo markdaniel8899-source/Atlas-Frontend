@@ -330,7 +330,7 @@ export default function QuizPage() {
                   )}
                   {!evaluation.is_correct &&
                     question.explanation &&
-                    (question.kind === "mcq" || !evaluation.feedback) && (
+                    !evaluation.feedback && (
                       <p className="mt-1.5 text-xs leading-relaxed text-white/45">
                         <RichText text={question.explanation} />
                       </p>
