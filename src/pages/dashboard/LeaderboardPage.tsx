@@ -23,7 +23,7 @@ const PODIUM_STYLE: Record<
 > = {
   1: {
     container:
-      "relative overflow-hidden bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-xl p-4 flex items-center justify-between group",
+      "relative overflow-hidden bg-yellow-500/15 backdrop-blur-md border border-yellow-500/40 rounded-xl p-4 flex items-center justify-between group",
     shine:
       "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] animate-[shine_2.5s_infinite] pointer-events-none",
     positionColor: "text-yellow-400",
@@ -33,23 +33,23 @@ const PODIUM_STYLE: Record<
   },
   2: {
     container:
-      "relative overflow-hidden bg-gray-400/10 backdrop-blur-md border border-gray-400/30 rounded-xl p-4 flex items-center justify-between group",
+      "relative overflow-hidden bg-gradient-to-br from-slate-300/20 via-gray-300/15 to-zinc-300/10 backdrop-blur-md border border-gray-300/40 rounded-xl p-4 flex items-center justify-between group",
     shine:
-      "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-[-20deg] animate-[shine_3s_infinite] pointer-events-none",
-    positionColor: "text-gray-300",
+      "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-20deg] animate-[shine_3s_infinite] pointer-events-none",
+    positionColor: "text-gray-200",
     icon: "🥈",
-    zapColor: "text-gray-300",
-    weeklyColor: "text-gray-200/70",
+    zapColor: "text-gray-200",
+    weeklyColor: "text-gray-100/80",
   },
   3: {
     container:
-      "relative overflow-hidden bg-purple-500/10 backdrop-blur-md border border-purple-500/30 rounded-xl p-4 flex items-center justify-between group",
+      "relative overflow-hidden bg-gradient-to-br from-purple-400/20 via-violet-400/15 to-fuchsia-400/10 backdrop-blur-md border border-purple-400/40 rounded-xl p-4 flex items-center justify-between group",
     shine:
       "absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-purple-200/30 to-transparent skew-x-[-20deg] animate-[shine_3.5s_infinite] pointer-events-none",
-    positionColor: "text-purple-400",
+    positionColor: "text-purple-300",
     icon: "🥉",
     zapColor: "text-purple-300",
-    weeklyColor: "text-purple-200/70",
+    weeklyColor: "text-purple-200/80",
   },
 };
 

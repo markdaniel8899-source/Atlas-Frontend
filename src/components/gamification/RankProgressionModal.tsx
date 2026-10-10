@@ -57,11 +57,11 @@ export function RankProgressionModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="w-full max-w-lg rounded-2xl bg-[#0a0a14]/95 border border-white/10 shadow-[0_32px_90px_-28px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
+            className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-[#0a0a14]/95 border border-white/10 shadow-[0_32px_90px_-28px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] p-6 pb-4">
+            <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] p-6 pb-4 shrink-0">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-star/70">
                   Rank Progression
@@ -76,15 +76,15 @@ export function RankProgressionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-white/10 bg-white/[0.04] p-2 text-white/50 transition-colors hover:border-white/20 hover:text-white"
+                className="rounded-lg border border-white/10 bg-white/[0.04] p-2 text-white/50 transition-colors hover:border-white/20 hover:text-white shrink-0"
                 aria-label="Close"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* Progress path */}
-            <div className="max-h-[80vh] overflow-y-auto p-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {/* Progress path - scrollable area */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" data-lenis-prevent>
               <div className="space-y-3">
                 {RANKS.map((rank, idx) => {
                   const isCurrent = rank.key === currentRank.current.key;
@@ -155,7 +155,7 @@ export function RankProgressionModal({
             </div>
 
             {/* Footer */}
-            <div className="border-t border-white/[0.06] p-4 px-6">
+            <div className="border-t border-white/[0.06] p-4 px-6 shrink-0">
               <p className="text-center text-[11px] text-white/35">
                 Keep studying and completing quizzes to climb the ranks
               </p>
