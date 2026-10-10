@@ -84,7 +84,7 @@ export function RankProgressionModal({
             </div>
 
             {/* Progress path */}
-            <div className="max-h-[60vh] overflow-y-auto p-6">
+            <div className="max-h-[80vh] overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
               <div className="space-y-3">
                 {RANKS.map((rank, idx) => {
                   const isCurrent = rank.key === currentRank.current.key;

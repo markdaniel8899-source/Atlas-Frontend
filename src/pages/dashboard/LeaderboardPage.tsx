@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Flame, Loader2, Medal, Trophy, Zap } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
 import { getRankFromXP } from "../../lib/gamification";
 import {
-  fetchMyWeeklyRank,
   fetchWeeklyLeaderboard,
   type LeaderboardEntry,
 } from "../../lib/db/leaderboard";
@@ -12,7 +11,6 @@ import { EASE } from "../../lib/motion";
 
 /** Podium accent styles: subtle left-border + icon color only */
 const PODIUM_ACCENT: Record<number, { border: string; icon: string }> = {
-  1: { border: "border-l-4 border-yellow-500", icon: "text-yellow-400" },
   2: { border: "border-l-4 border-zinc-400", icon: "text-zinc-300" },
   3: { border: "border-l-4 border-cyan-400", icon: "text-cyan-300" },
 };
@@ -35,6 +33,80 @@ function LeaderRow({
   const rank = getRankFromXP(entry.totalXp);
   const accent = PODIUM_ACCENT[place];
   const isYou = entry.isYou;
+  const isFirst = place === 1;
+
+  // Premium glassy gold card for 1st place with shine effect
+  if (isFirst) {
+    return (
+      <motion.article
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: Math.min(index, 8) * 0.05, ease: EASE }}
+        className="relative overflow-hidden bg-yellow-500/10 backdrop-blur-md border border-yellow-500/30 rounded-xl p-4 flex items-center justify-between group"
+      >
+        {/* Shine reflection animation */}
+        <div className="absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] animate-[shine_2.5s_infinite] pointer-events-none" />
+
+        {/* Position */}
+        <span className="relative flex w-11 shrink-0 flex-col items-center justify-center gap-0.5 text-yellow-400">
+          <span className="text-lg leading-none">🥇</span>
+          <span className="text-base font-bold tracking-tight sm:text-lg">
+            {place}
+          </span>
+        </span>
+
+        {/* Avatar */}
+        <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-slate-700 to-slate-800 text-sm font-semibold text-white sm:size-14">
+          {entry.avatarUrl ? (
+            <img
+              src={entry.avatarUrl}
+              alt=""
+              className="size-full rounded-full object-cover"
+            />
+          ) : (
+            entry.initials
+          )}
+        </span>
+
+        {/* Identity */}
+        <div className="relative min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-sm font-semibold tracking-tight text-white sm:text-base">
+              {entry.displayName}
+            </h2>
+            {isYou && (
+              <span className="shrink-0 rounded-full border border-white/40 bg-white/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white">
+                You
+              </span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-white/55">
+            <span className="truncate">@{entry.username}</span>
+            <span
+              className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-semibold ${rank.tier.border} ${rank.tier.bg} ${rank.tier.text}`}
+            >
+              {rank.name}
+            </span>
+            <span className="inline-flex items-center gap-1 text-amber-300/80">
+              <Flame className="size-3" />
+              {entry.streak}d
+            </span>
+          </div>
+        </div>
+
+        {/* Score */}
+        <div className="relative shrink-0 text-right">
+          <p className="flex items-center justify-end gap-1.5 text-lg font-bold tracking-tight text-white sm:text-xl">
+            <Zap className="size-4 text-yellow-300" />
+            {entry.weeklyXp.toLocaleString()}
+          </p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-200/70">
+            weekly XP
+          </p>
+        </div>
+      </motion.article>
+    );
+  }
 
   return (
     <motion.article
@@ -114,19 +186,13 @@ function LeaderRow({
 
 export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [myRank, setMyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([
-      fetchWeeklyLeaderboard(50),
-      fetchMyWeeklyRank(),
-    ])
-      .then(([rows, rank]) => {
-        if (cancelled) return;
-        setEntries(rows);
-        setMyRank(rank);
+    fetchWeeklyLeaderboard(50)
+      .then((rows) => {
+        if (!cancelled) setEntries(rows);
       })
       .catch(() => {
         if (!cancelled) setEntries([]);
@@ -140,6 +206,13 @@ export default function LeaderboardPage() {
   }, []);
 
   const you = entries.find((entry) => entry.isYou);
+
+  // Calculate "Your rank" directly from the displayed list to stay in sync
+  const myRank = useMemo(() => {
+    if (!you) return null;
+    const index = entries.findIndex((entry) => entry.id === you.id);
+    return index >= 0 ? index + 1 : null;
+  }, [entries, you]);
 
   return (
     <div className="space-y-8">

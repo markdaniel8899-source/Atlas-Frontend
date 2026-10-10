@@ -685,8 +685,45 @@ a:not([class*="rounded"]):not(:has(button)):hover {
   animation: leaderboard-shine 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* Premium gold card shine animation */
+@keyframes shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 200%;
+  }
+}
+
+/* Custom scrollbar for rank modal (dark theme) */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .leaderboard-shine {
     animation: none;
+  }
+
+  .animate-\[shine_2\.5s_infinite\] {
+    animation: none !important;
   }
 }

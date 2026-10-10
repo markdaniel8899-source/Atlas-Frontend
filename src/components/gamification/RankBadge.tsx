@@ -156,7 +156,7 @@ export function RankBadge({ rank, size = 48, className = "" }: RankBadgeProps) {
             <circle
               key={i}
               cx={18 + (i - 1) * 4}
-              y="34"
+              cy="34"
               r="1.2"
               fill={i <= step ? "#fff" : "rgba(255,255,255,0.3)"}
               opacity={i <= step ? 0.9 : 0.4}
