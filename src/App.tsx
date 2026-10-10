@@ -205,6 +205,7 @@ function AnimatedRoutes() {
               <Route path="settings" element={null} />
               <Route path="calendar" element={null} />
               <Route path="squad" element={null} />
+              <Route path="leaderboard" element={null} />
               <Route
                 path="friends"
                 element={<Navigate to="/app/squad" replace />}

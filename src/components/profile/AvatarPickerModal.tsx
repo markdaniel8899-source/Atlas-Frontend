@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
 import {
+  DEFAULT_DICEBEAR_STYLE,
   DICEBEAR_STYLES,
   baseSeedFor,
   generateAvatarCandidates,
@@ -25,7 +26,7 @@ export function AvatarPickerModal({
   onClose,
   onSelect,
 }: AvatarPickerModalProps) {
-  const [style, setStyle] = useState<DiceBearStyle>("avataaars");
+  const [style, setStyle] = useState<DiceBearStyle>(DEFAULT_DICEBEAR_STYLE);
   const [candidates, setCandidates] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

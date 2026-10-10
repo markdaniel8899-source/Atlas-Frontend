@@ -55,12 +55,18 @@ export function Footer() {
         {...staggerGroup}
         className="relative z-10 mx-auto w-full max-w-[110rem] px-6 py-14 sm:px-10 lg:px-16"
       >
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {/* Column 1 — Brand */}
-          <motion.div variants={staggerItem}>
+        {/* Desktop: one aligned 4-column row (brand | quick | features |
+            contact). Mobile: brand as a horizontal top row, links in a
+            2-column grid underneath (the wrapper dissolves via lg:contents). */}
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-4 lg:gap-8">
+          {/* Column 1 — Brand: logo + info side by side on small screens */}
+          <motion.div
+            variants={staggerItem}
+            className="flex items-start gap-4 lg:block"
+          >
             <CurtainLink
               to="/"
-              className="inline-flex items-baseline gap-2 transition-opacity hover:opacity-80"
+              className="inline-flex shrink-0 items-baseline gap-2 transition-opacity hover:opacity-80"
             >
               <span className="text-xl font-extrabold tracking-tighter text-white">
                 ATLAS
@@ -69,62 +75,65 @@ export function Footer() {
                 Learning OS
               </span>
             </CurtainLink>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-400">
+            <p className="max-w-xs text-sm leading-relaxed text-zinc-400 lg:mt-3">
               One surface for focus, memory, momentum and the people climbing
               beside you.
             </p>
           </motion.div>
 
-          {/* Column 2 — Quick Links */}
-          <motion.nav
-            variants={staggerItem}
-            aria-label="Quick links"
-            className={COLUMN}
-          >
-            <h2 className={HEADING}>Quick Links</h2>
-            {QUICK_LINKS.map((link) => (
-              <CurtainLink key={link.label} to={link.to} className={LINK}>
-                {link.label}
-              </CurtainLink>
-            ))}
-          </motion.nav>
+          {/* Link grid: 2 columns on mobile, 4th-column slots on desktop */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:contents">
+            <motion.nav
+              variants={staggerItem}
+              aria-label="Quick links"
+              className={COLUMN}
+            >
+              <h2 className={HEADING}>Quick Links</h2>
+              {QUICK_LINKS.map((link) => (
+                <CurtainLink key={link.label} to={link.to} className={LINK}>
+                  {link.label}
+                </CurtainLink>
+              ))}
+            </motion.nav>
 
-          {/* Column 3 — Features */}
-          <motion.nav
-            variants={staggerItem}
-            aria-label="Features"
-            className={COLUMN}
-          >
-            <h2 className={HEADING}>Features</h2>
-            {FEATURES.map((feature) => (
-              <CurtainLink
-                key={feature.label}
-                to={feature.to}
-                className={LINK}
+            <motion.nav
+              variants={staggerItem}
+              aria-label="Features"
+              className={COLUMN}
+            >
+              <h2 className={HEADING}>Features</h2>
+              {FEATURES.map((feature) => (
+                <CurtainLink
+                  key={feature.label}
+                  to={feature.to}
+                  className={LINK}
+                >
+                  {feature.label}
+                </CurtainLink>
+              ))}
+            </motion.nav>
+
+            <motion.div
+              variants={staggerItem}
+              className={`col-span-2 lg:col-span-1 ${COLUMN}`}
+            >
+              <h2 className={HEADING}>Contact</h2>
+              <a
+                href="mailto:hafizmzain786@gmail.com"
+                className={`inline-flex items-center gap-2 ${LINK}`}
               >
-                {feature.label}
-              </CurtainLink>
-            ))}
-          </motion.nav>
-
-          {/* Column 4 — Contact */}
-          <motion.div variants={staggerItem} className={COLUMN}>
-            <h2 className={HEADING}>Contact</h2>
-            <a
-              href="mailto:hafizmzain786@gmail.com"
-              className={`inline-flex items-center gap-2 ${LINK}`}
-            >
-              <Mail className="size-4 shrink-0 text-white/40" />
-              hafizmzain786@gmail.com
-            </a>
-            <a
-              href="tel:+923074477250"
-              className={`inline-flex items-center gap-2 ${LINK}`}
-            >
-              <Phone className="size-4 shrink-0 text-white/40" />
-              +92-3074477250
-            </a>
-          </motion.div>
+                <Mail className="size-4 shrink-0 text-white/40" />
+                hafizmzain786@gmail.com
+              </a>
+              <a
+                href="tel:+923074477250"
+                className={`inline-flex items-center gap-2 ${LINK}`}
+              >
+                <Phone className="size-4 shrink-0 text-white/40" />
+                +92-3074477250
+              </a>
+            </motion.div>
+          </div>
         </div>
       </motion.div>
 

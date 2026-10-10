@@ -17,6 +17,7 @@ import {
   Settings,
   Sparkles,
   Timer,
+  Trophy,
   Users,
   X,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import NotesPage from "../pages/dashboard/NotesPage";
 import QuizPage from "../pages/dashboard/QuizPage";
 import TimerPage from "../pages/dashboard/TimerPage";
 import SquadPage from "../pages/dashboard/SquadPage";
+import LeaderboardPage from "../pages/dashboard/LeaderboardPage";
 import AiAssistantPage from "../pages/dashboard/AiAssistantPage";
 import SettingsPage from "../pages/dashboard/SettingsPage";
 import CalendarPage from "../pages/dashboard/CalendarPage";
@@ -52,7 +54,8 @@ const NAV: NavItem[] = [
   { to: "/app/notes", label: "Notes", icon: FileText },
   { to: "/app/quiz", label: "Quiz", icon: ListChecks },
   { to: "/app/timer", label: "Timer", icon: Timer },
-  { to: "/app/squad", label: "Squad", icon: Users },
+  { to: "/app/squad", label: "Friends", icon: Users },
+  { to: "/app/leaderboard", label: "Leaderboard", icon: Trophy },
   { to: "/app/assistant", label: "Assistant", icon: Sparkles },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
@@ -72,7 +75,8 @@ const TITLES: Record<string, string> = {
   "/app/notes": "Notes",
   "/app/quiz": "Quiz",
   "/app/timer": "Timer",
-  "/app/squad": "Squad",
+  "/app/squad": "Friends",
+  "/app/leaderboard": "Leaderboard",
   "/app/settings": "Settings",
   "/app/calendar": "Calendar",
   "/app/assistant": "AI Assistant",
@@ -92,6 +96,7 @@ const PAGES: { path: string; Component: ComponentType }[] = [
   { path: "/app/quiz", Component: QuizPage },
   { path: "/app/timer", Component: TimerPage },
   { path: "/app/squad", Component: SquadPage },
+  { path: "/app/leaderboard", Component: LeaderboardPage },
   { path: "/app/assistant", Component: AiAssistantPage },
   { path: "/app/settings", Component: SettingsPage },
   { path: "/app/calendar", Component: CalendarPage },

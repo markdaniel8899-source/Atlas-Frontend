@@ -113,9 +113,10 @@ export async function ask(
   message: string,
   turns: Turn[],
   systemPrompt: string | null,
+  userName?: string,
 ): Promise<Turn> {
   const history = toHistory(turns, systemPrompt);
-  const result = await chat(message, history);
+  const result = await chat(message, history, userName);
   return {
     id: newTurnId(),
     role: "assistant",

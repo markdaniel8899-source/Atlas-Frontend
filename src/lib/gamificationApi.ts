@@ -72,27 +72,3 @@ export async function apiSelectAvatar(
 ): Promise<ApiResult | null> {
   return postJson<ApiResult>("/api/avatar/select", { avatar_url: avatarUrl });
 }
-
-/** Accepts or declines a squad join request / invite. */
-export async function apiRespondSquadRequest(
-  requestId: number,
-  accept: boolean,
-): Promise<ApiResult | null> {
-  return postJson<ApiResult>("/api/squads/requests/respond", {
-    request_id: requestId,
-    accept,
-  });
-}
-
-/** Creates a squad server-side (used by the FastAPI surface; the app also
- *  has a direct RPC path). */
-export async function apiCreateSquad(name: string): Promise<ApiResult | null> {
-  return postJson<ApiResult>("/api/squads", { name });
-}
-
-/** Files a join request server-side. */
-export async function apiJoinSquad(
-  squadId: number,
-): Promise<ApiResult | null> {
-  return postJson<ApiResult>("/api/squads/join", { squad_id: squadId });
-}

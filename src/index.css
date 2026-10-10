@@ -221,6 +221,18 @@
   }
 }
 
+/* Diagonal sheen sweeping across the 1st-place leaderboard card. */
+@keyframes leaderboard-shine {
+  0% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  55%,
+  100% {
+    transform: translateX(220%) skewX(-18deg);
+  }
+}
+
+
 /* ---------------------------------------------------------------
    LENIS SMOOTH SCROLL BASE
 --------------------------------------------------------------- */
@@ -664,5 +676,17 @@ a:not([class*="rounded"]):not(:has(button)):hover {
       -webkit-backdrop-filter: none;
       border-color: #24242f;
     }
+  }
+}
+
+
+/* Moving sheen for the 1st-place leaderboard card (see leaderboard-shine). */
+.leaderboard-shine {
+  animation: leaderboard-shine 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaderboard-shine {
+    animation: none;
   }
 }

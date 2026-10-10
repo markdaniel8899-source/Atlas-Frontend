@@ -378,6 +378,11 @@ export async function evaluateCode(
 export async function chat(
   message: string,
   history: ChatMessage[] = [],
+  userName?: string,
 ): Promise<ChatResult> {
-  return request<ChatResult>("/api/chat", { message, history });
+  return request<ChatResult>("/api/chat", {
+    message,
+    history,
+    user_name: (userName ?? "").trim().slice(0, 120),
+  });
 }

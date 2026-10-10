@@ -54,7 +54,12 @@ export default function AiAssistantPage() {
 
       setThinking(true);
       try {
-        const reply = await ask(trimmed, historyRef.current, systemPrompt);
+        const reply = await ask(
+          trimmed,
+          historyRef.current,
+          systemPrompt,
+          profile?.display_name?.trim(),
+        );
         historyRef.current = [...historyRef.current, reply];
         setTurns((prev) => [...prev, reply]);
         setLastSent(null);
@@ -65,7 +70,7 @@ export default function AiAssistantPage() {
         setThinking(false);
       }
     },
-    [turns, thinking, systemPrompt],
+    [turns, thinking, systemPrompt, profile],
   );
 
   const handleSend = (text: string) => {

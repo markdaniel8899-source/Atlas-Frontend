@@ -119,16 +119,19 @@ export function AchievementsPanel({ userId }: { userId: string }) {
                 }`}
               >
                 <span
-                  className={`grid size-10 shrink-0 place-items-center rounded-lg border ${
+                  className={`relative grid size-10 shrink-0 place-items-center rounded-lg border ${
                     unlocked
                       ? `${tier.ring} ${tier.bg} ${tier.text}`
-                      : "border-white/10 bg-white/[0.04] text-white/30"
+                      : "border-white/10 bg-white/[0.04] text-white/40"
                   }`}
                 >
-                  {unlocked ? (
-                    <Icon className="size-4.5" />
-                  ) : (
-                    <Lock className="size-4" />
+                  <Icon
+                    className={`size-4.5 ${unlocked ? "" : "opacity-50 grayscale"}`}
+                  />
+                  {!unlocked && (
+                    <span className="absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full border border-white/15 bg-black/85 text-white/55 shadow-sm">
+                      <Lock className="size-2.5" />
+                    </span>
                   )}
                 </span>
                 <div className="min-w-0 flex-1">

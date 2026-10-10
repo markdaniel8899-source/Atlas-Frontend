@@ -4,6 +4,7 @@
  */
 
 export type DiceBearStyle =
+  | "bottts-neutral"
   | "avataaars"
   | "lorelei"
   | "bottts"
@@ -13,7 +14,10 @@ export type DiceBearStyle =
   | "notionists"
   | "shapes";
 
+export const DEFAULT_DICEBEAR_STYLE: DiceBearStyle = "bottts-neutral";
+
 export const DICEBEAR_STYLES: { id: DiceBearStyle; label: string }[] = [
+  { id: "bottts-neutral", label: "Bot" },
   { id: "avataaars", label: "Avataaars" },
   { id: "lorelei", label: "Lorelei" },
   { id: "bottts", label: "Bottts" },
@@ -52,11 +56,11 @@ export function isDicebearUrl(url: string): boolean {
 }
 
 /**
- * A stable base seed so a user's avatar set stays personal to their id,
- * while every candidate in the grid still differs.
+ * Seed = the raw user id, so an avatar is uniquely tied to the account
+ * and every candidate grid still differs per user.
  */
 export function baseSeedFor(userId: string): string {
-  return `atlas-${userId.slice(0, 8)}`;
+  return userId;
 }
 
 /** 10 unique candidate URLs for the picker grid. */
