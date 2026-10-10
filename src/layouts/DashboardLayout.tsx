@@ -123,12 +123,17 @@ const PageSlot = memo(function PageSlot({
 
 function Logo() {
   return (
-    <div className="flex items-center gap-2.5">
+    <CurtainLink
+      to="/"
+      aria-label="ATLAS home"
+      title="ATLAS home"
+      className="inline-flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80"
+    >
       <span className="size-3 rotate-45 rounded-[2px] border border-star/80 bg-star/20" />
       <span className="text-base font-semibold tracking-[-0.03em] text-white">
         ATLAS
       </span>
-    </div>
+    </CurtainLink>
   );
 }
 
@@ -195,10 +200,14 @@ function Sidebar({
         {open ? (
           <Logo />
         ) : (
-          <span
-            aria-label="ATLAS"
-            className="size-3 rotate-45 rounded-[2px] border border-star/80 bg-star/20"
-          />
+          <CurtainLink
+            to="/"
+            aria-label="ATLAS home"
+            title="ATLAS home"
+            className="inline-flex rounded-lg transition-opacity hover:opacity-80"
+          >
+            <span className="size-3 rotate-45 rounded-[2px] border border-star/80 bg-star/20" />
+          </CurtainLink>
         )}
         {onToggle && (
           <button

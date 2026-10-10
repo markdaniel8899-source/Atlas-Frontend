@@ -1,25 +1,32 @@
-import { ArrowUpRight, AtSign, Mail, MessageCircle, Video } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import SideRays from "../effects/SideRays";
 import { motion } from "framer-motion";
 import { CurtainLink } from "../PageCurtain";
-import { EASE, fadeUp, staggerItem } from "../../lib/motion";
+import { staggerGroup, staggerItem } from "../../lib/motion";
 
-const LINKS = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms & Conditions", href: "/terms" },
+const QUICK_LINKS = [
+  { label: "Home", to: "/" },
+  { label: "Blog", to: "/blog" },
+  { label: "About", to: "/about" },
+  { label: "Contact", to: "/contact" },
 ];
 
-const LINK_CLASS =
-  "group inline-flex items-center gap-1 py-2 text-sm text-white/55 transition-colors hover:text-white";
-
-// Profile URLs are placeholders until they are supplied — only Email resolves
-// to a real destination.
-const SOCIALS = [
-  { label: "X / Twitter", href: "#", Icon: AtSign },
-  { label: "Discord", href: "#", Icon: MessageCircle },
-  { label: "YouTube", href: "#", Icon: Video },
-  { label: "Email", href: "mailto:hafizmzain786@gmail.com", Icon: Mail },
+const FEATURES = [
+  { label: "Dashboard", to: "/app" },
+  { label: "AI Chat Assistant", to: "/app/assistant" },
+  { label: "Quiz Generator", to: "/app/quiz" },
+  { label: "Auto Blog", to: "/blog" },
 ];
+
+const BOTTOM_LINKS = [
+  { label: "Privacy Policy", to: "/privacy" },
+  { label: "Terms & Conditions", to: "/terms" },
+];
+
+const HEADING =
+  "text-sm font-semibold tracking-[-0.01em] text-white";
+const LINK = "text-sm text-zinc-400 transition-colors hover:text-white";
+const COLUMN = "flex flex-col items-start gap-2.5";
 
 export function Footer() {
   return (
@@ -27,7 +34,7 @@ export function Footer() {
       {/* ── Left-side light rays ── */}
       <div
         aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 left-0 z-0 w-full max-w-[42rem]"
+        className="pointer-events-none absolute inset-y-0 left-0 z-0 w-full max-w-[42rem]"
       >
         <SideRays
           speed={2.5}
@@ -44,73 +51,100 @@ export function Footer() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[110rem] flex-col gap-8 px-6 py-12 sm:px-10 lg:flex-row lg:items-center lg:justify-between lg:px-16">
-        <motion.div {...fadeUp} className="max-w-xs">
-          <CurtainLink to="/" className="inline-flex items-baseline gap-2">
-            <span className="text-xl font-extrabold tracking-tighter text-white">
-              ATLAS
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.35em] text-star/60">
-              Learning OS
-            </span>
-          </CurtainLink>
-          <p className="mt-2 text-sm leading-relaxed text-white/40">
-            One surface for focus, memory, momentum and the people climbing
-            beside you.
-          </p>
-        </motion.div>
-
-        <motion.nav
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={{
-            hidden: {},
-            visible: {
-              transition: { staggerChildren: 0.07, delayChildren: 0.1 },
-            },
-          }}
-          aria-label="Footer"
-          className="flex flex-wrap gap-x-8 gap-y-3"
-        >
-          {LINKS.map((link) => (
-            <motion.span
-              key={link.label}
-              variants={staggerItem}
-              className="inline-flex"
+      <motion.div
+        {...staggerGroup}
+        className="relative z-10 mx-auto w-full max-w-[110rem] px-6 py-14 sm:px-10 lg:px-16"
+      >
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {/* Column 1 — Brand */}
+          <motion.div variants={staggerItem}>
+            <CurtainLink
+              to="/"
+              className="inline-flex items-baseline gap-2 transition-opacity hover:opacity-80"
             >
-              <CurtainLink to={link.href} className={LINK_CLASS}>
+              <span className="text-xl font-extrabold tracking-tighter text-white">
+                ATLAS
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.35em] text-star/60">
+                Learning OS
+              </span>
+            </CurtainLink>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-400">
+              One surface for focus, memory, momentum and the people climbing
+              beside you.
+            </p>
+          </motion.div>
+
+          {/* Column 2 — Quick Links */}
+          <motion.nav
+            variants={staggerItem}
+            aria-label="Quick links"
+            className={COLUMN}
+          >
+            <h2 className={HEADING}>Quick Links</h2>
+            {QUICK_LINKS.map((link) => (
+              <CurtainLink key={link.label} to={link.to} className={LINK}>
                 {link.label}
-                <ArrowUpRight className="size-3.5 -translate-x-1 opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
               </CurtainLink>
-            </motion.span>
-          ))}
-        </motion.nav>
+            ))}
+          </motion.nav>
 
-        <motion.div className="flex items-center gap-3">
-          {SOCIALS.map(({ label, href, Icon }, i) => (
-            <motion.a
-              key={label}
-              href={href}
-              aria-label={label}
-              initial={{ opacity: 0, y: 16, scale: 0.85 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.4 }}
-              transition={{ duration: 0.6, delay: 0.2 + i * 0.06, ease: EASE }}
-              className="flex size-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/55 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:text-white"
+          {/* Column 3 — Features */}
+          <motion.nav
+            variants={staggerItem}
+            aria-label="Features"
+            className={COLUMN}
+          >
+            <h2 className={HEADING}>Features</h2>
+            {FEATURES.map((feature) => (
+              <CurtainLink
+                key={feature.label}
+                to={feature.to}
+                className={LINK}
+              >
+                {feature.label}
+              </CurtainLink>
+            ))}
+          </motion.nav>
+
+          {/* Column 4 — Contact */}
+          <motion.div variants={staggerItem} className={COLUMN}>
+            <h2 className={HEADING}>Contact</h2>
+            <a
+              href="mailto:hafizmzain786@gmail.com"
+              className={`inline-flex items-center gap-2 ${LINK}`}
             >
-              <Icon className="size-4" />
-            </motion.a>
-          ))}
-        </motion.div>
-      </div>
-
-      <motion.div {...fadeUp} className="relative z-10 border-t border-white/5">
-        <div className="mx-auto flex w-full max-w-[110rem] flex-col items-center justify-between gap-2 px-6 py-5 text-xs text-white/30 sm:flex-row sm:px-10 lg:px-16">
-          <p>© 2024 ATLAS. All rights reserved.</p>
-          <p className="uppercase tracking-[0.25em]">Built for the climb</p>
+              <Mail className="size-4 shrink-0 text-white/40" />
+              hafizmzain786@gmail.com
+            </a>
+            <a
+              href="tel:+923074477250"
+              className={`inline-flex items-center gap-2 ${LINK}`}
+            >
+              <Phone className="size-4 shrink-0 text-white/40" />
+              +92-3074477250
+            </a>
+          </motion.div>
         </div>
       </motion.div>
+
+      {/* ── Bottom bar ── */}
+      <div className="relative z-10 mx-auto w-full max-w-[110rem] border-t border-white/10 px-6 pt-8 sm:px-10 lg:px-16">
+        <div className="flex flex-col items-center justify-between gap-4 pb-8 text-xs text-white/40 sm:flex-row">
+          <p>© 2026 ATLAS. All rights reserved.</p>
+          <div className="flex items-center gap-6">
+            {BOTTOM_LINKS.map((link) => (
+              <CurtainLink
+                key={link.label}
+                to={link.to}
+                className="transition-colors hover:text-white"
+              >
+                {link.label}
+              </CurtainLink>
+            ))}
+          </div>
+        </div>
+      </div>
     </footer>
   );
 }
