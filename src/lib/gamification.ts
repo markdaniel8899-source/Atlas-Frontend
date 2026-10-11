@@ -1,10 +1,30 @@
 /**
- * Free Fire style step-based rank system with 17 ranks:
- * Bronze I-IV, Silver I-IV, Gold I-IV, Platinum I-IV, Conqueror
- * Uses scaling XP requirements and Roman numeral notation.
+ * Atlas Ranks — minimalist geometric rank system.
+ * 6 ranks x 4 tiers = 24 ranks total:
+ *   Bronze (hexagon, copper)   · Silver (circle, silver)
+ *   Gold (shield, gold)        · Platinum (rhombus, cyan)
+ *   Diamond (gem, violet)      · Conqueror (starburst, red-pink, pulsing)
+ * Ranks are computed client-side from lifetime XP (profiles.xp); nothing
+ * is stored in the database. Tiers use Roman numerals I, II, III, IIII.
  */
 
-export type TierKey = "bronze" | "silver" | "gold" | "platinum" | "conqueror";
+export type TierKey =
+  | "bronze"
+  | "silver"
+  | "gold"
+  | "platinum"
+  | "diamond"
+  | "conqueror";
+
+/** Display/iteration order, weakest to strongest. */
+export const RANK_TIER_KEYS: readonly TierKey[] = [
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "diamond",
+  "conqueror",
+];
 
 export interface Tier {
   key: TierKey;
@@ -28,9 +48,9 @@ export interface RankStep {
   tier: Tier;
   /** XP required to enter this rank (cumulative) */
   minXP: number;
-  /** Step within tier (1-4, or 0 for Conqueror) */
+  /** Step within tier (1-4) */
   step: number;
-  /** Roman numeral */
+  /** Roman numeral (I, II, III, IIII) */
   numeral: string;
 }
 
@@ -50,15 +70,15 @@ export interface RankData {
   nextRankName: string | null;
 }
 
-/** Tier color definitions */
+/** Tier color definitions (Tailwind classes for pills/bars) */
 export const TIERS: Record<TierKey, Tier> = {
   bronze: {
     key: "bronze",
     label: "Bronze",
-    text: "text-orange-400",
+    text: "text-orange-300",
     border: "border-orange-500/40",
     bg: "bg-orange-500/10",
-    gradient: "from-orange-600 to-amber-500",
+    gradient: "from-[#cd7f32] to-orange-400",
   },
   silver: {
     key: "silver",
@@ -66,7 +86,7 @@ export const TIERS: Record<TierKey, Tier> = {
     text: "text-zinc-300",
     border: "border-zinc-400/40",
     bg: "bg-zinc-400/10",
-    gradient: "from-zinc-500 to-slate-300",
+    gradient: "from-zinc-500 to-zinc-300",
   },
   gold: {
     key: "gold",
@@ -74,7 +94,7 @@ export const TIERS: Record<TierKey, Tier> = {
     text: "text-yellow-300",
     border: "border-yellow-400/40",
     bg: "bg-yellow-400/10",
-    gradient: "from-yellow-500 to-amber-400",
+    gradient: "from-yellow-500 to-[#ffd700]",
   },
   platinum: {
     key: "platinum",
@@ -82,62 +102,76 @@ export const TIERS: Record<TierKey, Tier> = {
     text: "text-cyan-300",
     border: "border-cyan-400/40",
     bg: "bg-cyan-400/10",
-    gradient: "from-cyan-500 to-sky-400",
+    gradient: "from-cyan-500 to-cyan-300",
+  },
+  diamond: {
+    key: "diamond",
+    label: "Diamond",
+    text: "text-purple-300",
+    border: "border-purple-400/40",
+    bg: "bg-purple-400/10",
+    gradient: "from-purple-600 to-[#9370db]",
   },
   conqueror: {
     key: "conqueror",
     label: "Conqueror",
-    text: "text-purple-300",
-    border: "border-purple-500/50",
-    bg: "bg-purple-500/15",
-    gradient: "from-purple-600 via-fuchsia-500 to-rose-500",
+    text: "text-rose-300",
+    border: "border-rose-500/40",
+    bg: "bg-rose-500/10",
+    gradient: "from-[#ff0055] to-[#ff5500]",
   },
 };
 
-/** Roman numerals for steps I-IV */
-const NUMERALS = ["I", "II", "III", "IV"];
+/** Roman numerals for tiers 1-4 (IIII, not IV) */
+const NUMERALS = ["I", "II", "III", "IIII"];
 
 /**
- * Scaling XP thresholds for each rank (cumulative from 0).
- * Formula: each step requires ~1.25x more XP than the previous.
- * Bronze I starts at 0, Conqueror is the final rank.
+ * Cumulative XP thresholds for each of the 24 ranks.
+ * Band widths: Bronze 0-1000, Silver 1000-2500, Gold 2500-5000,
+ * Platinum 5000-8000, Diamond 8000-12000, Conqueror 12000+.
+ * Tiers subdivide each band evenly.
  */
 export const RANK_THRESHOLDS = [
-  // Bronze (0-1000 XP total)
+  // Bronze: 0 – 1000 XP
   { key: "bronze_1", tier: "bronze" as TierKey, step: 1, minXP: 0 },
-  { key: "bronze_2", tier: "bronze" as TierKey, step: 2, minXP: 200 },
-  { key: "bronze_3", tier: "bronze" as TierKey, step: 3, minXP: 450 },
+  { key: "bronze_2", tier: "bronze" as TierKey, step: 2, minXP: 250 },
+  { key: "bronze_3", tier: "bronze" as TierKey, step: 3, minXP: 500 },
   { key: "bronze_4", tier: "bronze" as TierKey, step: 4, minXP: 750 },
-  // Silver (1000-3100 XP total)
-  { key: "silver_1", tier: "silver" as TierKey, step: 1, minXP: 1100 },
-  { key: "silver_2", tier: "silver" as TierKey, step: 2, minXP: 1500 },
-  { key: "silver_3", tier: "silver" as TierKey, step: 3, minXP: 1950 },
-  { key: "silver_4", tier: "silver" as TierKey, step: 4, minXP: 2450 },
-  // Gold (3100-6800 XP total)
-  { key: "gold_1", tier: "gold" as TierKey, step: 1, minXP: 3000 },
-  { key: "gold_2", tier: "gold" as TierKey, step: 2, minXP: 3600 },
-  { key: "gold_3", tier: "gold" as TierKey, step: 3, minXP: 4250 },
-  { key: "gold_4", tier: "gold" as TierKey, step: 4, minXP: 4950 },
-  // Platinum (6800-12000 XP total)
-  { key: "platinum_1", tier: "platinum" as TierKey, step: 1, minXP: 5700 },
-  { key: "platinum_2", tier: "platinum" as TierKey, step: 2, minXP: 6500 },
-  { key: "platinum_3", tier: "platinum" as TierKey, step: 3, minXP: 7350 },
-  { key: "platinum_4", tier: "platinum" as TierKey, step: 4, minXP: 8250 },
-  // Conqueror (12000+ XP total)
-  { key: "conqueror", tier: "conqueror" as TierKey, step: 0, minXP: 9200 },
+  // Silver: 1000 – 2500 XP
+  { key: "silver_1", tier: "silver" as TierKey, step: 1, minXP: 1000 },
+  { key: "silver_2", tier: "silver" as TierKey, step: 2, minXP: 1375 },
+  { key: "silver_3", tier: "silver" as TierKey, step: 3, minXP: 1750 },
+  { key: "silver_4", tier: "silver" as TierKey, step: 4, minXP: 2125 },
+  // Gold: 2500 – 5000 XP
+  { key: "gold_1", tier: "gold" as TierKey, step: 1, minXP: 2500 },
+  { key: "gold_2", tier: "gold" as TierKey, step: 2, minXP: 3125 },
+  { key: "gold_3", tier: "gold" as TierKey, step: 3, minXP: 3750 },
+  { key: "gold_4", tier: "gold" as TierKey, step: 4, minXP: 4375 },
+  // Platinum: 5000 – 8000 XP
+  { key: "platinum_1", tier: "platinum" as TierKey, step: 1, minXP: 5000 },
+  { key: "platinum_2", tier: "platinum" as TierKey, step: 2, minXP: 5750 },
+  { key: "platinum_3", tier: "platinum" as TierKey, step: 3, minXP: 6500 },
+  { key: "platinum_4", tier: "platinum" as TierKey, step: 4, minXP: 7250 },
+  // Diamond: 8000 – 12000 XP
+  { key: "diamond_1", tier: "diamond" as TierKey, step: 1, minXP: 8000 },
+  { key: "diamond_2", tier: "diamond" as TierKey, step: 2, minXP: 9000 },
+  { key: "diamond_3", tier: "diamond" as TierKey, step: 3, minXP: 10000 },
+  { key: "diamond_4", tier: "diamond" as TierKey, step: 4, minXP: 11000 },
+  // Conqueror: 12000+ XP
+  { key: "conqueror_1", tier: "conqueror" as TierKey, step: 1, minXP: 12000 },
+  { key: "conqueror_2", tier: "conqueror" as TierKey, step: 2, minXP: 13000 },
+  { key: "conqueror_3", tier: "conqueror" as TierKey, step: 3, minXP: 14000 },
+  { key: "conqueror_4", tier: "conqueror" as TierKey, step: 4, minXP: 15000 },
 ];
 
 /** Build the full rank list with resolved tier objects and numerals */
 export const RANKS: RankStep[] = RANK_THRESHOLDS.map((t) => ({
   key: t.key,
-  name:
-    t.tier === "conqueror"
-      ? "Conqueror"
-      : `${TIERS[t.tier].label} ${NUMERALS[t.step - 1]}`,
+  name: `${TIERS[t.tier].label} ${NUMERALS[t.step - 1]}`,
   tier: TIERS[t.tier],
   minXP: t.minXP,
   step: t.step,
-  numeral: t.tier === "conqueror" ? "" : NUMERALS[t.step - 1],
+  numeral: NUMERALS[t.step - 1],
 }));
 
 /**

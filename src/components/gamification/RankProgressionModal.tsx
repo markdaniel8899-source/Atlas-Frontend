@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { RANKS, type RankData } from "../../lib/gamification";
+import {
+  RANKS,
+  RANK_TIER_KEYS,
+  TIERS,
+  type RankData,
+} from "../../lib/gamification";
 import { RankBadge } from "./RankBadge";
 import { EASE } from "../../lib/motion";
 
@@ -11,9 +16,17 @@ interface RankProgressionModalProps {
   currentRank: RankData;
 }
 
+/** Compact XP label for under each badge (e.g. 250 → "250", 1375 → "1.4k") */
+function fmtXP(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return `${k % 1 === 0 ? k : k.toFixed(1)}k`;
+}
+
 /**
- * Modal showing the full rank progression path from Bronze I to Conqueror.
- * Highlights the user's current rank and shows XP thresholds.
+ * Atlas Ranks progression grid — all 24 badges (6 ranks x 4 tiers).
+ * Current rank: full opacity + glowing purple ring.
+ * Past ranks: full opacity. Future ranks: dimmed to 30%.
  */
 export function RankProgressionModal({
   open,
@@ -49,113 +62,109 @@ export function RankProgressionModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: EASE }}
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           onClick={onClose}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Rank progression"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-[#0a0a14]/95 border border-white/10 shadow-[0_32px_90px_-28px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
+            className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl border border-white/10 bg-[#0a0a14]/95 shadow-[0_32px_90px_-28px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] p-6 pb-4 shrink-0">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/[0.06] p-6 pb-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-star/70">
-                  Rank Progression
+                  Atlas Ranks
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
                   Your Journey
                 </h2>
                 <p className="mt-1 text-sm text-white/50">
-                  Currently {currentRank.name} · {currentRank.xpToNext} XP to next
+                  {currentRank.nextRankName
+                    ? `Currently ${currentRank.name} · ${currentRank.xpToNext.toLocaleString()} XP to ${currentRank.nextRankName}`
+                    : `${currentRank.name} · Max rank reached`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-white/10 bg-white/[0.04] p-2 text-white/50 transition-colors hover:border-white/20 hover:text-white shrink-0"
+                className="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] p-2 text-white/50 transition-colors hover:border-white/20 hover:text-white"
                 aria-label="Close"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* Progress path - scrollable area */}
-            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" data-lenis-prevent>
-              <div className="space-y-3">
-                {RANKS.map((rank, idx) => {
-                  const isCurrent = rank.key === currentRank.current.key;
-                  const isPast = idx < currentIndex;
-
-                  return (
-                    <div
-                      key={rank.key}
-                      className={`flex items-center gap-4 rounded-xl border p-3 transition-all ${
-                        isCurrent
-                          ? `border-white/20 bg-white/[0.07] ring-1 ring-star/40`
-                          : isPast
-                            ? "border-white/[0.06] bg-white/[0.02]"
-                            : "border-white/[0.04] bg-white/[0.01] opacity-60"
-                      }`}
+            {/* 6 x 4 badge grid — scrollable */}
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              data-lenis-prevent
+            >
+              <div className="space-y-5">
+                {RANK_TIER_KEYS.map((tierKey) => (
+                  <div key={tierKey}>
+                    <p
+                      className={`text-[10px] font-bold uppercase tracking-[0.28em] ${TIERS[tierKey].text}`}
                     >
-                      {/* Badge */}
-                      <div
-                        className={`shrink-0 transition-transform ${
-                          isCurrent ? "scale-110" : isPast ? "scale-100" : "scale-90"
-                        }`}
-                      >
-                        <RankBadge rank={rank} size={44} />
-                      </div>
+                      {TIERS[tierKey].label}
+                    </p>
+                    <div className="mt-2.5 grid grid-cols-4 gap-2 sm:gap-3">
+                      {RANKS.filter((r) => r.tier.key === tierKey).map(
+                        (rank) => {
+                          const idx = RANKS.indexOf(rank);
+                          const isCurrent = idx === currentIndex;
+                          const isFuture = idx > currentIndex;
 
-                      {/* Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={`text-sm font-semibold ${
-                              isCurrent ? "text-white" : "text-white/80"
-                            }`}
-                          >
-                            {rank.name}
-                          </p>
-                          {isCurrent && (
-                            <span className="rounded-full bg-star/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-star">
-                              You
-                            </span>
-                          )}
-                          {isPast && (
-                            <span className="text-[10px] text-emerald-400/70">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-0.5 text-[11px] text-white/40">
-                          {rank.minXP.toLocaleString()} XP minimum
-                        </p>
-                      </div>
-
-                      {/* Progress indicator for current */}
-                      {isCurrent && (
-                        <div className="shrink-0 text-right">
-                          <p className="text-sm font-bold text-white">
-                            {Math.round(currentRank.percent)}%
-                          </p>
-                          <p className="text-[10px] text-white/40">
-                            {currentRank.xpInto.toLocaleString()} /{" "}
-                            {currentRank.xpNeed.toLocaleString()} XP
-                          </p>
-                        </div>
+                          return (
+                            <div
+                              key={rank.key}
+                              title={`${rank.name} · ${rank.minXP.toLocaleString()} XP`}
+                              className={`flex flex-col items-center gap-1.5 rounded-xl border p-2.5 transition-all ${
+                                isCurrent
+                                  ? "border-[#cf9eff]/50 bg-[#cf9eff]/[0.07] shadow-[0_0_22px_rgba(207,158,255,0.35)] ring-1 ring-[#cf9eff]/60"
+                                  : "border-white/[0.06] bg-white/[0.02]"
+                              } ${isFuture ? "opacity-30" : "opacity-100"}`}
+                            >
+                              <RankBadge
+                                rank={rank.tier.key}
+                                tier={rank.step}
+                                size={44}
+                                className={isCurrent ? "scale-110" : ""}
+                              />
+                              <span
+                                className={`text-[9px] font-semibold tabular-nums ${
+                                  isCurrent
+                                    ? "text-[#cf9eff]"
+                                    : "text-white/35"
+                                }`}
+                              >
+                                {isCurrent ? (
+                                  <span className="font-bold uppercase tracking-wider">
+                                    You
+                                  </span>
+                                ) : (
+                                  fmtXP(rank.minXP)
+                                )}
+                              </span>
+                            </div>
+                          );
+                        },
                       )}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Footer */}
-            <div className="border-t border-white/[0.06] p-4 px-6 shrink-0">
+            <div className="shrink-0 border-t border-white/[0.06] p-4 px-6">
               <p className="text-center text-[11px] text-white/35">
                 Keep studying and completing quizzes to climb the ranks
               </p>

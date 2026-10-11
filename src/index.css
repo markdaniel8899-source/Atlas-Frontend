@@ -695,6 +695,23 @@ a:not([class*="rounded"]):not(:has(button)):hover {
   }
 }
 
+/* Atlas Ranks — subtle pulse on the Conqueror starburst badge */
+@keyframes rank-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(255, 0, 85, 0.5));
+  }
+  50% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(255, 85, 0, 0.85));
+  }
+}
+
+.rank-pulse {
+  animation: rank-pulse 2.2s ease-in-out infinite;
+}
+
 /* Custom scrollbar for rank modal (dark theme) */
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -725,5 +742,9 @@ a:not([class*="rounded"]):not(:has(button)):hover {
 
   .animate-\[shine_2\.5s_infinite\] {
     animation: none !important;
+  }
+
+  .rank-pulse {
+    animation: none;
   }
 }

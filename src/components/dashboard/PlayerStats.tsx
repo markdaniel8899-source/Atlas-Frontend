@@ -91,7 +91,11 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
             aria-label="View rank progression"
             title="Click to view rank progression"
           >
-            <RankBadge rank={rankData.current} size={44} />
+            <RankBadge
+              rank={rankData.tier.key}
+              tier={rankData.current.step}
+              size={44}
+            />
             <div className="text-left leading-tight">
               <p className="text-lg font-semibold text-white">{rankData.name}</p>
               <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">

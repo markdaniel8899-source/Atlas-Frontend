@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Flame, Loader2, Medal, Trophy, Zap } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
+import { RankBadge } from "../../components/gamification/RankBadge";
 import { getRankFromXP } from "../../lib/gamification";
 import {
   fetchWeeklyLeaderboard,
@@ -116,8 +117,13 @@ function LeaderRow({
           <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-white/55">
             <span className="truncate">@{entry.username}</span>
             <span
-              className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-semibold ${rank.tier.border} ${rank.tier.bg} ${rank.tier.text}`}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-semibold ${rank.tier.border} ${rank.tier.bg} ${rank.tier.text}`}
             >
+              <RankBadge
+                rank={rank.tier.key}
+                tier={rank.current.step}
+                size={16}
+              />
               {rank.name}
             </span>
             <span className="inline-flex items-center gap-1 text-amber-300/80">

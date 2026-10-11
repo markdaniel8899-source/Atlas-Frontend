@@ -1,19 +1,46 @@
-import type { RankStep } from "../../lib/gamification";
+import { useId } from "react";
+import { TIERS, type TierKey } from "../../lib/gamification";
 
 interface RankBadgeProps {
-  rank: RankStep;
+  /** Which rank family the badge belongs to */
+  rank: TierKey;
+  /** Tier within the rank (1-4, rendered as I / II / III / IIII) */
+  tier: number;
   size?: number;
   className?: string;
 }
 
+/** Roman numerals for tiers 1-4 (IIII, not IV) */
+const NUMERALS = ["I", "II", "III", "IIII"];
+
+/** Geometric shape paths, drawn in a 48x48 viewBox. */
+const HEXAGON = "M24 3 L41.5 13.25 V33.75 L24 44 L6.5 33.75 V13.25 Z";
+const SHIELD = "M24 4 L42 11 V25 C42 35 34 41.5 24 44.5 C14 41.5 6 35 6 25 V11 Z";
+const RHOMBUS = "M24 3 L45 24 L24 45 L3 24 Z";
+const GEM = "M14 8 H34 L43 19 L24 44 L5 19 Z";
+const GEM_FACETS = "M14 8 V19 M34 8 V19 M5 19 H43 M14 19 L24 44 M34 19 L24 44";
+const STARBURST =
+  "M24 3 L27.83 14.76 L38.85 9.15 L33.24 20.17 L45 24 L33.24 27.83 " +
+  "L38.85 38.85 L27.83 33.24 L24 45 L20.17 33.24 L9.15 38.85 L14.76 27.83 " +
+  "L3 24 L14.76 20.17 L9.15 9.15 L20.17 14.76 Z";
+
 /**
- * Unique SVG rank badge for each of the 17 Free Fire style ranks.
- * Bronze: brownish/orange, Silver: gray/white, Gold: yellow/gold metallic,
- * Platinum: cyan/light blue glowing, Conqueror: red/purple animated glow.
+ * Minimalist geometric rank badge — one distinct shape + color per rank,
+ * with the tier shown as a bold white Roman numeral (I, II, III, IIII):
+ *   Bronze hexagon #cd7f32 · Silver circle #c0c0c0 · Gold shield #ffd700
+ *   Platinum rhombus #00ffff · Diamond gem #9370db
+ *   Conqueror starburst #ff0055→#ff5500 with a subtle CSS pulse
  */
-export function RankBadge({ rank, size = 48, className = "" }: RankBadgeProps) {
-  const tier = rank.tier.key;
-  const step = rank.step;
+export function RankBadge({
+  rank,
+  tier,
+  size = 48,
+  className = "",
+}: RankBadgeProps) {
+  const uid = useId();
+  const numeral = NUMERALS[Math.min(Math.max(tier, 1), 4) - 1];
+  const isConqueror = rank === "conqueror";
+  const label = TIERS[rank].label;
 
   return (
     <svg
@@ -22,158 +49,111 @@ export function RankBadge({ rank, size = 48, className = "" }: RankBadgeProps) {
       viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-label={`Rank badge: ${rank.name}`}
+      className={`${isConqueror ? "rank-pulse " : ""}${className}`}
+      role="img"
+      aria-label={`${label} ${numeral} rank badge`}
     >
-      <defs>
-        {/* Metallic gradient for each tier */}
-        {tier === "bronze" && (
-          <>
-            <linearGradient id={`bronze-grad-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#d97706" />
-              <stop offset="50%" stopColor="#f59e0b" />
-              <stop offset="100%" stopColor="#b45309" />
-            </linearGradient>
-            <linearGradient id={`bronze-shine-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#d97706" stopOpacity="0.2" />
-            </linearGradient>
-          </>
-        )}
-        {tier === "silver" && (
-          <>
-            <linearGradient id={`silver-grad-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#e4e4e7" />
-              <stop offset="50%" stopColor="#a1a1aa" />
-              <stop offset="100%" stopColor="#71717a" />
-            </linearGradient>
-            <linearGradient id={`silver-shine-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fafafa" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#d4d4d8" stopOpacity="0.3" />
-            </linearGradient>
-          </>
-        )}
-        {tier === "gold" && (
-          <>
-            <linearGradient id={`gold-grad-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fde047" />
-              <stop offset="50%" stopColor="#facc15" />
-              <stop offset="100%" stopColor="#ca8a04" />
-            </linearGradient>
-            <linearGradient id={`gold-shine-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fef9c3" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#eab308" stopOpacity="0.4" />
-            </linearGradient>
-          </>
-        )}
-        {tier === "platinum" && (
-          <>
-            <linearGradient id={`platinum-grad-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#67e8f9" />
-              <stop offset="50%" stopColor="#22d3ee" />
-              <stop offset="100%" stopColor="#0891b2" />
-            </linearGradient>
-            <linearGradient id={`platinum-shine-${step}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.4" />
-            </linearGradient>
-          </>
-        )}
-        {tier === "conqueror" && (
-          <>
-            <linearGradient id="conqueror-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="35%" stopColor="#d946ef" />
-              <stop offset="70%" stopColor="#e11d48" />
-              <stop offset="100%" stopColor="#9f1239" />
-            </linearGradient>
-            <linearGradient id="conqueror-shine" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f0abfc" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#be185d" stopOpacity="0.5" />
-            </linearGradient>
-            <filter id="conqueror-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </>
-        )}
-      </defs>
-
-      {/* Outer hexagon shape */}
-      <path
-        d="M24 2L42 12.5V33.5L24 44L6 33.5V12.5L24 2Z"
-        fill={`url(#${tier}-grad-${tier === "conqueror" ? "" : step})`}
-        stroke={
-          tier === "conqueror" ? "#e879f9" : `url(#${tier}-shine-${step})`
-        }
-        strokeWidth="1.5"
-        filter={tier === "conqueror" ? "url(#conqueror-glow)" : undefined}
-      />
-
-      {/* Inner highlight */}
-      <path
-        d="M24 6L38 14.5V29.5L24 38L10 29.5V14.5L24 6Z"
-        fill={`url(#${tier}-shine-${tier === "conqueror" ? "" : step})`}
-        opacity="0.3"
-      />
-
-      {/* Step indicator dots or Roman numeral */}
-      {tier === "conqueror" ? (
-        <text
-          x="24"
-          y="28"
-          textAnchor="middle"
-          fill="#fff"
-          fontSize="12"
-          fontWeight="bold"
-          fontFamily="system-ui"
-        >
-          ★
-        </text>
-      ) : (
-        <text
-          x="24"
-          y="28"
-          textAnchor="middle"
-          fill="#fff"
-          fontSize="10"
-          fontWeight="bold"
-          fontFamily="system-ui, sans-serif"
-          stroke="rgba(0,0,0,0.3)"
-          strokeWidth="0.5"
-        >
-          {rank.numeral}
-        </text>
+      {isConqueror && (
+        <defs>
+          <linearGradient
+            id={`conqueror-${uid}`}
+            x1="10%"
+            y1="0%"
+            x2="90%"
+            y2="100%"
+          >
+            <stop offset="0%" stopColor="#ff0055" />
+            <stop offset="100%" stopColor="#ff5500" />
+          </linearGradient>
+        </defs>
       )}
 
-      {/* Step pips (small dots showing tier progress) */}
-      {tier !== "conqueror" && (
+      {rank === "bronze" && (
+        <path
+          d={HEXAGON}
+          fill="#cd7f32"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      )}
+
+      {rank === "silver" && (
+        <circle
+          cx="24"
+          cy="24"
+          r="20"
+          fill="#c0c0c0"
+          stroke="rgba(255,255,255,0.28)"
+          strokeWidth="1"
+        />
+      )}
+
+      {rank === "gold" && (
+        <path
+          d={SHIELD}
+          fill="#ffd700"
+          stroke="rgba(255,255,255,0.32)"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      )}
+
+      {rank === "platinum" && (
+        <path
+          d={RHOMBUS}
+          fill="#00ffff"
+          stroke="rgba(255,255,255,0.32)"
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      )}
+
+      {rank === "diamond" && (
         <>
-          {[1, 2, 3, 4].map((i) => (
-            <circle
-              key={i}
-              cx={18 + (i - 1) * 4}
-              cy="34"
-              r="1.2"
-              fill={i <= step ? "#fff" : "rgba(255,255,255,0.3)"}
-              opacity={i <= step ? 0.9 : 0.4}
-            />
-          ))}
+          <path
+            d={GEM}
+            fill="#9370db"
+            stroke="rgba(255,255,255,0.35)"
+            strokeWidth="1"
+            strokeLinejoin="round"
+          />
+          <path
+            d={GEM_FACETS}
+            stroke="rgba(255,255,255,0.3)"
+            strokeWidth="0.8"
+            strokeLinecap="round"
+          />
         </>
       )}
 
-      {/* Conqueror animated shimmer */}
-      {tier === "conqueror" && (
+      {rank === "conqueror" && (
         <path
-          d="M10 14.5L24 6L38 14.5"
-          stroke="url(#conqueror-shine)"
+          d={STARBURST}
+          fill={`url(#conqueror-${uid})`}
+          stroke="rgba(255,255,255,0.35)"
           strokeWidth="1"
-          opacity="0.6"
+          strokeLinejoin="round"
         />
       )}
+
+      {/* Tier numeral — white, bold, centered (dark halo keeps it legible
+          on the bright gold/cyan fills) */}
+      <text
+        x="24"
+        y="24"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="#fff"
+        fontSize={numeral.length > 2 ? 12 : 14}
+        fontWeight={700}
+        fontFamily="system-ui, sans-serif"
+        stroke="rgba(0,0,0,0.35)"
+        strokeWidth="1"
+        paintOrder="stroke"
+      >
+        {numeral}
+      </text>
     </svg>
   );
 }
