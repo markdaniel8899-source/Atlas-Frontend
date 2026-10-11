@@ -100,7 +100,9 @@ export default function SettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+    // Deps on the primitive id: getUser() returns a fresh object every
+    // render, so [user] would re-run this effect (and refetch) endlessly.
+  }, [user?.id]);
 
   const handleAvatarSelected = async (url: string): Promise<boolean> => {
     if (!user) return false;

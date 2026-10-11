@@ -146,12 +146,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         if (current.courseId != null) setCourseBase((value) => value + delta);
       }
       applyState({ ...pauseTimer(current), flushedMs: elapsed });
-      void flushFocus(current).then(() => {
-        reloadBases(current.courseId);
-        // The flushed counter lives in courses.total_focus_seconds - tell
-        // every mounted view (focus chips, dashboard) to re-read it.
-        notifyFocusChanged();
-      });
+      void flushFocus(current)
+        .then(() => {
+          reloadBases(current.courseId);
+          // The flushed counter lives in courses.total_focus_seconds - tell
+          // every mounted view (focus chips, dashboard) to re-read it.
+          notifyFocusChanged();
+        })
+        .catch((err) => {
+          console.error("Focus save failed", err);
+        });
       return;
     }
     if (current.mode === "idle") void reloadBases(current.courseId);
@@ -171,16 +175,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       }
       applyState(resetTimer(current));
 
-      void commitFocus(current).then((session) => {
-        setHistoryVersion((version) => version + 1);
-        notifyFocusChanged();
-        showFlash(
-          message ??
-            (session
-              ? `Session logged: ${session.minutes} minutes.`
-              : "Stopped - focus still counts toward your total."),
-        );
-      });
+      void commitFocus(current)
+        .then((session) => {
+          setHistoryVersion((version) => version + 1);
+          notifyFocusChanged();
+          showFlash(
+            message ??
+              (session
+                ? `Session logged: ${session.minutes} minutes.`
+                : "Stopped - focus still counts toward your total."),
+          );
+        })
+        .catch((err) => {
+          console.error("Focus save failed", err);
+        });
     },
     [applyState, showFlash],
   );

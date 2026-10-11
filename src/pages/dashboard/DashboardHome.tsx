@@ -27,17 +27,22 @@ export default function DashboardHome() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const idle: (cb: () => void) => void =
-      "requestIdleCallback" in window
-        ? (cb) => window.requestIdleCallback(() => cb(), { timeout: 4000 })
-        : (cb) => window.setTimeout(cb, 1500);
-    idle(() => {
+    const hasIdle = "requestIdleCallback" in window;
+    const schedule = (cb: () => void): number =>
+      hasIdle
+        ? window.requestIdleCallback(cb, { timeout: 4000 })
+        : window.setTimeout(cb, 1500);
+    const handle = schedule(() => {
       if (!cancelled) void runAchievementChecks().catch(() => undefined);
     });
     return () => {
       cancelled = true;
+      if (hasIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
     };
-  }, [user]);
+    // Deps on the primitive id: getUser() returns a fresh object every
+    // render, so [user] would re-schedule this sweep on every render.
+  }, [user?.id]);
 
   return (
     <div className="space-y-5">
