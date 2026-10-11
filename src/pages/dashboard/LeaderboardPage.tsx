@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Flame, Loader2, Medal, Trophy, Zap } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
-import { RankBadgeVector } from "../../components/gamification/RankBadgeVector";
+import { RankBadge } from "../../components/gamification/RankBadge";
 import { getRankFromXP } from "../../lib/gamification";
 import {
   fetchWeeklyLeaderboard,
@@ -119,10 +119,10 @@ function LeaderRow({
             <span
               className={`inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 font-semibold ${rank.tier.border} ${rank.tier.bg} ${rank.tier.text}`}
             >
-              <RankBadgeVector
+              <RankBadge
                 rank={rank.tier.key}
                 tier={rank.current.step}
-                size={16}
+                size={24}
               />
               {rank.name}
             </span>

@@ -7,7 +7,7 @@ import {
   TIERS,
   type RankData,
 } from "../../lib/gamification";
-import { RankBadgeVector } from "./RankBadgeVector";
+import { RankBadge } from "./RankBadge";
 import { EASE } from "../../lib/motion";
 
 interface RankProgressionModalProps {
@@ -142,12 +142,12 @@ export function RankProgressionModal({
                                   : "border-white/[0.06] bg-white/[0.02]"
                               }`}
                             >
-                              <RankBadgeVector
+                              <RankBadge
                                 rank={rank.tier.key}
                                 tier={rank.step}
                                 size={44}
-                                className={`drop-shadow-[0px_4px_6px_rgba(0,0,0,0.5)]${
-                                  isFuture ? " grayscale opacity-40" : ""
+                                className={`drop-shadow-[0px_4px_6px_rgba(0,0,0,0.5)] ${
+                                  isFuture ? "opacity-30 grayscale" : ""
                                 }${isCurrent ? " scale-110" : ""}`}
                               />
                               <span

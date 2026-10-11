@@ -6,7 +6,7 @@ import { Card } from "../ui/Card";
 import { EASE } from "../../lib/motion";
 import { getRankFromXP } from "../../lib/gamification";
 import type { Profile } from "../../lib/db/types";
-import { RankBadgeVector } from "../gamification/RankBadgeVector";
+import { RankBadge } from "../gamification/RankBadge";
 import { RankProgressionModal } from "../gamification/RankProgressionModal";
 
 interface PlayerStatsProps {
@@ -91,7 +91,7 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
             aria-label="View rank progression"
             title="Click to view rank progression"
           >
-            <RankBadgeVector
+            <RankBadge
               rank={rankData.tier.key}
               tier={rankData.current.step}
               size={44}
