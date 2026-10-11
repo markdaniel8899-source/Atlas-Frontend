@@ -15,6 +15,7 @@ import {
   Map,
   Menu,
   Settings,
+  ShieldCheck,
   Sparkles,
   Timer,
   Trophy,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { getUser, signOut } from "../lib/auth";
+import { isAdmin } from "../lib/admin";
 import { PROFILE_CHANGED_EVENT, fetchProfile } from "../lib/db/profile";
 import type { Profile } from "../lib/db/types";
 import { EASE } from "../lib/motion";
@@ -265,6 +267,7 @@ export default function DashboardLayout() {
   }, [activePath]);
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
   const name = profile?.display_name?.trim() || user?.name || "";
   const avatarUrl = profile?.avatar_url ?? null;
 
@@ -295,6 +298,20 @@ export default function DashboardLayout() {
     return () => {
       cancelled = true;
       window.removeEventListener(PROFILE_CHANGED_EVENT, load);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setIsAdminUser(false);
+      return;
+    }
+    let cancelled = false;
+    void isAdmin().then((v) => {
+      if (!cancelled) setIsAdminUser(v);
+    });
+    return () => {
+      cancelled = true;
     };
   }, [userId]);
 
@@ -431,6 +448,18 @@ export default function DashboardLayout() {
                     Help &amp; Contact
                   </CurtainLink>
                 </div>
+                {isAdminUser && (
+                  <div onClick={() => setProfileMenuOpen(false)}>
+                    <CurtainLink
+                      to="/wp-admin"
+                      role="menuitem"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm text-[#cf9eff]/80 transition-colors hover:bg-[#cf9eff]/10 hover:text-[#cf9eff]"
+                    >
+                      <ShieldCheck className="size-4" />
+                      Admin Panel
+                    </CurtainLink>
+                  </div>
+                )}
                 <div className="mx-1 my-1 border-t border-white/[0.07]" />
                 <button
                   type="button"

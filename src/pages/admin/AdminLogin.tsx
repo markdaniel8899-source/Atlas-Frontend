@@ -20,21 +20,21 @@ export default function AdminLogin() {
   const [busy, setBusy] = useState(false);
   const [booting, setBooting] = useState(true);
 
-  // Already signed in? Skip the form.
+  // Already an admin? Skip the form. Anyone else (guest OR logged-in
+  // non-admin) sees the form so they can try another account — the
+  // "Access Denied" toast only fires after a login attempt, never on mount.
   useEffect(() => {
     let active = true;
     (async () => {
       const user = await resolveSession();
+      if (!active || !user) {
+        setBooting(false);
+        return;
+      }
+      const admin = await isAdmin();
       if (!active) return;
-      if (user) {
-        const admin = await isAdmin();
-        if (!active) return;
-        if (admin) {
-          navigate("/wp-admin", { replace: true });
-          return;
-        }
-        toast.error("Access Denied — this area is restricted to admins.");
-        navigate("/app", { replace: true });
+      if (admin) {
+        navigate("/wp-admin", { replace: true });
         return;
       }
       setBooting(false);
