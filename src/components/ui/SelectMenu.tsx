@@ -17,6 +17,8 @@ interface SelectMenuProps<T extends string> {
   value: T;
   options: readonly SelectOption<T>[];
   onChange: (value: T) => void;
+  /** Locks the control (e.g. while a focus session is running). */
+  disabled?: boolean;
 }
 
 export function SelectMenu<T extends string>({
@@ -25,6 +27,7 @@ export function SelectMenu<T extends string>({
   value,
   options,
   onChange,
+  disabled = false,
 }: SelectMenuProps<T>) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -115,14 +118,15 @@ export function SelectMenu<T extends string>({
         type="button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        disabled={disabled}
+        onClick={() => !disabled && setOpen((current) => !current)}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            setOpen(true);
+            if (!disabled) setOpen(true);
           }
         }}
-        className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
+        className={`flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star disabled:cursor-not-allowed disabled:opacity-50 ${
           open
             ? "border-[#cf9eff]/50 bg-[#cf9eff]/[0.08]"
             : "border-white/10 bg-white/[0.04] hover:border-[#cf9eff]/45 hover:bg-white/[0.07]"

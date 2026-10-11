@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Pause, Play, RotateCcw } from "lucide-react";
+import { BookOpen, Check, Pause, Play, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
+import { SelectMenu } from "../../components/ui/SelectMenu";
+import type { SelectOption } from "../../components/ui/SelectMenu";
 import { RevealText } from "../../components/RevealText";
 import { useTimer } from "../../context/TimerContext";
 import { loadSessions } from "../../lib/timer";
@@ -74,6 +76,18 @@ export default function TimerPage() {
         ? "Paused - resume to keep counting from here."
         : "Resumes from this total next time you press Start.";
 
+  const courseOptions = useMemo<SelectOption<string>[]>(
+    () => [
+      { value: "", label: "No course", icon: BookOpen },
+      ...courses.map((course) => ({
+        value: String(course.id),
+        label: course.title,
+        icon: BookOpen,
+      })),
+    ],
+    [courses],
+  );
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -88,30 +102,18 @@ export default function TimerPage() {
           />
         </div>
 
-        <label className="flex max-w-full items-center gap-2.5 text-xs text-white/40">
-          Course
-          <select
-            value={state.courseId ?? ""}
-            onChange={(event) =>
-              timer.selectCourse(event.target.value ? Number(event.target.value) : null)
-            }
+        <div className="w-56 max-w-full">
+          <SelectMenu
+            label="Course"
+            labelIcon={BookOpen}
+            value={String(state.courseId ?? "")}
+            options={courseOptions}
             disabled={state.mode !== "idle"}
-            className="max-w-48 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#cf9eff]/50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="" className="bg-[#0a0a12]">
-              No course
-            </option>
-            {courses.map((course) => (
-              <option
-                key={course.id}
-                value={course.id}
-                className="bg-[#0a0a12]"
-              >
-                {course.title}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(next) =>
+              timer.selectCourse(next ? Number(next) : null)
+            }
+          />
+        </div>
       </div>
 
       {/* HERO: lifetime focus counter - the main element of this page. */}

@@ -486,11 +486,11 @@ export default function DashboardLayout() {
       </AnimatePresence>
 
       <main
-        className={`relative z-10 min-h-dvh pt-16 transition-[padding-left] duration-300 md:pt-0 ${
+        className={`relative z-10 flex min-h-dvh flex-col pt-16 transition-[padding-left] duration-300 md:pt-0 ${
           isSidebarOpen ? "md:pl-64" : "md:pl-20"
         }`}
       >
-        <div className="mx-auto w-full max-w-[1920px] px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
+        <div className="mx-auto w-full max-w-[1920px] flex-1 px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
           {PAGES.filter(({ path }) => visited.has(path)).map(
             ({ path, Component }) => (
               <PageSlot
