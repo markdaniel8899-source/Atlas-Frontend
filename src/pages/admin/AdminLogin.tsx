@@ -2,11 +2,27 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { resolveSession, signIn } from "../../lib/auth";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { resolveSession } from "../../lib/auth";
 import { isAdmin } from "../../lib/admin";
+import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
 import { EASE } from "../../lib/motion";
+
+/** Human-readable auth errors (mirrors lib/auth readableError). */
+function readableAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("invalid login")) {
+    return "That email and password combination didn't work.";
+  }
+  if (m.includes("email not confirmed")) {
+    return "Confirm your email first, then sign in.";
+  }
+  if (m.includes("rate limit")) {
+    return "Too many attempts. Give it a moment and try again.";
+  }
+  return message;
+}
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -17,7 +33,7 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [booting, setBooting] = useState(true);
 
   // Already an admin? Skip the form. Anyone else (guest OR logged-in
@@ -46,7 +62,7 @@ export default function AdminLogin() {
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (busy) return;
+    if (isLoading) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Enter a valid email address.");
       return;
@@ -56,23 +72,42 @@ export default function AdminLogin() {
       return;
     }
 
-    setBusy(true);
+    setIsLoading(true);
     setError(null);
-    const result = await signIn(email.trim(), password);
 
-    if (result.error) {
-      setBusy(false);
-      setError(result.error);
+    // 1. Sign in with Supabase directly.
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (signInError || !data.user) {
+      setIsLoading(false);
+      setError(
+        signInError
+          ? readableAuthError(signInError.message)
+          : "Sign in failed. Please try again.",
+      );
       return;
     }
 
-    const admin = await isAdmin();
-    setBusy(false);
+    // 2. Immediately fetch this user's role by id (profile may not be cached yet).
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
 
-    if (admin) {
+    // 3. Debug: inspect the role in the browser console.
+    console.log("Admin Login - User Role:", profile?.role);
+
+    setIsLoading(false);
+
+    // 4. Gate on the freshly fetched role.
+    if (profile?.role === "admin") {
       navigate(from, { replace: true });
     } else {
-      toast.error("Access Denied — this area is restricted to admins.");
+      toast.error("Access Denied - Admins only");
       navigate("/app", { replace: true });
     }
   };
@@ -181,12 +216,19 @@ export default function AdminLogin() {
 
           <button
             type="submit"
-            disabled={busy}
+            disabled={isLoading}
             className="mt-1 w-full rounded-lg bg-gradient-to-r from-[#4044cc] to-[#cf9eff] py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-60"
           >
-            {busy ? "Signing in…" : "Sign in"}
+            {isLoading ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+        <Link
+          to="/login"
+          className="mt-4 block text-center text-sm text-gray-400 transition-colors hover:text-white"
+        >
+          Forgot Password? Reset here.
+        </Link>
       </motion.div>
     </div>
   );

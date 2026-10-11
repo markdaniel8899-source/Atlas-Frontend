@@ -35,11 +35,24 @@ export interface AdminStats {
   totalQuizzes: number;
 }
 
-/** The signed-in user's role from profiles. 'user' when unknown/missing. */
+/**
+ * The signed-in user's role from profiles. Null when signed out or the
+ * profile row is missing.
+ *
+ * IMPORTANT: must filter by the current user id. profiles is readable by all
+ * authenticated users (RLS), so an unfiltered `.single()` would try to collapse
+ * every row into one, error with "multiple rows returned", and return null —
+ * which made every admin look like a non-admin.
+ */
 export async function fetchMyRole(): Promise<string | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth.user;
+  if (!user) return null;
+
   const { data } = await supabase
     .from("profiles")
     .select("role")
+    .eq("id", user.id)
     .maybeSingle();
   return (data as { role?: string } | null)?.role ?? null;
 }
