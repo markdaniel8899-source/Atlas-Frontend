@@ -113,7 +113,7 @@ function CourseSwitcher({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: EASE }}
-            className="absolute top-[calc(100%+8px)] right-0 z-40 w-64 rounded-2xl border border-white/10 bg-[#0a0a12]/95 p-1.5 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
+            className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 w-full rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl md:left-auto md:w-64"
           >
             {items.map((item) => {
               const Icon = item.icon;

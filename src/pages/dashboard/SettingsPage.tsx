@@ -108,34 +108,28 @@ export default function SettingsPage() {
     setError(null);
     setSaved(false);
 
-    // Prefer the FastAPI endpoint (validates + stores server-side); fall
-    // back to a direct profile update when the AI service is offline.
-    let nextAvatar = url;
-    let failure: string | null = null;
-    const viaApi = await apiSelectAvatar(url);
-    if (viaApi && viaApi.ok === false) {
-      failure = (viaApi.error as string | undefined) ?? "Couldn't save that avatar.";
-    } else if (!viaApi) {
-      const { profile: updated, error: saveError } = await updateProfile(user.id, {
-        avatar_url: url,
-      });
-      if (saveError) failure = saveError;
-      else if (updated) setProfile(updated);
-    } else {
-      const { profile: updated } = await updateProfile(user.id, {
-        avatar_url: url,
-      });
-      if (updated) setProfile(updated);
-    }
+    // Persist straight to Supabase - the source of truth the app reads from
+    // on refresh. Awaiting the write and checking its error keeps the avatar
+    // from appearing to save when it did not (the old FastAPI-first flow could
+    // swallow these errors, update the UI, then revert on reload).
+    const { profile: updated, error: saveError } = await updateProfile(user.id, {
+      avatar_url: url,
+    });
+
+    // Best-effort server-side validation / side effects via FastAPI. This must
+    // never block or mask the Supabase save above, so failures are ignored -
+    // the URL is already safely stored on the profile.
+    void apiSelectAvatar(url);
 
     setSaving(false);
 
-    if (failure) {
-      setError(failure);
+    if (saveError || !updated) {
+      setError(saveError ?? "Couldn't save that avatar.");
       return false;
     }
 
-    setAvatarUrl(nextAvatar);
+    setProfile(updated);
+    setAvatarUrl(url);
     notifyProfileChanged();
     setSaved(true);
     return true;
@@ -143,23 +137,25 @@ export default function SettingsPage() {
 
   const removeAvatar = async () => {
     if (!user) return;
-    setAvatarUrl(null);
     setSaving(true);
     setError(null);
     setSaved(false);
-    const viaApi = await apiSelectAvatar(null);
+
     const { profile: updated, error: saveError } = await updateProfile(user.id, {
       avatar_url: null,
     });
+
+    void apiSelectAvatar(null);
+
     setSaving(false);
-    if (saveError || (viaApi && viaApi.ok === false)) {
-      setError(
-        saveError ??
-          ((viaApi?.error as string | undefined) ?? "Couldn't remove the avatar."),
-      );
+
+    if (saveError || !updated) {
+      setError(saveError ?? "Couldn't remove the avatar.");
       return;
     }
+
     setProfile(updated);
+    setAvatarUrl(null);
     notifyProfileChanged();
     setSaved(true);
   };
@@ -229,7 +225,7 @@ export default function SettingsPage() {
       />
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
+        <div className="min-w-0 space-y-5 lg:col-span-2">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -503,27 +499,27 @@ export default function SettingsPage() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.12, ease: EASE }}
-          className="space-y-5"
+          className="min-w-0 space-y-5"
         >
-          <Card className="p-6">
+          <Card className="p-5 sm:p-6">
             <div className="text-xs font-medium tracking-[0.14em] text-white/45 uppercase">
               Account
             </div>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-white/45">Email</dt>
-                <dd className="truncate text-white/80">{user?.email}</dd>
+                <dt className="shrink-0 text-white/45">Email</dt>
+                <dd className="min-w-0 truncate text-white/80">{user?.email}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-white/45">User ID</dt>
-                <dd className="truncate font-mono text-xs text-white/50">
+                <dt className="shrink-0 text-white/45">User ID</dt>
+                <dd className="min-w-0 truncate font-mono text-xs text-white/50">
                   {user?.id}
                 </dd>
               </div>
             </dl>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-5 sm:p-6">
             <div className="text-xs font-medium tracking-[0.14em] text-white/45 uppercase">
               Progress
             </div>
