@@ -7,7 +7,7 @@ import {
   TIERS,
   type RankData,
 } from "../../lib/gamification";
-import { RankBadge3D } from "./RankBadge3D";
+import { RankBadgeVector } from "./RankBadgeVector";
 import { EASE } from "../../lib/motion";
 
 interface RankProgressionModalProps {
@@ -107,6 +107,16 @@ export function RankProgressionModal({
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               data-lenis-prevent
             >
+              <div className="mb-1 grid grid-cols-4 gap-2 sm:gap-3">
+                {["I", "II", "III", "IV"].map((n) => (
+                  <span
+                    key={n}
+                    className="text-center text-[10px] font-bold tracking-[0.25em] text-white/30"
+                  >
+                    {n}
+                  </span>
+                ))}
+              </div>
               <div className="space-y-5">
                 {RANK_TIER_KEYS.map((tierKey) => (
                   <div key={tierKey}>
@@ -132,7 +142,7 @@ export function RankProgressionModal({
                                   : "border-white/[0.06] bg-white/[0.02]"
                               }`}
                             >
-                              <RankBadge3D
+                              <RankBadgeVector
                                 rank={rank.tier.key}
                                 tier={rank.step}
                                 size={44}
