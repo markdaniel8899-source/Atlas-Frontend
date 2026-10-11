@@ -24,6 +24,14 @@ const PrivacyPage = lazy(() => import("./pages/site/PrivacyPage"));
 const TermsPage = lazy(() => import("./pages/site/TermsPage"));
 const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"));
 const ProtectedRoute = lazy(() => import("./components/ProtectedRoute"));
+const AdminRoute = lazy(() => import("./components/admin/AdminRoute"));
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminOverview = lazy(() => import("./pages/admin/Overview"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminPosts = lazy(() => import("./pages/admin/Posts"));
+const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+import { Toaster } from "./components/ui/Toaster";
 import { EASE, routeVariants } from "./lib/motion";
 import { CURTAIN_REVEALED_EVENT, forceRepaint } from "./lib/repaint";
 import { AnimatePresence, motion } from "framer-motion";
@@ -213,6 +221,43 @@ function AnimatedRoutes() {
             </Route>
           </Route>
 
+          {/* Admin panel: /wp-admin/login is the custom gate; /wp-admin/* is
+              guarded by AdminRoute (redirects non-admins to /app + toast). */}
+          <Route
+            path="/wp-admin/login"
+            element={
+              <GroupTransition variant="auth">
+                {/* Admin-only surface: noindex + nofollow. */}
+                <Seo
+                  path="/wp-admin/login"
+                  title="Admin Login — ATLAS"
+                  index={false}
+                />
+                <AdminLogin />
+              </GroupTransition>
+            }
+          />
+          <Route element={<AdminRoute />}>
+            <Route
+              path="/wp-admin"
+              element={
+                <GroupTransition variant="app">
+                  <Seo
+                    path="/wp-admin"
+                    title="Admin Panel — ATLAS"
+                    index={false}
+                  />
+                  <AdminLayout />
+                </GroupTransition>
+              }
+            >
+              <Route index element={<AdminOverview />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="posts" element={<AdminPosts />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
+          </Route>
+
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
@@ -257,6 +302,8 @@ export default function App() {
         import("./pages/site/TermsPage"),
         import("./layouts/DashboardLayout"),
         import("./components/ProtectedRoute"),
+        import("./components/admin/AdminRoute"),
+        import("./pages/admin/AdminLayout"),
       ]);
     });
   }, []);
@@ -269,6 +316,7 @@ export default function App() {
         </div>
         <CustomCursor />
         <ScrollProgressIndicator />
+        <Toaster />
         <DoubleCurtain />
       </BrowserRouter>
     </MotionConfig>
