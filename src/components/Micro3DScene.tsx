@@ -4,6 +4,7 @@ import { Float } from "@react-three/drei";
 import { useReducedMotion } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import type { Group } from "three";
+import { isMobile } from "../lib/mobile";
 
 interface Placement {
   key: number;
@@ -146,7 +147,7 @@ export default function Micro3DScene() {
       <Canvas
         frameloop={active ? "always" : "never"}
         camera={{ position: [0, 0, 9], fov: 42 }}
-        dpr={[1, 1.5]}
+        dpr={[1, isMobile() ? 1 : 1.5]}
         gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
         style={{ pointerEvents: "none" }}
       >

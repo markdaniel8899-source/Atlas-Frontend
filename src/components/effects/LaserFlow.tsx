@@ -366,7 +366,7 @@ export const LaserFlow = ({
 
     baseDprRef.current = Math.min(
       dpr ?? (window.devicePixelRatio || 1),
-      isMobile() ? 1.5 : 2,
+      isMobile() ? 1 : 1.5,
     );
     currentDprRef.current = baseDprRef.current;
 

@@ -255,7 +255,7 @@ const Ferrofluid = ({
     const renderer = new Renderer({
       dpr: Math.min(
         dpr ?? (typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1),
-        isMobile() ? 1.5 : 2,
+        isMobile() ? 1 : 1.5,
       ),
       alpha: true,
       antialias: false,

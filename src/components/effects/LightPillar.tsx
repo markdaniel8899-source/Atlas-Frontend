@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import * as THREE from "three";
+import { isMobile as isMobileDevice } from "../../lib/mobile";
 import {
   withWebGLFallback,
 } from "./WebGLGuard";
@@ -101,6 +102,12 @@ export const LightPillar = ({
     if (isLowEndDevice && quality === "high") effectiveQuality = "medium";
     if (isMobile && quality !== "low") effectiveQuality = "low";
 
+    // Aggressive DPR cap: phones render at 1x, desktop at 1.5x max.
+    const dprCap = Math.min(
+      window.devicePixelRatio || 1,
+      isMobileDevice() ? 1.0 : 1.5,
+    );
+
     const qualitySettings: Record<string, QualitySettings> = {
       low: {
         iterations: 24,
@@ -119,7 +126,7 @@ export const LightPillar = ({
       high: {
         iterations: 80,
         waveIterations: 4,
-        pixelRatio: Math.min(window.devicePixelRatio, 1.5),
+        pixelRatio: dprCap,
         precision: "highp",
         stepMultiplier: 1.0,
       },
@@ -145,7 +152,7 @@ export const LightPillar = ({
     }
 
     renderer.setSize(width, height);
-    renderer.setPixelRatio(settings.pixelRatio);
+    renderer.setPixelRatio(Math.min(settings.pixelRatio, dprCap));
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     debugLog("LightPillar", "WebGL renderer created OK", {
@@ -294,6 +301,7 @@ export const LightPillar = ({
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
+    const mouseTarget = new THREE.Vector2(0, 0);
     let mouseMoveTimeout: number | null = null;
     const handleMouseMove = (event: MouseEvent) => {
       if (!interactive) return;
@@ -304,7 +312,7 @@ export const LightPillar = ({
       const rect = container.getBoundingClientRect();
       const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-      mouseRef.current.set(x, y);
+      mouseTarget.set(x, y);
     };
 
     if (interactive) {
@@ -332,6 +340,10 @@ export const LightPillar = ({
         mat.uniforms.uTime.value = t;
         mat.uniforms.uRotCos.value = Math.cos(t * 0.3);
         mat.uniforms.uRotSin.value = Math.sin(t * 0.3);
+        // Lerp the interactive mouse uniform toward its target (0.05 per
+        // rendered frame) so the rotation glides smoothly even when frames
+        // are skipped on low-end devices.
+        mouseRef.current.lerp(mouseTarget, 0.05);
         try {
           rend.render(scn, cam);
         } catch (err) {

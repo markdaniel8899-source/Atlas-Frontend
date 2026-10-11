@@ -86,7 +86,7 @@ const CanvasWrapper = ({ children }: { children: ReactNode }) => {
   return (
     <div ref={wrapRef} className="absolute inset-0 min-h-[400px]">
       <Canvas
-        dpr={[1, 1.5]}
+        dpr={[1, isMobile() ? 1 : 1.5]}
         frameloop={inView ? "always" : "never"}
         className="beams-container"
         gl={{
@@ -291,7 +291,7 @@ const Beams = ({
   );
 
   const beamCount = isMobile()
-    ? Math.max(6, Math.round(beamNumber * 0.6))
+    ? Math.max(4, Math.round(beamNumber * 0.5))
     : beamNumber;
 
   return (

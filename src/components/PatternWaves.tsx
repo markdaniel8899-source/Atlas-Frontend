@@ -10,6 +10,7 @@ import {
 } from 'ogl';
 
 import './PatternWaves.css';
+import { isMobile } from '../lib/mobile';
 
 type GL2 = OGLRenderingContext & WebGL2RenderingContext;
 type RGBA = [number, number, number, number];
@@ -764,7 +765,7 @@ const PatternWaves = ({
     const resize = () => {
       width = Math.max(1, container.clientWidth);
       height = Math.max(1, container.clientHeight);
-      renderer.dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(PIXEL_BUDGET / (width * height)));
+      renderer.dpr = Math.min(window.devicePixelRatio || 1, isMobile() ? 1 : 1.5, Math.sqrt(PIXEL_BUDGET / (width * height)));
       renderer.setSize(width, height);
       buildRipple();
       dirty = true;

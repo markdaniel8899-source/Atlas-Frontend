@@ -177,7 +177,7 @@ const SideRays = ({
       if (cancelled || !containerRef.current) return;
 
       const renderer = new Renderer({
-        dpr: Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2),
+        dpr: Math.min(window.devicePixelRatio, isMobile() ? 1 : 1.5),
         alpha: true,
         antialias: false,
         stencil: false,
@@ -224,7 +224,7 @@ const SideRays = ({
       let zeroSizeLogged = false;
       const updateSize = () => {
         if (!containerRef.current) return;
-        renderer.dpr = Math.min(window.devicePixelRatio, isMobile() ? 1.5 : 2);
+        renderer.dpr = Math.min(window.devicePixelRatio, isMobile() ? 1 : 1.5);
         const { clientWidth: w, clientHeight: h } = containerRef.current;
         if (w < 1 || h < 1) {
           if (!zeroSizeLogged) {

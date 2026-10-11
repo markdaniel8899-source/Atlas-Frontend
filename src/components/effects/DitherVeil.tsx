@@ -507,7 +507,7 @@ const DitherVeil = ({
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1.5 : 2),
+      dpr: Math.min(window.devicePixelRatio || 1, isMobile() ? 1 : 1.5),
       alpha: true,
       premultipliedAlpha: false,
       antialias: false,
