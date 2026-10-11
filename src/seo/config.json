@@ -1,9 +1,14 @@
 {
   "name": "ATLAS",
-  "url": "https://atlas.example.com",
+  "url": "https://atlas-frontend-pearl.vercel.app",
   "description": "ATLAS is an AI-powered personal learning OS: one goal becomes a step-by-step roadmap, with lessons, notes, quizzes, a focus timer and progress tracking in one place.",
   "routes": [
     { "path": "/", "changefreq": "weekly", "priority": "1.0" },
-    { "path": "/login", "changefreq": "monthly", "priority": "0.6" }
+    { "path": "/login", "changefreq": "monthly", "priority": "0.6" },
+    { "path": "/about", "changefreq": "monthly", "priority": "0.6" },
+    { "path": "/contact", "changefreq": "monthly", "priority": "0.5" },
+    { "path": "/blog", "changefreq": "weekly", "priority": "0.9" },
+    { "path": "/privacy", "changefreq": "yearly", "priority": "0.3" },
+    { "path": "/terms", "changefreq": "yearly", "priority": "0.3" }
   ]
 }

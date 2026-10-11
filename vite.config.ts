@@ -29,6 +29,7 @@ function seoStaticPlugin(siteUrl: string): Plugin {
         "# Auth-gated app + API endpoints are not crawlable content",
         "Disallow: /app/",
         "Disallow: /api/",
+        "Disallow: /wp-admin/",
         "",
         `Sitemap: ${origin}/sitemap.xml`,
         "",

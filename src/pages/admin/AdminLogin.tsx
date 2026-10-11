@@ -98,12 +98,9 @@ export default function AdminLogin() {
       .eq("id", data.user.id)
       .single();
 
-    // 3. Debug: inspect the role in the browser console.
-    console.log("Admin Login - User Role:", profile?.role);
-
     setIsLoading(false);
 
-    // 4. Gate on the freshly fetched role.
+    // 3. Gate on the freshly fetched role.
     if (profile?.role === "admin") {
       navigate(from, { replace: true });
     } else {

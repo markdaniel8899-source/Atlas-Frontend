@@ -10,9 +10,9 @@ requires a free account.
 
 ## Key pages
 
-- [Home](https://atlas.example.com/): Product overview, features, problem it
+- [Home](https://atlas-frontend-pearl.vercel.app/): Product overview, features, problem it
   solves and the seven-level learning journey.
-- [Sign in / Create account](https://atlas.example.com/login): Entry point to
+- [Sign in / Create account](https://atlas-frontend-pearl.vercel.app/login): Entry point to
   the ATLAS app — free while in beta.
 
 ## Capabilities
