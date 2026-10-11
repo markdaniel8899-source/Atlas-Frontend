@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 const rawBase: string =
   (import.meta.env.VITE_API_URL as string | undefined) ??
   (import.meta.env.VITE_AI_API_URL as string | undefined) ??
-  "http://localhost:8000";
+  "";
 
 export const AI_BASE_URL = rawBase.replace(/\/+$/, "");
 
@@ -30,6 +30,13 @@ export class AiError extends Error {
     this.name = "AiError";
     this.status = status;
   }
+}
+
+if (!AI_BASE_URL) {
+  console.error(
+    "AI service base URL is not configured: set VITE_AI_API_URL (or VITE_API_URL).",
+  );
+  throw new AiError("AI Service Unavailable. Please try again later.");
 }
 
 export type RoadmapResourceType =
