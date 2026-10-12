@@ -6,6 +6,7 @@ import {
   PAGE_BUTTON,
 } from "../../components/site/SecondaryPage";
 import { Reveal } from "../../components/site/Reveal";
+import { supabase } from "../../lib/supabase";
 
 const EMAIL = "hafizmzain786@gmail.com";
 const PHONE_DISPLAY = "+92-3074477250";
@@ -40,18 +41,51 @@ const FIELD =
 const CARD_GLOW =
   "shadow-[0_0_50px_-18px_rgba(207,158,255,0.45)] transition-[border-color,box-shadow] duration-500 hover:border-white/20 hover:shadow-[0_0_60px_-14px_rgba(207,158,255,0.65)]";
 
+type Status = "idle" | "sending" | "sent" | "error";
+
 export default function ContactPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [status, setStatus] = useState<Status>("idle");
 
-  const handleSubmit = (event: FormEvent) => {
+  // Editing again hides the previous sent/error note.
+  const onEdit =
+    (setValue: (v: string) => void) =>
+    (v: string) => {
+      setValue(v);
+      if (status !== "idle") setStatus("idle");
+    };
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const subject = `ATLAS: message from ${name.trim()}`;
-    const body = `${message.trim()}\n\n${name.trim()} (${email.trim()})`;
-    window.location.href = `mailto:${EMAIL}?subject=${encodeURIComponent(
-      subject,
-    )}&body=${encodeURIComponent(body)}`;
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedMessage = message.trim();
+    if (!trimmedName || !trimmedEmail || !trimmedMessage) return;
+
+    setStatus("sending");
+
+    // Stored in contact_messages → shows up in /wp-admin/messages.
+    // Public INSERT is allowed by the RLS policy in 0017.
+    const { error: insertError } = await supabase
+      .from("contact_messages")
+      .insert({
+        name: trimmedName,
+        email: trimmedEmail,
+        subject: `Message from ${trimmedName}`,
+        message: trimmedMessage,
+      });
+
+    if (insertError) {
+      setStatus("error");
+      return;
+    }
+
+    setName("");
+    setEmail("");
+    setMessage("");
+    setStatus("sent");
   };
 
   return (
@@ -129,7 +163,7 @@ export default function ContactPage() {
                     required
                     maxLength={80}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => onEdit(setName)(e.target.value)}
                     placeholder="Name"
                     className={FIELD}
                   />
@@ -143,7 +177,7 @@ export default function ContactPage() {
                     required
                     maxLength={120}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => onEdit(setEmail)(e.target.value)}
                     placeholder="Email"
                     className={FIELD}
                   />
@@ -157,7 +191,7 @@ export default function ContactPage() {
                     maxLength={4000}
                     rows={9}
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={(e) => onEdit(setMessage)(e.target.value)}
                     placeholder="Message"
                     className={`${FIELD} min-h-56 resize-y`}
                   />
@@ -165,12 +199,28 @@ export default function ContactPage() {
 
                 <button
                   type="submit"
-                  className={`${PAGE_BUTTON} mt-5 w-full px-6 py-4 text-sm font-bold tracking-[0.18em]`}
+                  disabled={status === "sending"}
+                  className={`${PAGE_BUTTON} mt-5 w-full px-6 py-4 text-sm font-bold tracking-[0.18em] disabled:opacity-60`}
                 >
-                  Submit
+                  {status === "sending" ? "Sending…" : "Submit"}
                 </button>
-                <p className="mt-3 text-center text-sm text-white/45">
-                  Opens your email app with the message ready to send.
+                <p className="mt-3 text-center text-sm" role="status">
+                  {status === "error" ? (
+                    <span className="text-rose-300">
+                      Could not send your message. Please try again, or email
+                      us directly.
+                    </span>
+                  ) : status === "sent" ? (
+                    <span className="text-emerald-300">
+                      Message sent — we&apos;ll reply to your inbox.
+                    </span>
+                  ) : (
+                    <span className="text-white/45">
+                      {status === "sending"
+                        ? "Sending…"
+                        : "Your message goes straight to our team."}
+                    </span>
+                  )}
                 </p>
               </form>
             </Reveal>
