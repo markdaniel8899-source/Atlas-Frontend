@@ -163,7 +163,7 @@ export function FocusTimerWidget() {
           <motion.p
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-4 flex items-center justify-center gap-2 text-xs text-emerald-300/90"
+            className="mt-4 flex items-center justify-center gap-2 text-xs text-[#cf9eff]/90"
           >
             <Check className="size-3.5" />
             {flash}

@@ -6,13 +6,14 @@ import { EASE } from "../../lib/motion";
 
 const TONE_STYLES: Record<ToastTone, string> = {
   info: "border-white/15 bg-white/[0.06] text-white",
-  success: "border-emerald-400/30 bg-emerald-500/10 text-emerald-100",
+  success: "border-[#cf9eff]/30 bg-[#cf9eff]/10 text-[#cf9eff]",
   error: "border-rose-400/30 bg-rose-500/10 text-rose-100",
 };
 
 function ToneIcon({ tone }: { tone: ToastTone }) {
   const cls = "size-4 shrink-0";
-  if (tone === "success") return <CheckCircle2 className={`${cls} text-emerald-300`} />;
+  if (tone === "success")
+    return <CheckCircle2 className={`${cls} text-[#cf9eff]`} />;
   if (tone === "error") return <AlertTriangle className={`${cls} text-rose-300`} />;
   return <Info className={`${cls} text-white/70`} />;
 }

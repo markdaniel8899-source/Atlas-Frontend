@@ -98,7 +98,7 @@ export default function Usage() {
               value={stats.totalQuizzes.toLocaleString()}
               sub="Total attempts"
               icon={ListChecks}
-              accent="text-emerald-300"
+              accent="text-[#cf9eff]"
             />
             <StatCard
               label="Users"
@@ -145,7 +145,7 @@ export default function Usage() {
                     <span
                       className={
                         attempt.isCorrect
-                          ? "text-emerald-400"
+                          ? "text-[#cf9eff]"
                           : "text-rose-400"
                       }
                       aria-label={attempt.isCorrect ? "Correct" : "Incorrect"}
@@ -175,7 +175,7 @@ export default function Usage() {
                         <div
                           className={`h-full rounded-full ${
                             attempt.isCorrect
-                              ? "bg-emerald-400/80"
+                              ? "bg-[#cf9eff]/80"
                               : "bg-rose-400/80"
                           }`}
                           style={{

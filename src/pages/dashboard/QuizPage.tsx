@@ -319,14 +319,14 @@ export default function QuizPage() {
                 role="status"
                 className={`mt-5 flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
                   evaluation.is_correct
-                    ? "border-emerald-300/30 bg-emerald-300/[0.08]"
+                    ? "border-[#cf9eff]/30 bg-[#cf9eff]/[0.08]"
                     : "border-amber-300/30 bg-amber-300/[0.08]"
                 }`}
               >
                 <span
                   className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-lg border ${
                     evaluation.is_correct
-                      ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+                      ? "border-[#cf9eff]/30 bg-[#cf9eff]/10 text-[#cf9eff]"
                       : "border-amber-300/30 bg-amber-300/10 text-amber-200"
                   }`}
                 >

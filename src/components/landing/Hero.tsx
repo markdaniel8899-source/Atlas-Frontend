@@ -86,7 +86,7 @@ function HeroWidget({ intro }: { intro: boolean }) {
                   {stat.value}
                 </span>
                 {stat.trend && (
-                  <TrendingUp className="size-3.5 shrink-0 text-emerald-400" />
+                  <TrendingUp className="size-3.5 shrink-0 text-[#cf9eff]" />
                 )}
               </div>
 

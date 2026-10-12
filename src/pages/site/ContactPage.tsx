@@ -211,7 +211,7 @@ export default function ContactPage() {
                       us directly.
                     </span>
                   ) : status === "sent" ? (
-                    <span className="text-emerald-300">
+                    <span className="text-[#cf9eff]">
                       Message sent — we&apos;ll reply to your inbox.
                     </span>
                   ) : (

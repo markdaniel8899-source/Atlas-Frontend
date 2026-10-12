@@ -32,7 +32,7 @@ const STATUS_LABEL: Record<SquadStatus, string> = {
 };
 
 const STATUS_DOT: Record<SquadStatus, string> = {
-  studying: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]",
+  studying: "bg-[#cf9eff] shadow-[0_0_8px_rgba(207,158,255,0.9)]",
   online: "bg-star shadow-[0_0_8px_rgba(157,180,255,0.9)]",
   offline: "bg-white/25",
 };
@@ -182,7 +182,7 @@ function RequestRow({
               type="button"
               disabled={busy}
               onClick={onAccept}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/30 bg-emerald-300/10 px-4 py-2 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-300/20 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#cf9eff]/30 bg-[#cf9eff]/10 px-4 py-2 text-xs font-medium text-[#cf9eff] transition-colors hover:bg-[#cf9eff]/20 disabled:opacity-50"
             >
               <Check className="size-3.5" />
               Accept
@@ -409,7 +409,7 @@ export default function SquadPage() {
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="flex items-center gap-2 text-sm text-emerald-300/90"
+            className="flex items-center gap-2 text-sm text-[#cf9eff]/90"
           >
             <Check className="size-4" />
             {flash}

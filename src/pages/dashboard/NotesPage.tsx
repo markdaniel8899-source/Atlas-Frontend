@@ -477,7 +477,7 @@ export default function NotesPage() {
                 <span className="ml-auto flex items-center gap-3">
                   <span
                     className={`text-xs transition-opacity duration-300 ${
-                      saved ? "text-emerald-300/80 opacity-100" : "opacity-0"
+                      saved ? "text-[#cf9eff]/80 opacity-100" : "opacity-0"
                     }`}
                   >
                     Saved

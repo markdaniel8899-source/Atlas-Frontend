@@ -81,7 +81,7 @@ export function CtaSection() {
                 <ArrowRight className="size-4" />
               </Button>
               <span className="flex items-center gap-2 text-xs text-white/40 sm:text-sm">
-                <Check className="size-3.5 text-emerald-300" />
+                <Check className="size-3.5 text-[#cf9eff]" />
                 Takes less than a minute.
               </span>
             </div>

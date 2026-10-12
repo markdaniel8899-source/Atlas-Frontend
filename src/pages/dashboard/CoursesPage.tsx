@@ -213,7 +213,7 @@ function CourseCard({
           </span>
           <div className="flex shrink-0 items-center gap-2">
             {course.status === "completed" ? (
-              <span className="flex items-center gap-1.5 text-xs text-emerald-300/80">
+              <span className="flex items-center gap-1.5 text-xs text-[#cf9eff]/80">
                 <CheckCircle2 className="size-3.5" />
                 Complete
               </span>

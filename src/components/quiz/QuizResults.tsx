@@ -152,7 +152,7 @@ export function QuizResults({
                 <span
                   className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border ${
                     passed
-                      ? "border-emerald-300/40 bg-emerald-300/10 text-emerald-200"
+                      ? "border-[#cf9eff]/40 bg-[#cf9eff]/10 text-[#cf9eff]"
                       : "border-red-400/40 bg-red-400/10 text-red-200"
                   }`}
                 >
@@ -170,7 +170,7 @@ export function QuizResults({
                     </span>
                     <span
                       className={`text-[10px] uppercase tracking-[0.2em] ${
-                        passed ? "text-emerald-300/80" : "text-red-300/80"
+                        passed ? "text-[#cf9eff]/80" : "text-red-300/80"
                       }`}
                     >
                       {passed ? "Correct" : "Incorrect"}
@@ -197,7 +197,7 @@ export function QuizResults({
                     <p
                       className={`mt-3 rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed ${
                         passed
-                          ? "border-emerald-300/25 bg-emerald-300/[0.07] text-emerald-100/85"
+                          ? "border-[#cf9eff]/25 bg-[#cf9eff]/[0.07] text-[#cf9eff]/85"
                           : "border-amber-300/25 bg-amber-300/[0.07] text-amber-100/85"
                       }`}
                     >

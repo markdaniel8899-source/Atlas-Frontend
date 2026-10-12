@@ -75,7 +75,7 @@ export default function Overview() {
               value={stats.totalQuizzes.toLocaleString()}
               sub="Quiz attempts logged"
               icon={ListChecks}
-              accent="text-emerald-300"
+              accent="text-[#cf9eff]"
             />
             <StatCard
               label="System Status"

@@ -222,7 +222,7 @@ export default function TimerPage() {
             <motion.p
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-5 flex items-center gap-2 text-sm text-emerald-300/90"
+              className="mt-5 flex items-center gap-2 text-sm text-[#cf9eff]/90"
             >
               <Check className="size-4" />
               {timer.flash}

@@ -359,7 +359,7 @@ export default function SettingsPage() {
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
-                      className="mt-5 flex items-center gap-2 rounded-xl border border-emerald-300/30 bg-emerald-300/[0.07] px-3.5 py-3 text-sm text-emerald-200"
+                      className="mt-5 flex items-center gap-2 rounded-xl border border-[#cf9eff]/30 bg-[#cf9eff]/[0.07] px-3.5 py-3 text-sm text-[#cf9eff]"
                     >
                       <Check className="size-4" />
                       Profile saved.
