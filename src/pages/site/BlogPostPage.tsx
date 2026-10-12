@@ -38,7 +38,7 @@ const PROSE_CLASS = [
   // in-article images sit directly in the flow — no framed div around them.
   "[&_figure]:contents",
   "[&_figcaption]:hidden",
-  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full",
+  "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-2xl",
 ].join(" ");
 
 function ShareIcon({ path }: { path: string }) {
