@@ -79,7 +79,9 @@ export function QuestionInput({
   if (question.kind === "code") {
     return (
       <div>
-        <Legend>Your solution - {question.language || "python"}</Legend>
+        <Legend>
+          {question.language ? `Your solution - ${question.language}` : "Your solution"}
+        </Legend>
         <textarea
           value={String(answer ?? "")}
           onChange={(event) => onChange(event.target.value)}
@@ -105,7 +107,7 @@ export function QuestionInput({
           <Legend>Buggy code</Legend>
           <CodeBlock
             code={question.code}
-            language={question.language || "python"}
+            language={question.language}
             caption="Find the problem"
           />
         </div>
@@ -149,7 +151,7 @@ export function QuestionInput({
         <Legend>Code under test</Legend>
         <CodeBlock
           code={question.code}
-          language={question.language || "python"}
+          language={question.language}
           caption="What does this print?"
         />
       </div>

@@ -187,7 +187,7 @@ export function QuizResults({
                     <div className="mt-3">
                       <CodeBlock
                         code={attempt.question.code}
-                        language={attempt.question.language || "python"}
+                        language={attempt.question.language}
                         caption="Question code"
                       />
                     </div>

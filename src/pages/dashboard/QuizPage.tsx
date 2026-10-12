@@ -299,7 +299,7 @@ export default function QuizPage() {
               <div className="mt-4">
                 <CodeBlock
                   code={question.code}
-                  language={question.language || "python"}
+                  language={question.language}
                   caption="What to build"
                 />
               </div>
