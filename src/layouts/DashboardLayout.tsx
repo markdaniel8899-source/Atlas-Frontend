@@ -41,6 +41,7 @@ import LeaderboardPage from "../pages/dashboard/LeaderboardPage";
 import AiAssistantPage from "../pages/dashboard/AiAssistantPage";
 import SettingsPage from "../pages/dashboard/SettingsPage";
 import CalendarPage from "../pages/dashboard/CalendarPage";
+import { SessionCompleteCard } from "../components/SessionCompleteCard";
 
 interface NavItem {
   to: string;
@@ -554,6 +555,7 @@ export default function DashboardLayout() {
         </div>
       </main>
     </div>
+    <SessionCompleteCard />
     </TimerProvider>
   );
 }

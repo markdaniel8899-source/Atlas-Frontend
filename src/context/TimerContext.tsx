@@ -24,44 +24,7 @@ import { commitFocus, flushFocus } from "../lib/db/focus";
 import { notifyFocusChanged } from "../lib/db/events";
 import { getGlobalFocusSeconds } from "../lib/db/profile";
 import { getFocusSeconds } from "../lib/db/courses";
-import { toast } from "../lib/toast";
 import type { Course } from "../lib/db/types";
-
-/**
- * Ask for notification permission once, best-effort. Called when a session
- * starts because starting is a user gesture (some browsers only allow the
- * permission prompt then). Never throws.
- */
-function ensureNotifyPermission(): void {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  if (Notification.permission === "default") {
-    void Notification.requestPermission().catch(() => undefined);
-  }
-}
-
-/** Native OS notification for a finished session; silent no-op otherwise. */
-function notifySessionComplete(): void {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  const fire = () => {
-    try {
-      new Notification("Session Complete!", {
-        body: "Great job! Your focus session has ended.",
-        icon: "/favicon.svg",
-      });
-    } catch {
-      // e.g. Android Chrome requires a service worker - the toast still shows.
-    }
-  };
-  if (Notification.permission === "granted") {
-    fire();
-  } else if (Notification.permission === "default") {
-    void Notification.requestPermission()
-      .then((result) => {
-        if (result === "granted") fire();
-      })
-      .catch(() => undefined);
-  }
-}
 
 export interface TimerContextValue {
   state: TimerState;
@@ -88,6 +51,9 @@ export interface TimerContextValue {
   selectCourse: (courseId: number | null) => void;
   /** Set a target and start immediately. */
   startQuick: (minutes: number) => void;
+  /** Bottom-right "Session Complete!" card (8s auto-hide, dismissible). */
+  showCompletionCard: boolean;
+  dismissCompletionCard: () => void;
 }
 
 const TimerContext = createContext<TimerContextValue | null>(null);
@@ -105,12 +71,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [flash, setFlash] = useState<string | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [tick, setTick] = useState(0);
+  const [showCompletionCard, setShowCompletionCard] = useState(false);
   const { courses } = useCourses();
 
   // Actions always read/mutate this synchronously, so double-clicks or an
   // auto-complete racing a manual stop can never flush the same delta twice.
   const stateRef = useRef(state);
   const flashTimerRef = useRef<number | null>(null);
+  const completionCardTimerRef = useRef<number | null>(null);
 
   const applyState = useCallback((next: TimerState) => {
     stateRef.current = next;
@@ -167,6 +135,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   useEffect(
     () => () => {
       if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current);
+      if (completionCardTimerRef.current)
+        window.clearTimeout(completionCardTimerRef.current);
     },
     [],
   );
@@ -195,10 +165,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         });
       return;
     }
-    if (current.mode === "idle") {
-      void reloadBases(current.courseId);
-      ensureNotifyPermission();
-    }
+    if (current.mode === "idle") void reloadBases(current.courseId);
     applyState(startTimer(current));
   }, [applyState, reloadBases]);
 
@@ -256,18 +223,25 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       if (current.mode !== "idle") return;
       applyState(startTimer(setTargetMinutes(current, minutes)));
       void reloadBases(current.courseId);
-      ensureNotifyPermission();
     },
     [applyState, reloadBases],
   );
+
+  const dismissCompletionCard = useCallback(() => {
+    setShowCompletionCard(false);
+    if (completionCardTimerRef.current) {
+      window.clearTimeout(completionCardTimerRef.current);
+      completionCardTimerRef.current = null;
+    }
+  }, []);
 
   // Auto-complete when the target is reached (single owner for every view).
   // `tick` is a dep so the check re-runs every second while running - `state`
   // alone never changes between start and target.
   const stopRef = useRef(stop);
   stopRef.current = stop;
-  // One-shot: the native notification + toast fire exactly once per session
-  // (guards StrictMode double-mounts and a page opened past the target).
+  // One-shot: the completion card shows exactly once per session (guards
+  // StrictMode double-mounts and a page opened past the target).
   const completionNotifiedRef = useRef(false);
   useEffect(() => {
     if (state.mode !== "running") completionNotifiedRef.current = false;
@@ -277,8 +251,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (elapsedMs(state) >= state.targetMin * 60_000) {
       if (!completionNotifiedRef.current) {
         completionNotifiedRef.current = true;
-        notifySessionComplete();
-        toast.success("Focus Session Completed!");
+        // In-app bottom-right card: no browser permission required.
+        setShowCompletionCard(true);
+        if (completionCardTimerRef.current)
+          window.clearTimeout(completionCardTimerRef.current);
+        completionCardTimerRef.current = window.setTimeout(() => {
+          setShowCompletionCard(false);
+          completionCardTimerRef.current = null;
+        }, 8000);
       }
       stopRef.current("Target reached - session logged.");
     }
@@ -305,6 +285,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setTarget,
       selectCourse,
       startQuick,
+      showCompletionCard,
+      dismissCompletionCard,
     };
   }, [
     state,
@@ -319,6 +301,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setTarget,
     selectCourse,
     startQuick,
+    showCompletionCard,
+    dismissCompletionCard,
   ]);
 
   return (
