@@ -24,7 +24,44 @@ import { commitFocus, flushFocus } from "../lib/db/focus";
 import { notifyFocusChanged } from "../lib/db/events";
 import { getGlobalFocusSeconds } from "../lib/db/profile";
 import { getFocusSeconds } from "../lib/db/courses";
+import { toast } from "../lib/toast";
 import type { Course } from "../lib/db/types";
+
+/**
+ * Ask for notification permission once, best-effort. Called when a session
+ * starts because starting is a user gesture (some browsers only allow the
+ * permission prompt then). Never throws.
+ */
+function ensureNotifyPermission(): void {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    void Notification.requestPermission().catch(() => undefined);
+  }
+}
+
+/** Native OS notification for a finished session; silent no-op otherwise. */
+function notifySessionComplete(): void {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  const fire = () => {
+    try {
+      new Notification("Session Complete!", {
+        body: "Great job! Your focus session has ended.",
+        icon: "/favicon.svg",
+      });
+    } catch {
+      // e.g. Android Chrome requires a service worker - the toast still shows.
+    }
+  };
+  if (Notification.permission === "granted") {
+    fire();
+  } else if (Notification.permission === "default") {
+    void Notification.requestPermission()
+      .then((result) => {
+        if (result === "granted") fire();
+      })
+      .catch(() => undefined);
+  }
+}
 
 export interface TimerContextValue {
   state: TimerState;
@@ -158,7 +195,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         });
       return;
     }
-    if (current.mode === "idle") void reloadBases(current.courseId);
+    if (current.mode === "idle") {
+      void reloadBases(current.courseId);
+      ensureNotifyPermission();
+    }
     applyState(startTimer(current));
   }, [applyState, reloadBases]);
 
@@ -216,6 +256,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       if (current.mode !== "idle") return;
       applyState(startTimer(setTargetMinutes(current, minutes)));
       void reloadBases(current.courseId);
+      ensureNotifyPermission();
     },
     [applyState, reloadBases],
   );
@@ -225,9 +266,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   // alone never changes between start and target.
   const stopRef = useRef(stop);
   stopRef.current = stop;
+  // One-shot: the native notification + toast fire exactly once per session
+  // (guards StrictMode double-mounts and a page opened past the target).
+  const completionNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (state.mode !== "running") completionNotifiedRef.current = false;
+  }, [state.mode]);
   useEffect(() => {
     if (state.mode !== "running") return;
     if (elapsedMs(state) >= state.targetMin * 60_000) {
+      if (!completionNotifiedRef.current) {
+        completionNotifiedRef.current = true;
+        notifySessionComplete();
+        toast.success("Focus Session Completed!");
+      }
       stopRef.current("Target reached - session logged.");
     }
   }, [state, tick]);
