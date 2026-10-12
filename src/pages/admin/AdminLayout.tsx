@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
+  ChartColumn,
   FileText,
   LayoutDashboard,
   LogOut,
+  Mail,
   Menu,
   Settings,
   ShieldCheck,
@@ -12,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { getUser, signOut } from "../../lib/auth";
+import { fetchUnreadMessageCount } from "../../lib/admin";
 
 interface NavItem {
   to: string;
@@ -24,10 +27,18 @@ const NAV: NavItem[] = [
   { to: "/wp-admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/wp-admin/users", label: "Users", icon: Users },
   { to: "/wp-admin/posts", label: "Posts", icon: FileText },
+  { to: "/wp-admin/messages", label: "Messages", icon: Mail },
+  { to: "/wp-admin/usage", label: "Usage & Analytics", icon: ChartColumn },
   { to: "/wp-admin/settings", label: "Settings", icon: Settings },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({
+  onNavigate,
+  unread = 0,
+}: {
+  onNavigate?: () => void;
+  unread?: number;
+}) {
   return (
     <nav className="flex flex-col gap-1 px-3">
       {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -46,6 +57,15 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         >
           <Icon className="size-4 shrink-0" />
           {label}
+          {to === "/wp-admin/messages" && unread > 0 && (
+            <span
+              title={`${unread} unread message${unread === 1 ? "" : "s"}`}
+              aria-label={`${unread} unread message${unread === 1 ? "" : "s"}`}
+              className="ml-auto inline-flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-4 text-white"
+            >
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
         </NavLink>
       ))}
     </nav>
@@ -56,6 +76,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     setEmail(getUser()?.email ?? null);
@@ -64,6 +85,18 @@ export default function AdminLayout() {
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Refresh the Messages badge whenever the admin route changes (so it is
+  // up to date after marking messages read). Never throws: falls back to 0.
+  useEffect(() => {
+    let alive = true;
+    void fetchUnreadMessageCount().then((n) => {
+      if (alive) setUnread(n);
+    });
+    return () => {
+      alive = false;
+    };
   }, [location.pathname]);
 
   const onLogout = async () => {
@@ -88,7 +121,7 @@ export default function AdminLayout() {
         </div>
 
         <div className="mt-2 flex-1 overflow-y-auto">
-          <NavLinks />
+          <NavLinks unread={unread} />
         </div>
 
         {email && (
@@ -129,7 +162,7 @@ export default function AdminLayout() {
               </button>
             </div>
             <div className="mt-2 flex-1 overflow-y-auto">
-              <NavLinks onNavigate={() => setMobileOpen(false)} />
+              <NavLinks unread={unread} onNavigate={() => setMobileOpen(false)} />
             </div>
           </aside>
         </div>

@@ -31,6 +31,8 @@ const AdminOverview = lazy(() => import("./pages/admin/Overview"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminPosts = lazy(() => import("./pages/admin/Posts"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+const AdminMessages = lazy(() => import("./pages/admin/Messages"));
+const AdminUsage = lazy(() => import("./pages/admin/Usage"));
 import { Toaster } from "./components/ui/Toaster";
 import { EASE, routeVariants } from "./lib/motion";
 import { CURTAIN_REVEALED_EVENT, forceRepaint } from "./lib/repaint";
@@ -254,6 +256,8 @@ function AnimatedRoutes() {
               <Route index element={<AdminOverview />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="posts" element={<AdminPosts />} />
+              <Route path="messages" element={<AdminMessages />} />
+              <Route path="usage" element={<AdminUsage />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Route>

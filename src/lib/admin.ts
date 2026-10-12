@@ -137,3 +137,119 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     totalQuizzes: quizzes.count ?? 0,
   };
 }
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+/**
+ * Contact-form inbox, newest first (admin SELECT policy in 0017).
+ */
+export async function fetchContactMessages(): Promise<ContactMessage[]> {
+  const { data, error } = await supabase
+    .from("contact_messages")
+    .select("id, name, email, subject, message, is_read, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  return rows.map((r) => ({
+    id: String(r.id ?? ""),
+    name: String(r.name ?? ""),
+    email: String(r.email ?? ""),
+    subject: String(r.subject ?? ""),
+    message: String(r.message ?? ""),
+    isRead: Boolean(r.is_read),
+    createdAt: String(r.created_at ?? ""),
+  }));
+}
+
+export async function markContactMessageRead(messageId: string): Promise<void> {
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ is_read: true })
+    .eq("id", messageId);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteContactMessage(messageId: string): Promise<void> {
+  const { error } = await supabase
+    .from("contact_messages")
+    .delete()
+    .eq("id", messageId);
+  if (error) throw new Error(error.message);
+}
+
+/** Unread count for the sidebar badge; 0 when the inbox is unavailable. */
+export async function fetchUnreadMessageCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("contact_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("is_read", false);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export interface UsageStats {
+  totalQuizzes: number;
+  totalUsers: number;
+  totalPosts: number;
+  totalFocusSeconds: number;
+}
+
+export interface RecentAttempt {
+  id: string;
+  quizId: string;
+  score: number;
+  isCorrect: boolean;
+  createdAt: string;
+}
+
+/**
+ * Usage & Analytics numbers. Counts reuse fetchAdminStats-style head queries;
+ * focus time sums learning_sessions.total_seconds platform-wide (admin SELECT
+ * policy in 0017). Each source falls back to 0 on error so one missing policy
+ * never blanks the page.
+ */
+export async function fetchUsageStats(): Promise<UsageStats> {
+  const [users, posts, quizzes, focus] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("blog_posts").select("id", { count: "exact", head: true }),
+    supabase.from("quiz_attempts").select("id", { count: "exact", head: true }),
+    supabase.from("learning_sessions").select("total_seconds"),
+  ]);
+  const rows = (focus.data ?? []) as Array<{ total_seconds?: unknown }>;
+  return {
+    totalUsers: users.count ?? 0,
+    totalPosts: posts.count ?? 0,
+    totalQuizzes: quizzes.count ?? 0,
+    totalFocusSeconds: focus.error
+      ? 0
+      : rows.reduce((sum, r) => sum + (Number(r.total_seconds) || 0), 0),
+  };
+}
+
+/** Newest quiz attempts for the Recent Activity list. */
+export async function fetchRecentAttempts(
+  limit = 5,
+): Promise<RecentAttempt[]> {
+  const { data, error } = await supabase
+    .from("quiz_attempts")
+    .select("id, quiz_id, score, is_correct, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  return rows.map((r) => ({
+    id: String(r.id ?? ""),
+    quizId: String(r.quiz_id ?? ""),
+    score: Number(r.score) || 0,
+    isCorrect: Boolean(r.is_correct),
+    createdAt: String(r.created_at ?? ""),
+  }));
+}
