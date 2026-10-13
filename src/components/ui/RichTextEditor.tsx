@@ -55,10 +55,7 @@ export function RichTextEditor({
       onChange(newValue);
       requestAnimationFrame(() => {
         ta.focus();
-        ta.setSelectionRange(
-          start + wrapChar.length,
-          end + wrapChar.length,
-        );
+        ta.setSelectionRange(start + wrapChar.length, end + wrapChar.length);
       });
     },
     [value, onChange],
@@ -82,10 +79,6 @@ export function RichTextEditor({
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === " " || e.key === "PageUp" || e.key === "PageDown") {
-      e.preventDefault();
-      e.stopPropagation();
-    }
     if ((e.ctrlKey || e.metaKey) && e.key === "b") {
       e.preventDefault();
       wrapSelection("**");
@@ -146,10 +139,10 @@ export function RichTextEditor({
         className="w-full resize-none bg-transparent px-4 py-3 font-mono text-sm text-white placeholder:text-white/25 focus:outline-none"
       />
 
-      {/* Status bar */}
+      {/* Status bar - theme matched */}
       <div
         className="flex items-center justify-end gap-3 border-t border-white/10 px-3 py-1 text-[11px] text-white/40"
-        style={{ backgroundColor: "#007acc" }}
+        style={{ backgroundColor: "#0a0a12" }}
       >
         <span>{lineCount} lines</span>
         <span>{charCount} chars</span>

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
+import "../../lib/monacoSetup";
 
 interface CodeEditorProps {
   value: string;
@@ -18,40 +19,16 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
-  const handleMount: OnMount = (editor) => {
+  const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     editor.focus();
-  };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === " " || e.key === "PageUp" || e.key === "PageDown") {
-      e.preventDefault();
-      e.stopPropagation();
-      editorRef.current?.focus();
-      if (e.key === " ") {
-        const ed = editorRef.current;
-        if (ed) {
-          const model = ed.getModel();
-          const pos = ed.getPosition();
-          if (model && pos) {
-            model.applyEdits([
-              {
-                range: {
-                  startLineNumber: pos.lineNumber,
-                  startColumn: pos.column,
-                  endLineNumber: pos.lineNumber,
-                  endColumn: pos.column,
-                },
-                text: " ",
-              },
-            ]);
-            ed.setPosition({
-              lineNumber: pos.lineNumber,
-              column: pos.column + 1,
-            });
-          }
-        }
-      }
+    // Ensure HTML auto-closing tags work via the language service
+    if (language === "html") {
+      monaco.languages.html.defaults.setOptions = {
+        format: { insertSpaces: true, tabSize: 2 },
+        suggest: { html5: true, svg: true },
+      };
     }
   };
 
@@ -65,7 +42,6 @@ export function CodeEditor({
         overscrollBehavior: "contain",
         overflow: "hidden",
       }}
-      onKeyDown={handleKeyDown}
     >
       <Editor
         height={height}
@@ -79,8 +55,9 @@ export function CodeEditor({
             readOnly: disabled,
             cursorStyle: "line",
             autoClosingBrackets: "always",
-            autoClosingTags: "always",
             autoClosingQuotes: "always",
+            autoClosingDelete: "always",
+            autoSurround: "languageDefined",
             formatOnType: true,
             formatOnPaste: true,
             minimap: { enabled: false },
@@ -91,6 +68,10 @@ export function CodeEditor({
             quickSuggestions: { other: true, comments: true, strings: true },
             suggestOnTriggerCharacters: true,
             tabCompletion: "on",
+            snippetSuggestions: "inline",
+            wordBasedSuggestions: "currentDocument",
+            acceptSuggestionOnEnter: "on",
+            tabSize: 2,
             overviewRulerLanes: 0,
             hideCursorInOverviewRuler: true,
             scrollbar: { vertical: "hidden", horizontal: "hidden" },
