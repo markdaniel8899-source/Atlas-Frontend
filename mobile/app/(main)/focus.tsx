@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { View, Text, Pressable } from "react-native";
 import { scheduleSessionEndNotification } from "../../lib/notify";
 
 const FOCUS_MINUTES = 25;
@@ -39,40 +38,50 @@ export default function FocusScreen() {
   const seconds = secondsLeft % 60;
 
   return (
-    <View className="flex-1 items-center justify-center bg-background px-8">
-      <Text className="text-sm font-medium uppercase tracking-widest text-white/50">
+    <View className="flex-1 bg-background px-6">
+      <Text className="text-2xl font-bold text-text text-center mt-16">
         Focus Session
       </Text>
+      <Text className="text-gray-400 text-center mt-2">
+        Stay focused, earn XP
+      </Text>
 
-      <View className="my-10 h-64 w-64 items-center justify-center rounded-full border-4 border-gray-800">
-        <Text className="text-6xl font-bold text-text">
-          {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
+      {/* Timer Display */}
+      <View className="items-center mt-12">
+        <View className="w-64 h-64 rounded-full border-8 border-gray-800 items-center justify-center bg-surface">
+          <Text className="text-6xl font-bold text-primary">
+            {String(minutes).padStart(2, "0")}:
+            {String(seconds).padStart(2, "0")}
+          </Text>
+          <Text className="text-gray-400 mt-2 text-sm">25 min focus</Text>
+        </View>
+      </View>
+
+      {/* Controls */}
+      <Pressable
+        onPress={() => setRunning(!running)}
+        className="bg-primary py-4 rounded-xl mt-8 active:opacity-80"
+      >
+        <Text className="text-white text-center font-bold text-base">
+          {running ? "⏸ Pause" : "▶ Start Focus"}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={reset}
+        className="bg-surface border border-primary py-4 rounded-xl mt-4 active:opacity-80"
+      >
+        <Text className="text-primary text-center font-bold text-base">
+          🔄 Take a Break
+        </Text>
+      </Pressable>
+
+      {/* Info */}
+      <View className="bg-surface rounded-xl p-4 mt-8 border border-gray-800">
+        <Text className="text-gray-400 text-center text-sm">
+          Complete focus sessions to earn XP and maintain your streak!
         </Text>
       </View>
-
-      <View className="flex-row items-center gap-6">
-        <Pressable
-          onPress={reset}
-          className="h-14 w-14 items-center justify-center rounded-full border border-gray-800 bg-surface active:opacity-80"
-        >
-          <MaterialIcons name="refresh" size={22} color="#a1a1aa" />
-        </Pressable>
-        <Pressable
-          onPress={() => setRunning(!running)}
-          className="h-20 w-20 items-center justify-center rounded-full bg-primary active:opacity-80"
-        >
-          <MaterialIcons
-            name={running ? "pause" : "play-arrow"}
-            size={36}
-            color="#fff"
-          />
-        </Pressable>
-        <View className="h-14 w-14" />
-      </View>
-
-      <Text className="mt-8 text-sm text-white/50">
-        {running ? "Stay focused..." : "Press play to start"}
-      </Text>
     </View>
   );
 }
