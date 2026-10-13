@@ -8,7 +8,6 @@ interface QuestionInputProps {
   question: QuizQuestion;
   answer: QuizAnswer;
   onChange: (answer: QuizAnswer) => void;
-  onSubmit?: () => void;
   disabled?: boolean;
 }
 
@@ -27,7 +26,6 @@ export function QuestionInput({
   question,
   answer,
   onChange,
-  onSubmit,
   disabled = false,
 }: QuestionInputProps) {
   if (question.kind === "mcq") {
@@ -87,7 +85,6 @@ export function QuestionInput({
           onChange={onChange}
           language={question.language || "plaintext"}
           height="320px"
-          onSubmit={onSubmit}
           disabled={disabled}
         />
       </div>
@@ -133,7 +130,6 @@ export function QuestionInput({
               onChange={(v) => onChange(`${lineText}\n${v}`)}
               language={question.language || "plaintext"}
               height="120px"
-              onSubmit={onSubmit}
               disabled={disabled}
             />
           </div>
@@ -159,7 +155,6 @@ export function QuestionInput({
           onChange={onChange}
           language="plaintext"
           height="100px"
-          onSubmit={onSubmit}
           disabled={disabled}
         />
       </div>

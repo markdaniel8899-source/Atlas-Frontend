@@ -310,7 +310,6 @@ export default function QuizPage() {
                 question={question}
                 answer={answer}
                 onChange={setAnswer}
-                onSubmit={submitAnswer}
                 disabled={Boolean(evaluation) || evaluating}
               />
             </div>
