@@ -5,7 +5,7 @@ import { scheduleSessionEndNotification } from "../../lib/notify";
 
 const FOCUS_MINUTES = 25;
 
-export default function Focus() {
+export default function FocusScreen() {
   const [secondsLeft, setSecondsLeft] = useState(FOCUS_MINUTES * 60);
   const [running, setRunning] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -19,12 +19,7 @@ export default function Focus() {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           setRunning(false);
-          // Schedule notification when session ends
-          void scheduleSessionEndNotification(
-            1,
-            "Focus session done!",
-            "Great job! Take a break.",
-          );
+          scheduleSessionEndNotification(0);
           return FOCUS_MINUTES * 60;
         }
         return prev - 1;
@@ -42,8 +37,6 @@ export default function Focus() {
 
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
-  const total = FOCUS_MINUTES * 60;
-  const progress = ((total - secondsLeft) / total) * 100;
 
   return (
     <View className="flex-1 items-center justify-center bg-background px-8">
@@ -54,9 +47,6 @@ export default function Focus() {
       <View className="my-10 h-64 w-64 items-center justify-center rounded-full border-4 border-gray-800">
         <Text className="text-6xl font-bold text-text">
           {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
-        </Text>
-        <Text className="mt-2 text-sm text-white/50">
-          {Math.round(progress)}% complete
         </Text>
       </View>
 
