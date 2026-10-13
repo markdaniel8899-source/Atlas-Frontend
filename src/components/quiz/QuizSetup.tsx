@@ -320,6 +320,10 @@ export function QuizSetup({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!navigator.onLine) {
+      setLocalError("No internet connection. Please check your network and try again.");
+      return;
+    }
     // A selected course is enough: the backend scopes the quiz to it even
     // when no focus text is typed.
     if (resolvedTopic.length < 2 && !course) {

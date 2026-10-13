@@ -47,7 +47,19 @@ const ACHIEVEMENT_TITLES: Record<string, string> = {
 
 type Phase = "setup" | "loading" | "running" | "done";
 
+const OFFLINE_MESSAGE = "No internet connection. Please check your network and try again.";
+
+function isOfflineError(error: unknown): boolean {
+  if (!navigator.onLine) return true;
+  if (error instanceof TypeError) {
+    const msg = error.message.toLowerCase();
+    return msg.includes("fetch") || msg.includes("network") || msg.includes("failed");
+  }
+  return false;
+}
+
 function classify(error: unknown): string {
+  if (isOfflineError(error)) return OFFLINE_MESSAGE;
   if (error instanceof AiError) {
     if (error.status === 0 || error.status === 503) {
       return "Something went wrong. Please try again.";
@@ -80,6 +92,10 @@ export default function QuizPage() {
   const summary = summarize(attempts);
 
   const generate = async (input: GenerateInput) => {
+    if (!navigator.onLine) {
+      setError(OFFLINE_MESSAGE);
+      return;
+    }
     setBusy(true);
     setError(null);
     setPhase("loading");
@@ -110,6 +126,10 @@ export default function QuizPage() {
 
   const submitAnswer = async () => {
     if (!question || evaluation || !canSubmit(question, answer)) return;
+    if (!navigator.onLine) {
+      setError(OFFLINE_MESSAGE);
+      return;
+    }
     setEvaluating(true);
     setError(null);
     try {
