@@ -1,6 +1,7 @@
 import { CodeBlock } from "./CodeBlock";
 import { RichText } from "./RichText";
 import { CodeEditor } from "../ui/CodeEditor";
+import { RichTextEditor } from "../ui/RichTextEditor";
 import type { QuizQuestion } from "../../lib/ai";
 import type { QuizAnswer } from "../../lib/quiz";
 
@@ -150,11 +151,10 @@ export function QuestionInput({
       </div>
       <div>
         <Legend>Predicted output</Legend>
-        <CodeEditor
+        <RichTextEditor
           value={String(answer ?? "")}
           onChange={onChange}
-          language="plaintext"
-          height="100px"
+          height="140px"
           disabled={disabled}
         />
       </div>

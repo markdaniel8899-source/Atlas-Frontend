@@ -23,6 +23,38 @@ export function CodeEditor({
     editor.focus();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === " " || e.key === "PageUp" || e.key === "PageDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      editorRef.current?.focus();
+      if (e.key === " ") {
+        const ed = editorRef.current;
+        if (ed) {
+          const model = ed.getModel();
+          const pos = ed.getPosition();
+          if (model && pos) {
+            model.applyEdits([
+              {
+                range: {
+                  startLineNumber: pos.lineNumber,
+                  startColumn: pos.column,
+                  endLineNumber: pos.lineNumber,
+                  endColumn: pos.column,
+                },
+                text: " ",
+              },
+            ]);
+            ed.setPosition({
+              lineNumber: pos.lineNumber,
+              column: pos.column + 1,
+            });
+          }
+        }
+      }
+    }
+  };
+
   return (
     <div
       className="overflow-hidden rounded-xl border border-white/10"
@@ -33,6 +65,7 @@ export function CodeEditor({
         overscrollBehavior: "contain",
         overflow: "hidden",
       }}
+      onKeyDown={handleKeyDown}
     >
       <Editor
         height={height}
