@@ -25,9 +25,14 @@ export function CodeEditor({
 
   return (
     <div
-      tabIndex={0}
       className="overflow-hidden rounded-xl border border-white/10"
-      style={{ backgroundColor: "#1e1e1e", width: "100%", height: "100%" }}
+      style={{
+        backgroundColor: "#1e1e1e",
+        width: "100%",
+        height: "100%",
+        overscrollBehavior: "contain",
+        overflow: "hidden",
+      }}
     >
       <Editor
         height={height}
