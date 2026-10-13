@@ -1,4 +1,5 @@
-import Editor from "@monaco-editor/react";
+import { useRef } from "react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 
 interface CodeEditorProps {
   value: string;
@@ -15,14 +16,26 @@ export function CodeEditor({
   height = "200px",
   disabled = false,
 }: CodeEditorProps) {
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+
+  const handleMount: OnMount = (editor) => {
+    editorRef.current = editor;
+    editor.focus();
+  };
+
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-[#1e1e1e]">
+    <div
+      tabIndex={0}
+      className="overflow-hidden rounded-xl border border-white/10"
+      style={{ backgroundColor: "#1e1e1e", width: "100%", height: "100%" }}
+    >
       <Editor
         height={height}
         language={language}
         value={value}
         theme="vs-dark"
         onChange={(v) => onChange(v ?? "")}
+        onMount={handleMount}
         options={
           {
             readOnly: disabled,
