@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Plus, StickyNote, Trash2, X } from "lucide-react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const STORAGE_KEY = "atlas_notes";
 
@@ -77,7 +77,7 @@ export default function Notes() {
         <View className="flex-row items-center justify-between pb-4">
           <Text className="text-lg font-semibold text-text">New Note</Text>
           <Pressable onPress={() => setEditorOpen(false)} className="p-2">
-            <X size={22} stroke="#a1a1aa" />
+            <MaterialIcons name="close" size={22} color="#a1a1aa" />
           </Pressable>
         </View>
         <TextInput
@@ -85,7 +85,7 @@ export default function Notes() {
           onChangeText={setTitle}
           placeholder="Title"
           placeholderTextColor="#52525b"
-          className="rounded-2xl border border-border bg-surface px-4 py-3 text-lg font-semibold text-text"
+          className="rounded-2xl border border-white/10 bg-surface px-4 py-3 text-lg font-semibold text-text"
         />
         <TextInput
           value={body}
@@ -94,7 +94,7 @@ export default function Notes() {
           placeholderTextColor="#52525b"
           multiline
           textAlignVertical="top"
-          className="mt-3 flex-1 rounded-2xl border border-border bg-surface px-4 py-3 text-base leading-relaxed text-text"
+          className="mt-3 flex-1 rounded-2xl border border-white/10 bg-surface px-4 py-3 text-base leading-relaxed text-text"
         />
         <Pressable
           onPress={() => void handleSave()}
@@ -114,7 +114,7 @@ export default function Notes() {
           onPress={() => setEditorOpen(true)}
           className="flex-row items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 active:opacity-80"
         >
-          <Plus size={18} color="#fff" />
+          <MaterialIcons name="add" size={18} color="#fff" />
           <Text className="text-sm font-semibold text-white">New</Text>
         </Pressable>
       </View>
@@ -125,11 +125,9 @@ export default function Notes() {
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }}
         ListEmptyComponent={
           <View className="items-center pt-20">
-            <StickyNote size={48} stroke="#27272a" />
-            <Text className="mt-4 text-base text-text-muted">
-              No notes yet
-            </Text>
-            <Text className="mt-1 text-sm text-text-muted/60">
+            <MaterialIcons name="sticky-note-2" size={48} color="#27272a" />
+            <Text className="mt-4 text-base text-white/50">No notes yet</Text>
+            <Text className="mt-1 text-sm text-white/30">
               Tap + to create your first note
             </Text>
           </View>
@@ -137,7 +135,7 @@ export default function Notes() {
         renderItem={({ item }) => (
           <Pressable
             onLongPress={() => handleDelete(item.id)}
-            className="mb-3 rounded-2xl border border-border bg-surface p-4"
+            className="mb-3 rounded-2xl border border-white/10 bg-surface p-4"
           >
             <View className="flex-row items-center justify-between">
               <Text
@@ -147,20 +145,17 @@ export default function Notes() {
                 {item.title}
               </Text>
               <Pressable onPress={() => handleDelete(item.id)} className="p-1">
-                <Trash2 size={16} stroke="#52525b" />
+                <MaterialIcons name="delete-outline" size={18} color="#52525b" />
               </Pressable>
             </View>
             {item.body ? (
               <Text
-                className="mt-2 text-sm leading-relaxed text-text-muted"
+                className="mt-2 text-sm leading-relaxed text-white/50"
                 numberOfLines={3}
               >
                 {item.body}
               </Text>
             ) : null}
-            <Text className="mt-2 text-xs text-text-muted/40">
-              {new Date(item.createdAt).toLocaleDateString()}
-            </Text>
           </Pressable>
         )}
       />

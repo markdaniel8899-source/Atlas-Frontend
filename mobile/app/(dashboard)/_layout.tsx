@@ -1,5 +1,5 @@
 import { Redirect, Tabs } from "expo-router";
-import { BookOpen, Home, StickyNote, Timer } from "lucide-react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../../src/lib/auth";
 
 export default function DashboardLayout() {
@@ -15,11 +15,9 @@ export default function DashboardLayout() {
         tabBarStyle: {
           backgroundColor: "#18181b",
           borderTopColor: "#27272a",
-          borderTopWidth: 1,
         },
         tabBarActiveTintColor: "#818cf8",
         tabBarInactiveTintColor: "#52525b",
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "500" },
       }}
     >
       <Tabs.Screen
@@ -27,7 +25,7 @@ export default function DashboardLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
-            <Home size={22} stroke={color} />
+            <MaterialIcons name="home" size={22} color={color} />
           ),
         }}
       />
@@ -36,7 +34,7 @@ export default function DashboardLayout() {
         options={{
           title: "Notes",
           tabBarIcon: ({ color }) => (
-            <StickyNote size={22} stroke={color} />
+            <MaterialIcons name="sticky-note-2" size={22} color={color} />
           ),
         }}
       />
@@ -45,16 +43,7 @@ export default function DashboardLayout() {
         options={{
           title: "Focus",
           tabBarIcon: ({ color }) => (
-            <Timer size={22} stroke={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="quiz"
-        options={{
-          title: "Quiz",
-          tabBarIcon: ({ color }) => (
-            <BookOpen size={22} stroke={color} />
+            <MaterialIcons name="timer" size={22} color={color} />
           ),
         }}
       />

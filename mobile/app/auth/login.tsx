@@ -9,13 +9,12 @@ import {
   View,
 } from "react-native";
 import { Link, router } from "expo-router";
-import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../src/lib/supabase";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -46,22 +45,20 @@ export default function Login() {
           onPress={() => router.back()}
           className="absolute top-12 left-8 flex-row items-center gap-1"
         >
-          <ArrowLeft size={20} stroke="#a1a1aa" />
-          <Text className="text-sm text-text-muted">Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#a1a1aa" />
+          <Text className="text-sm text-white/50">Back</Text>
         </Pressable>
 
         <View className="mb-10">
           <Text className="text-3xl font-bold text-text">Welcome back</Text>
-          <Text className="mt-2 text-base text-text-muted">
-            Sign in to continue your learning journey
+          <Text className="mt-2 text-base text-white/60">
+            Sign in to continue
           </Text>
         </View>
 
         <View className="gap-4">
           <View>
-            <Text className="mb-2 text-sm font-medium text-text-muted">
-              Email
-            </Text>
+            <Text className="mb-2 text-sm font-medium text-white/50">Email</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -69,62 +66,45 @@ export default function Login() {
               placeholderTextColor="#52525b"
               autoCapitalize="none"
               keyboardType="email-address"
-              className="rounded-2xl border border-border bg-surface px-4 py-4 text-base text-text"
+              className="rounded-2xl border border-white/10 bg-surface px-4 py-4 text-base text-text"
             />
           </View>
 
           <View>
-            <Text className="mb-2 text-sm font-medium text-text-muted">
+            <Text className="mb-2 text-sm font-medium text-white/50">
               Password
             </Text>
-            <View className="relative">
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor="#52525b"
-                secureTextEntry={!showPassword}
-                className="rounded-2xl border border-border bg-surface px-4 py-4 pr-12 text-base text-text"
-              />
-              <Pressable
-                onPress={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-4"
-              >
-                {showPassword ? (
-                  <EyeOff size={20} stroke="#52525b" />
-                ) : (
-                  <Eye size={20} stroke="#52525b" />
-                )}
-              </Pressable>
-            </View>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor="#52525b"
+              secureTextEntry
+              className="rounded-2xl border border-white/10 bg-surface px-4 py-4 text-base text-text"
+            />
           </View>
 
           <Link href="/auth/forgot-password" asChild>
             <Pressable className="self-end py-1">
-              <Text className="text-sm text-primary-light">Forgot password?</Text>
+              <Text className="text-sm text-primary">Forgot password?</Text>
             </Pressable>
           </Link>
 
           <Pressable
             onPress={() => void handleLogin()}
             disabled={loading}
-            className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4 active:opacity-80"
+            className="mt-2 items-center rounded-2xl bg-primary py-4 active:opacity-80"
           >
-            {loading && <Loader2 size={20} stroke="#fff" />}
             <Text className="text-base font-semibold text-white">
               {loading ? "Signing in..." : "Sign In"}
             </Text>
           </Pressable>
 
           <View className="mt-6 flex-row items-center justify-center gap-1">
-            <Text className="text-sm text-text-muted">
-              Don't have an account?
-            </Text>
+            <Text className="text-sm text-white/50">Don't have an account?</Text>
             <Link href="/auth/signup" asChild>
               <Pressable>
-                <Text className="text-sm font-medium text-primary-light">
-                  {" "}Sign Up
-                </Text>
+                <Text className="text-sm font-medium text-primary"> Sign Up</Text>
               </Pressable>
             </Link>
           </View>
