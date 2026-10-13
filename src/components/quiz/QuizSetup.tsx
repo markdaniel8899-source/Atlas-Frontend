@@ -436,6 +436,9 @@ export function QuizSetup({
               value={customTopic}
               onChange={(event) => setCustomTopic(event.target.value)}
               maxLength={300}
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               placeholder={
                 course
                   ? "e.g. loops and functions only"

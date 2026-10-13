@@ -12,6 +12,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { getUser } from "../../lib/auth";
 import { fetchProfile, notifyProfileChanged, updateProfile } from "../../lib/db/profile";
 import { apiSelectAvatar } from "../../lib/gamificationApi";
@@ -53,15 +54,17 @@ export default function SettingsPage() {
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [courseBusy, setCourseBusy] = useState(false);
   const [courseError, setCourseError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Course | null>(null);
 
   const deleteCourseWithConfirm = async (course: Course) => {
     if (courseBusy) return;
+    setConfirmTarget(course);
+  };
 
-    const confirmed = window.confirm(
-      `Delete "${course.title}"?\n\nThis also removes its roadmap, levels, topics and notes. This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
+  const confirmDeleteCourse = async () => {
+    const course = confirmTarget;
+    if (!course) return;
+    setConfirmTarget(null);
     setCourseBusy(true);
     setCourseError(null);
     const removed = await deleteCourse(course.id);
@@ -572,6 +575,14 @@ export default function SettingsPage() {
         userId={user?.id ?? ""}
         onClose={() => setAvatarPickerOpen(false)}
         onSelect={handleAvatarSelected}
+      />
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Delete course?"
+        message={`This also removes its roadmap, levels, topics and notes for "${confirmTarget?.title ?? ""}". This cannot be undone.`}
+        onConfirm={() => void confirmDeleteCourse()}
+        onCancel={() => setConfirmTarget(null)}
       />
     </div>
   );

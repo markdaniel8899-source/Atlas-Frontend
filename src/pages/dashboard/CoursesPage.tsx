@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Card } from "../../components/ui/Card";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { RevealText } from "../../components/RevealText";
 import { CourseEditorModal } from "../../components/courses/CourseEditorModal";
 import { useCourses } from "../../hooks/useCourses";
@@ -301,6 +302,7 @@ export default function CoursesPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Course | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Course | null>(null);
   const [roadmaps, setRoadmaps] = useState<
     Map<number, RoadmapCourseProgress>
   >(() => new Map());
@@ -395,12 +397,13 @@ export default function CoursesPage() {
 
   const deleteCourseWithConfirm = async (course: Course) => {
     if (busy) return;
+    setConfirmTarget(course);
+  };
 
-    const confirmed = window.confirm(
-      `Are you sure? Deleting this course will also permanently delete its associated roadmap, progress and notes.\n\n"${course.title}"`,
-    );
-    if (!confirmed) return;
-
+  const confirmDeleteCourse = async () => {
+    const course = confirmTarget;
+    if (!course) return;
+    setConfirmTarget(null);
     setBusy(true);
     setError(null);
     const removed = await deleteCourse(course.id);
@@ -578,6 +581,14 @@ export default function CoursesPage() {
           void reload();
           void loadRoadmaps();
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmTarget !== null}
+        title="Delete course?"
+        message={`This will also permanently delete its associated roadmap, progress and notes for "${confirmTarget?.title ?? ""}". This cannot be undone.`}
+        onConfirm={() => void confirmDeleteCourse()}
+        onCancel={() => setConfirmTarget(null)}
       />
     </div>
   );

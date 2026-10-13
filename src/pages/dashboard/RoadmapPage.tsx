@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { RoadmapBuilder } from "../../components/roadmap/RoadmapBuilder";
 import type { RoadmapRequestInput } from "../../components/roadmap/RoadmapBuilder";
 import { BossConfetti } from "../../components/roadmap/BossConfetti";
@@ -195,6 +196,7 @@ export default function RoadmapPage() {
   const [nodeBusy, setNodeBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showBuilder, setShowBuilder] = useState(false);
   const [confetti, setConfetti] = useState(0);
   /** Live chunked-generation status, e.g. "AI is designing Phase 2...". */
@@ -500,13 +502,13 @@ export default function RoadmapPage() {
 
   const removeRoadmap = useCallback(async () => {
     if (!graph?.id || busy || nodeBusy) return;
-    const confirmed = window.confirm(
-      `Delete this roadmap permanently? This cannot be undone.\n\n"${roadmapDisplayTitle(graph)}"`,
-    );
-    if (!confirmed) return;
+    setShowConfirmDelete(true);
+  }, [graph, busy, nodeBusy]);
+
+  const confirmRemoveRoadmap = useCallback(async () => {
+    if (!graph?.id) return;
+    setShowConfirmDelete(false);
     setError(null);
-    // Suppress the change event fired by our own delete; state is cleared
-    // directly below so the hidden sibling views don't refetch mid-removal.
     busyRef.current = true;
     const removed = await deleteRoadmap(graph.id).catch(() => false);
     busyRef.current = false;
@@ -517,7 +519,7 @@ export default function RoadmapPage() {
     setSelected(null);
     setShowBuilder(false);
     setGraph(null);
-  }, [graph, busy, nodeBusy]);
+  }, [graph]);
 
   const progress = useMemo(
     () => (graph ? progressOf(graph) : null),
@@ -865,6 +867,14 @@ export default function RoadmapPage() {
       </AnimatePresence>
 
       {confetti > 0 && <BossConfetti key={confetti} />}
+
+      <ConfirmDialog
+        open={showConfirmDelete}
+        title="Delete roadmap?"
+        message={`This will permanently delete "${graph ? roadmapDisplayTitle(graph) : ""}". This cannot be undone.`}
+        onConfirm={() => void confirmRemoveRoadmap()}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
     </div>
   );
 }
