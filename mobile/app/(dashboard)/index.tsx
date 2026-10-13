@@ -9,8 +9,8 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react-native";
-import { useAuth } from "../../lib/auth";
-import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../src/lib/auth";
+import { supabase } from "../../src/lib/supabase";
 
 interface Stats {
   xp: number;

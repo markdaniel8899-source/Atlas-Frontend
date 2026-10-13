@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from "expo-router";
 import { BookOpen, Home, StickyNote, Timer } from "lucide-react-native";
-import { useAuth } from "../../lib/auth";
+import { useAuth } from "../../src/lib/auth";
 
 export default function DashboardLayout() {
   const { session, loading } = useAuth();

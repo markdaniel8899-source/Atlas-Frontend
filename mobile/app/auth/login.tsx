@@ -10,47 +10,30 @@ import {
 } from "react-native";
 import { Link, router } from "expo-router";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react-native";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../src/lib/supabase";
 
-export default function Signup() {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
-    if (!email.trim() || !password || !confirmPassword) {
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters.");
-      return;
-    }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
     setLoading(false);
     if (error) {
-      Alert.alert("Signup failed", error.message);
+      Alert.alert("Login failed", error.message);
       return;
     }
-    if (data.session) {
-      router.replace("/(dashboard)");
-    } else {
-      Alert.alert(
-        "Check your email",
-        "We sent you a verification link. Please verify your email, then sign in.",
-      );
-      router.replace("/auth/login");
-    }
+    router.replace("/(dashboard)");
   };
 
   return (
@@ -68,9 +51,9 @@ export default function Signup() {
         </Pressable>
 
         <View className="mb-10">
-          <Text className="text-3xl font-bold text-text">Create account</Text>
+          <Text className="text-3xl font-bold text-text">Welcome back</Text>
           <Text className="mt-2 text-base text-text-muted">
-            Start your learning journey today
+            Sign in to continue your learning journey
           </Text>
         </View>
 
@@ -116,39 +99,31 @@ export default function Signup() {
             </View>
           </View>
 
-          <View>
-            <Text className="mb-2 text-sm font-medium text-text-muted">
-              Confirm Password
-            </Text>
-            <TextInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="••••••••"
-              placeholderTextColor="#52525b"
-              secureTextEntry={!showPassword}
-              className="rounded-2xl border border-border bg-surface px-4 py-4 text-base text-text"
-            />
-          </View>
+          <Link href="/auth/forgot-password" asChild>
+            <Pressable className="self-end py-1">
+              <Text className="text-sm text-primary-light">Forgot password?</Text>
+            </Pressable>
+          </Link>
 
           <Pressable
-            onPress={() => void handleSignup()}
+            onPress={() => void handleLogin()}
             disabled={loading}
             className="mt-2 flex-row items-center justify-center gap-2 rounded-2xl bg-primary py-4 active:opacity-80"
           >
             {loading && <Loader2 size={20} stroke="#fff" />}
             <Text className="text-base font-semibold text-white">
-              {loading ? "Creating account..." : "Sign Up"}
+              {loading ? "Signing in..." : "Sign In"}
             </Text>
           </Pressable>
 
           <View className="mt-6 flex-row items-center justify-center gap-1">
             <Text className="text-sm text-text-muted">
-              Already have an account?
+              Don't have an account?
             </Text>
-            <Link href="/auth/login" asChild>
+            <Link href="/auth/signup" asChild>
               <Pressable>
                 <Text className="text-sm font-medium text-primary-light">
-                  {" "}Sign In
+                  {" "}Sign Up
                 </Text>
               </Pressable>
             </Link>

@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { ArrowLeft, Loader2 } from "lucide-react-native";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../src/lib/supabase";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
