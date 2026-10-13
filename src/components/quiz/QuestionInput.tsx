@@ -1,5 +1,6 @@
 import { CodeBlock } from "./CodeBlock";
 import { RichText } from "./RichText";
+import { CodeEditor } from "../ui/CodeEditor";
 import type { QuizQuestion } from "../../lib/ai";
 import type { QuizAnswer } from "../../lib/quiz";
 
@@ -7,14 +8,12 @@ interface QuestionInputProps {
   question: QuizQuestion;
   answer: QuizAnswer;
   onChange: (answer: QuizAnswer) => void;
+  onSubmit?: () => void;
   disabled?: boolean;
 }
 
 const INPUT =
   "w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-white/25 transition-colors focus:border-star/45 focus:outline-none disabled:opacity-60";
-
-const AREA =
-  "w-full resize-y rounded-xl border border-white/10 bg-black/40 px-4 py-3 font-mono text-[13px] leading-relaxed text-white/85 placeholder:text-white/25 transition-colors focus:border-star/45 focus:outline-none disabled:opacity-60";
 
 function Legend({ children }: { children: React.ReactNode }) {
   return (
@@ -28,6 +27,7 @@ export function QuestionInput({
   question,
   answer,
   onChange,
+  onSubmit,
   disabled = false,
 }: QuestionInputProps) {
   if (question.kind === "mcq") {
@@ -82,14 +82,13 @@ export function QuestionInput({
         <Legend>
           {question.language ? `Your solution - ${question.language}` : "Your solution"}
         </Legend>
-        <textarea
+        <CodeEditor
           value={String(answer ?? "")}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={onChange}
+          language={question.language || "plaintext"}
+          height="320px"
+          onSubmit={onSubmit}
           disabled={disabled}
-          spellCheck={false}
-          rows={10}
-          aria-label="Your code"
-          className={`${AREA} resize-none`}
         />
       </div>
     );
@@ -129,15 +128,13 @@ export function QuestionInput({
           </div>
           <div>
             <Legend>The fix</Legend>
-            <textarea
+            <CodeEditor
               value={fixText}
+              onChange={(v) => onChange(`${lineText}\n${v}`)}
+              language={question.language || "plaintext"}
+              height="120px"
+              onSubmit={onSubmit}
               disabled={disabled}
-              rows={5}
-              spellCheck={false}
-              onChange={(event) => onChange(`${lineText}\n${event.target.value}`)}
-              aria-label="Corrected line"
-              placeholder="What that line should say instead"
-              className={AREA}
             />
           </div>
         </div>
@@ -157,14 +154,13 @@ export function QuestionInput({
       </div>
       <div>
         <Legend>Predicted output</Legend>
-        <input
-          type="text"
+        <CodeEditor
           value={String(answer ?? "")}
+          onChange={onChange}
+          language="plaintext"
+          height="100px"
+          onSubmit={onSubmit}
           disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          aria-label="Predicted output"
-          placeholder="e.g. 42"
-          className={`${INPUT} font-mono`}
         />
       </div>
     </div>
