@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { CurtainLink } from "../PageCurtain";
 import { type BlogPost } from "../../lib/blog";
 
 const FALLBACK_IMAGE = "/fallback-blog.svg";
+
+const GRADIENT_PLACEHOLDER =
+  "bg-[radial-gradient(70%_60%_at_50%_20%,rgba(207,158,255,0.25),transparent_70%)]";
 
 function CoverImage({
   post,
@@ -13,25 +17,25 @@ function CoverImage({
   priority: boolean;
   className: string;
 }) {
-  if (!post.cover_image_url) {
-    return (
-      <div
-        className={`bg-[radial-gradient(70%_60%_at_50%_20%,rgba(207,158,255,0.25),transparent_70%)] ${className}`}
-      />
-    );
+  // 0 = original URL, 1 = bundled fallback, 2 = plain gradient (fallback
+  // itself failed) — so a dead image URL never leaves a broken icon.
+  const [stage, setStage] = useState(0);
+  const source = post.cover_image_url?.trim();
+
+  if (!source || stage === 2) {
+    return <div className={`${GRADIENT_PLACEHOLDER} ${className}`} />;
   }
+
   return (
     <img
-      src={post.cover_image_url}
+      src={stage === 0 ? source : FALLBACK_IMAGE}
       alt={post.title}
       loading={priority ? "eager" : "lazy"}
       width={1200}
       height={800}
       decoding="async"
-      onError={(e) => {
-        const img = e.currentTarget;
-        if (!img.src.endsWith(FALLBACK_IMAGE)) img.src = FALLBACK_IMAGE;
-      }}
+      referrerPolicy="no-referrer"
+      onError={() => setStage((current) => (current === 0 ? 1 : 2))}
       className={className}
     />
   );

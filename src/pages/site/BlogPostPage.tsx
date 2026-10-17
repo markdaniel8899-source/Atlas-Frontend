@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -101,6 +101,27 @@ export default function BlogPostPage() {
     () => (post ? sanitizeHtml(tidyDashes(post.content)) : ""),
     [post],
   );
+
+  // In-article images render through dangerouslySetInnerHTML, so their
+  // onError has to be wired manually: swap dead URLs for the fallback
+  // (including ones that already failed before this effect ran).
+  const articleRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = articleRef.current;
+    if (!root) return;
+    const images = Array.from(root.querySelectorAll("img"));
+    const restore = images.map((img) => {
+      const onError = () => {
+        if (!img.src.endsWith("/fallback-blog.svg")) {
+          img.src = "/fallback-blog.svg";
+        }
+      };
+      img.addEventListener("error", onError);
+      if (img.complete && img.naturalWidth === 0) onError();
+      return () => img.removeEventListener("error", onError);
+    });
+    return () => restore.forEach((remove) => remove());
+  }, [html]);
 
   if (post === undefined) {
     return (
@@ -243,7 +264,11 @@ export default function BlogPostPage() {
 
       <article>
         <Reveal delay={0.16}>
-          <div className={PROSE_CLASS} dangerouslySetInnerHTML={{ __html: html }} />
+          <div
+            ref={articleRef}
+            className={PROSE_CLASS}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
         </Reveal>
 
         <Reveal delay={0.1}>

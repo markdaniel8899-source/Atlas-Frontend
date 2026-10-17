@@ -25,6 +25,15 @@ export function tidyDashes(text: string): string {
   return text.replace(/\s*—\s*/g, ", ").replace(/,\s*,/g, ",");
 }
 
+/** Trims the URL and upgrades plain http to https: mixed-content images are
+ *  blocked on the deployed https site and render as broken placeholders. */
+function normalizeImageUrl(value: unknown): string | null {
+  if (!value) return null;
+  const url = String(value).trim();
+  if (!url) return null;
+  return url.startsWith("http://") ? `https://${url.slice(7)}` : url;
+}
+
 function normalize(row: Record<string, unknown>): BlogPost {
   return {
     id: String(row.id ?? ""),
@@ -32,12 +41,15 @@ function normalize(row: Record<string, unknown>): BlogPost {
     slug: String(row.slug ?? ""),
     excerpt: tidyDashes(String(row.excerpt ?? "")),
     content: String(row.content ?? ""),
-    cover_image_url: row.cover_image_url ? String(row.cover_image_url) : null,
+    cover_image_url: normalizeImageUrl(row.cover_image_url),
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     keywords: Array.isArray(row.keywords) ? row.keywords.map(String) : [],
     published_at: String(row.published_at ?? ""),
     content_images: Array.isArray(row.content_images)
-      ? (row.content_images as ContentImage[])
+      ? (row.content_images as ContentImage[]).flatMap((img) => {
+          const url = normalizeImageUrl(img?.url);
+          return url ? [{ url, caption: String(img?.caption ?? "") }] : [];
+        })
       : [],
   };
 }

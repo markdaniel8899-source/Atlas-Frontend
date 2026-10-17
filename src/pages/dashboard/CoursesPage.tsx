@@ -208,11 +208,11 @@ function CourseCard({
           )}
         </div>
 
-        <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
-          <span className="truncate text-xs text-white/45">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-white/[0.06] pt-4">
+          <span className="min-w-0 flex-1 truncate text-xs text-white/45">
             {next ? next.title : "Add a topic to begin"}
           </span>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {course.status === "completed" ? (
               <span className="flex items-center gap-1.5 text-xs text-[#cf9eff]/80">
                 <CheckCircle2 className="size-3.5" />

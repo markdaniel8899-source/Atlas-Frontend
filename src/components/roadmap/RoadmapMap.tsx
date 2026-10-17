@@ -196,7 +196,7 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
         }
       >
       <div
-        className="relative min-w-full"
+        className={scale >= 1 ? "relative mx-auto" : "relative min-w-full"}
         style={{
           width: layout.width,
           height: layout.height,

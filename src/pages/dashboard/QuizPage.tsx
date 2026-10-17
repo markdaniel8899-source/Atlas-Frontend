@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -19,7 +19,7 @@ import { KIND_ICON } from "../../components/quiz/icons";
 import { RevealText } from "../../components/RevealText";
 import { useCourses } from "../../hooks/useCourses";
 import { AiError } from "../../lib/ai";
-import type { Evaluation } from "../../lib/ai";
+import type { Evaluation, QuizResult } from "../../lib/ai";
 import {
   canSubmit,
   evaluateAnswer,
@@ -47,6 +47,16 @@ const ACHIEVEMENT_TITLES: Record<string, string> = {
 
 type Phase = "setup" | "loading" | "running" | "done";
 
+type QuizGeneration =
+  | { kind: "pending"; topic: string; promise: Promise<QuizResult> }
+  | { kind: "ready"; topic: string; result: QuizResult }
+  | { kind: "error"; error: unknown };
+
+// Module-scope store: an in-flight generation keeps running when the user
+// switches tabs or leaves the page, and its outcome is picked up when the
+// quiz page mounts again (so the UI always shows the correct state).
+let quizGeneration: QuizGeneration | null = null;
+
 const OFFLINE_MESSAGE = "No internet connection. Please check your network and try again.";
 
 function isOfflineError(error: unknown): boolean {
@@ -73,7 +83,9 @@ function classify(error: unknown): string {
 export default function QuizPage() {
   const { courses, loading: coursesLoading } = useCourses();
 
-  const [phase, setPhase] = useState<Phase>("setup");
+  const [phase, setPhase] = useState<Phase>(() =>
+    quizGeneration ? "loading" : "setup",
+  );
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState<QuizAnswer>(null);
@@ -83,6 +95,83 @@ export default function QuizPage() {
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
   const [unlocked, setUnlocked] = useState<string[]>([]);
+
+  /** True while this instance is mounted; a promise that settles after the
+   *  page is left stores its outcome in `quizGeneration` instead of setState. */
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const applyResult = useCallback(
+    (result: QuizResult, quizTopic: string): boolean => {
+      if (result.questions.length === 0) return false;
+      setAttempts(
+        result.questions.map((item) => ({
+          question: item,
+          answer: initialAnswer(item),
+          evaluation: null,
+        })),
+      );
+      setTopic(quizTopic);
+      setIndex(0);
+      setAnswer(initialAnswer(result.questions[0]));
+      setEvaluation(null);
+      setPhase("running");
+      return true;
+    },
+    [],
+  );
+
+  // Resume a generation started before this instance mounted: still pending →
+  // show loading and await it; already finished → apply it right away.
+  useEffect(() => {
+    const pending = quizGeneration;
+    if (!pending) return;
+
+    if (pending.kind === "ready") {
+      quizGeneration = null;
+      if (!applyResult(pending.result, pending.topic)) {
+        setError("The AI returned an empty quiz. Try again.");
+        setPhase("setup");
+      }
+      return;
+    }
+    if (pending.kind === "error") {
+      quizGeneration = null;
+      setError(classify(pending.error));
+      setPhase("setup");
+      return;
+    }
+
+    setBusy(true);
+    setPhase("loading");
+    let alive = true;
+    void pending.promise
+      .then((result) => {
+        if (!alive) return;
+        quizGeneration = null;
+        if (!applyResult(result, pending.topic)) {
+          setError("The AI returned an empty quiz. Try again.");
+          setPhase("setup");
+        }
+      })
+      .catch((caught) => {
+        if (!alive) return;
+        quizGeneration = null;
+        setError(classify(caught));
+        setPhase("setup");
+      })
+      .finally(() => {
+        if (alive) setBusy(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [applyResult]);
 
   const question = attempts[index]?.question ?? null;
   const KindIcon = KIND_ICON[question?.kind ?? "mixed"];
@@ -99,28 +188,43 @@ export default function QuizPage() {
     setBusy(true);
     setError(null);
     setPhase("loading");
+
+    // Registered at module scope so the request survives leaving the page;
+    // a remount picks the outcome back up (pending → loading, then the quiz).
+    const pending: QuizGeneration = {
+      kind: "pending",
+      topic: input.topic,
+      promise: requestQuiz(input),
+    };
+    quizGeneration = pending;
+
     try {
-      const result = await requestQuiz(input);
-      if (result.questions.length === 0) {
-        throw new AiError("The AI returned an empty quiz. Try again.", 0);
+      const result = await pending.promise;
+      if (!mountedRef.current) {
+        quizGeneration =
+          result.questions.length === 0
+            ? {
+                kind: "error",
+                error: new AiError("The AI returned an empty quiz. Try again.", 0),
+              }
+            : { kind: "ready", topic: input.topic, result };
+        return;
       }
-      setAttempts(
-        result.questions.map((item) => ({
-          question: item,
-          answer: initialAnswer(item),
-          evaluation: null,
-        })),
-      );
-      setTopic(input.topic);
-      setIndex(0);
-      setAnswer(initialAnswer(result.questions[0]));
-      setEvaluation(null);
-      setPhase("running");
+      quizGeneration = null;
+      if (!applyResult(result, input.topic)) {
+        setError("The AI returned an empty quiz. Try again.");
+        setPhase("setup");
+      }
     } catch (caught) {
+      if (!mountedRef.current) {
+        quizGeneration = { kind: "error", error: caught };
+        return;
+      }
+      quizGeneration = null;
       setError(classify(caught));
       setPhase("setup");
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   };
 

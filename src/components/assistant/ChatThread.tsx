@@ -2,13 +2,11 @@ import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, Sparkles, UserRound } from "lucide-react";
 import type { Turn } from "../../lib/assistant";
-import { SUGGESTIONS } from "../../lib/assistant";
 import { EASE } from "../../lib/motion";
 
 interface ChatThreadProps {
   turns: Turn[];
   thinking: boolean;
-  onSuggest: (prompt: string) => void;
 }
 
 function TypingIndicator() {
@@ -42,7 +40,7 @@ function TypingIndicator() {
   );
 }
 
-function EmptyThread({ onSuggest }: { onSuggest?: (prompt: string) => void }) {
+function EmptyThread() {
   return (
     <div className="flex h-full flex-col items-center justify-center px-6 text-center">
       <span className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[#cf9eff]">
@@ -55,24 +53,11 @@ function EmptyThread({ onSuggest }: { onSuggest?: (prompt: string) => void }) {
         It already knows your level, streak and current course, so answers come
         back tuned to where you actually are.
       </p>
-
-      <div className="mt-7 flex max-w-lg flex-wrap justify-center gap-2">
-        {SUGGESTIONS.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            onClick={() => onSuggest?.(item.prompt)}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
 
-export function ChatThread({ turns, thinking, onSuggest }: ChatThreadProps) {
+export function ChatThread({ turns, thinking }: ChatThreadProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -82,7 +67,7 @@ export function ChatThread({ turns, thinking, onSuggest }: ChatThreadProps) {
   if (turns.length === 0) {
     return (
       <div className="relative flex-1 overflow-hidden">
-        <EmptyThread onSuggest={onSuggest} />
+        <EmptyThread />
       </div>
     );
   }

@@ -121,6 +121,19 @@ export async function signOut(): Promise<void> {
   if (isSupabaseConfigured) await supabase.auth.signOut();
 }
 
+/** Sends a Supabase password-recovery email for the given address. */
+export async function resetPassword(email: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/login`,
+  });
+
+  if (error) return { error: readableError(error.message) };
+
+  return {};
+}
+
 /** Restores the persisted session on load and refreshes the cached user. */
 export async function resolveSession(): Promise<AuthUser | null> {
   if (!isSupabaseConfigured) {

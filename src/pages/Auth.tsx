@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { resolveSession, signIn, signUp } from "../lib/auth";
+import { resolveSession, resetPassword, signIn, signUp } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 import { CurtainLink } from "../components/PageCurtain";
 import { doubleCurtainNavigate } from "../components/DoubleCurtain";
@@ -52,6 +52,30 @@ export default function Auth() {
     setMode(next);
     setErrors({});
     setNotice(null);
+  };
+
+  const forgotPassword = async () => {
+    if (busy) return;
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Enter your email above, then tap Forgot password.",
+      }));
+      return;
+    }
+    setBusy(true);
+    setNotice(null);
+    const result = await resetPassword(trimmed);
+    setBusy(false);
+    if (result.error) {
+      setNotice({ tone: "error", text: result.error });
+      return;
+    }
+    setNotice({
+      tone: "info",
+      text: `We sent a password reset link to ${trimmed}. Check your inbox.`,
+    });
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -155,7 +179,7 @@ export default function Auth() {
             ? { duration: 0.3, ease: EASE }
             : { duration: 0.6, delay: 0.05, ease: EASE }
         }
-        className="glass card-sheen relative w-full max-w-md rounded-3xl p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_rgba(255,255,255,0.14)] sm:p-10"
+        className="glass card-sheen relative w-full max-w-md rounded-3xl p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_rgba(255,255,255,0.14)] sm:p-10 3xl:max-w-sm"
       >
         <div className="flex flex-col items-center text-center">
           <span className="text-[11px] font-medium uppercase tracking-[0.45em] text-star/70">
@@ -209,23 +233,28 @@ export default function Auth() {
 
         <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
           {mode === "signup" && (
-            <Field label="Name" htmlFor="auth-name" error={errors.name}>
+            <Field
+              label="Name"
+              htmlFor="auth-name"
+              filled={name.length > 0}
+              error={errors.name}
+            >
               <input
                 id="auth-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ada Lovelace"
                 autoComplete="name"
-                className="w-full bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
               />
             </Field>
           )}
 
           <Field
-            label="Email"
+            label="Enter your email"
             htmlFor="auth-email"
             icon={<Mail className="size-4" />}
+            filled={email.length > 0}
             error={errors.email}
           >
             <input
@@ -233,9 +262,8 @@ export default function Auth() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@domain.com"
               autoComplete="email"
-              className="w-full bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+              className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
             />
           </Field>
 
@@ -243,6 +271,7 @@ export default function Auth() {
             label="Password"
             htmlFor="auth-password"
             icon={<Lock className="size-4" />}
+            filled={password.length > 0}
             error={errors.password}
             trailing={
               <button
@@ -264,14 +293,24 @@ export default function Auth() {
               type={showPw ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
               aria-invalid={errors.password ? true : undefined}
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
-              className="w-full bg-transparent text-sm text-white placeholder:text-white/25 focus:outline-none"
+              className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
             />
           </Field>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => void forgotPassword()}
+              disabled={busy}
+              className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
+            >
+              Forgot password?
+            </button>
+          </div>
 
           <Button type="submit" className="w-full py-3.5" disabled={busy}>
             {busy
@@ -321,6 +360,7 @@ function Field({
   icon,
   error,
   trailing,
+  filled,
   children,
 }: {
   label: string;
@@ -328,21 +368,15 @@ function Field({
   icon?: ReactNode;
   error?: string;
   trailing?: ReactNode;
+  /** Floats the label up once the input holds a value (autofill included). */
+  filled: boolean;
   children: ReactNode;
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.2em] text-white/40"
-      >
-        {label}
-      </label>
       <div
-        className={`flex items-center gap-3 rounded-xl border bg-white/[0.04] px-4 py-3 transition-colors ${
-          error
-            ? "border-red-400/50"
-            : "border-white/10 focus-within:border-star/45"
+        className={`group flex items-center gap-3 rounded-xl border bg-white/[0.04] px-4 py-2 transition-[border-color,box-shadow] duration-200 focus-within:border-star/60 focus-within:shadow-[0_0_0_1px_rgba(157,180,255,0.28),0_0_20px_rgba(157,180,255,0.42)] ${
+          error ? "border-red-400/50" : "border-white/10"
         }`}
       >
         {icon && (
@@ -350,7 +384,19 @@ function Field({
             {icon}
           </span>
         )}
-        {children}
+        <div className="relative min-w-0 flex-1">
+          {children}
+          <label
+            htmlFor={htmlFor}
+            className={`pointer-events-none absolute left-0 leading-none transition-all duration-200 ease-out group-focus-within:top-0 group-focus-within:translate-y-0 group-focus-within:text-[10px] group-focus-within:font-medium group-focus-within:text-star/80 ${
+              filled
+                ? "top-0 translate-y-0 text-[10px] font-medium text-white/45"
+                : "top-1/2 -translate-y-1/2 text-sm text-white/30"
+            }`}
+          >
+            {label}
+          </label>
+        </div>
         {trailing}
       </div>
       {error && <p className="mt-1.5 text-xs text-red-300/80">{error}</p>}
