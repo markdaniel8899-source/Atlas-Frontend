@@ -137,8 +137,13 @@ function Logo() {
       title="ATLAS home"
       className="inline-flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80"
     >
-      <span className="size-3 rotate-45 rounded-[2px] border border-star/80 bg-star/20" />
-      <span className="text-base font-semibold tracking-[-0.03em] text-white">
+      <img
+        src="/formicon.png"
+        alt=""
+        aria-hidden="true"
+        className="size-6 shrink-0 object-contain"
+      />
+      <span className="font-create text-base font-semibold tracking-[-0.03em] text-white">
         ATLAS
       </span>
     </CurtainLink>
@@ -214,7 +219,12 @@ function Sidebar({
             title="ATLAS home"
             className="inline-flex rounded-lg transition-opacity hover:opacity-80"
           >
-            <span className="size-3 rotate-45 rounded-[2px] border border-star/80 bg-star/20" />
+            <img
+              src="/formicon.png"
+              alt=""
+              aria-hidden="true"
+              className="size-6 shrink-0 object-contain"
+            />
           </CurtainLink>
         )}
         {onToggle && (

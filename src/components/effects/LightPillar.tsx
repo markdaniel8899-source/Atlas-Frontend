@@ -386,7 +386,14 @@ export const LightPillar = ({
 
     window.addEventListener("resize", handleResize, { passive: true });
 
+    const containerObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(() => handleResize());
+    containerObserver?.observe(container);
+
     return () => {
+      containerObserver?.disconnect();
       window.removeEventListener("resize", handleResize);
       if (interactive) {
         container.removeEventListener("mousemove", handleMouseMove);
