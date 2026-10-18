@@ -7,9 +7,6 @@ import { useLocation } from "react-router-dom";
 // there (only the login form + dashboard are allowed to change, per user
 // complaint about the cursor arriving late behind the real mouse).
 const GLIDE = { stiffness: 550, damping: 40, mass: 0.6 } as const;
-// Snappier follow for /login and /app: higher natural frequency, same
-// overdamped character (no overshoot) so the dot tracks the mouse tightly.
-const SNAPPY = { stiffness: 1000, damping: 45, mass: 0.4 } as const;
 
 export function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
@@ -21,12 +18,8 @@ export function CustomCursor() {
     pathname.startsWith("/app");
   const x = useMotionValue(-100);
   const y = useMotionValue(-100);
-  // Both spring pairs track the same source, so swapping which one drives the
-  // render on route change is seamless (neither is ever behind at rest).
   const glideX = useSpring(x, GLIDE);
   const glideY = useSpring(y, GLIDE);
-  const fastX = useSpring(x, SNAPPY);
-  const fastY = useSpring(y, SNAPPY);
 
   useEffect(() => {
     const fine = window.matchMedia("(pointer: fine)").matches;
@@ -60,8 +53,8 @@ export function CustomCursor() {
   return createPortal(
     <motion.div
       style={{
-        x: snappy ? fastX : glideX,
-        y: snappy ? fastY : glideY,
+        x: snappy ? x : glideX,
+        y: snappy ? y : glideY,
       }}
       className="pointer-events-none fixed top-0 left-0 z-[10001] mix-blend-difference"
       aria-hidden
