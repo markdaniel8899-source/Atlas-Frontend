@@ -149,8 +149,8 @@ export default function AiAssistantPage() {
   const canRetry = Boolean(lastSent && !thinking && !draft.trim());
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="flex h-full min-h-0 w-full flex-col gap-5">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
             Study companion
@@ -171,9 +171,9 @@ export default function AiAssistantPage() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.08, ease: EASE }}
-        className="relative"
+        className="relative flex min-h-0 flex-1 flex-col"
       >
-        <div className="glass card-sheen relative flex h-[min(72vh,660px)] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+        <div className="glass card-sheen relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
           <div
             aria-hidden="true"
             className="atlas-glow pointer-events-none absolute inset-0"
@@ -232,7 +232,7 @@ export default function AiAssistantPage() {
           </div>
         </div>
 
-        <p className="mt-3 flex items-center gap-1.5 text-[11px] text-white/30">
+        <p className="mt-3 flex shrink-0 items-center gap-1.5 text-[11px] text-white/30">
           <Sparkles className="size-3" />
           Answers use the ATLAS tutor model · keep private data out of prompts.
         </p>

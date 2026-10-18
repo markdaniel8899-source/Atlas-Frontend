@@ -119,7 +119,7 @@ const PageSlot = memo(function PageSlot({
     // out when it leaves). Opacity only, so no transform ever becomes the
     // containing block for fixed children inside a page.
     <motion.div
-      className={active ? "block" : "hidden"}
+      className={active ? "block h-full" : "hidden"}
       aria-hidden={!active}
       animate={{ opacity: active ? 1 : 0 }}
       transition={{ duration: 0.3, ease: EASE }}
