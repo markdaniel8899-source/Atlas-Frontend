@@ -20,8 +20,13 @@ export function Navbar() {
           to="/"
           className="mr-1 flex items-center gap-2 rounded-full px-2.5 py-2 sm:mr-2 sm:px-3"
         >
-          <span className="size-2.5 rotate-45 rounded-[2px] border border-star/80 bg-star/30 shadow-[0_0_10px_rgba(157,180,255,0.6)]" />
-          <span className="text-sm font-extrabold tracking-[-0.02em] text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)]">
+          <img
+            src="/formicon.png"
+            alt=""
+            aria-hidden="true"
+            className="size-5 shrink-0 object-contain"
+          />
+          <span className="font-create text-sm font-extrabold tracking-[-0.02em] text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.55)]">
             ATLAS
           </span>
         </CurtainLink>

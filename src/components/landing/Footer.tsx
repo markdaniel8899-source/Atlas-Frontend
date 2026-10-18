@@ -68,7 +68,13 @@ export function Footer() {
               to="/"
               className="inline-flex shrink-0 items-baseline gap-2 transition-opacity hover:opacity-80"
             >
-              <span className="text-xl font-extrabold tracking-tighter text-white">
+              <img
+                src="/formicon.png"
+                alt=""
+                aria-hidden="true"
+                className="size-7 shrink-0 self-center object-contain"
+              />
+              <span className="font-create text-xl font-extrabold tracking-tighter text-white">
                 ATLAS
               </span>
               <span className="text-[10px] uppercase tracking-[0.35em] text-star/60">
