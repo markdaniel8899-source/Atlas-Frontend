@@ -285,7 +285,7 @@ export function Hero({ intro = true }: HeroProps) {
             className="inline-flex w-fit items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#9db4ff,#cf9eff)] px-7 py-3 text-sm font-medium text-[#030305] shadow-[0_0_28px_rgba(157,180,255,0.35)] transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(207,158,255,0.55)] max-sm:w-full"
           >
             <Download className="size-4" />
-            Download Android App (116 MB)
+            Download Android App
           </motion.a>
         </motion.div>
 
