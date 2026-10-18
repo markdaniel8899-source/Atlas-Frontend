@@ -5,7 +5,14 @@ import {
   useScroll,
   useTransform,
 } from "framer-motion";
-import { ArrowRight, Flame, Target, TrendingUp, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  Flame,
+  Target,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { curtainNavigate } from "../PageCurtain";
 import ShinyText from "../ShinyText";
@@ -264,6 +271,22 @@ export function Hero({ intro = true }: HeroProps) {
               I already train here
             </Button>
           </motion.div>
+
+          <motion.a
+            href="https://github.com/markdaniel8899-source/Atlas-app/releases/download/v1.0.0/atlas.apk"
+            download="atlas.apk"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, y: 18 }}
+            animate={intro ? { opacity: 1, y: 0 } : { opacity: 0, y: 18 }}
+            transition={{ duration: 0.95, delay: 1.35, ease: EASE }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex w-fit items-center justify-center gap-2 rounded-full bg-[linear-gradient(90deg,#9db4ff,#cf9eff)] px-7 py-3 text-sm font-medium text-[#030305] shadow-[0_0_28px_rgba(157,180,255,0.35)] transition-shadow duration-300 hover:shadow-[0_0_40px_rgba(207,158,255,0.55)] max-sm:w-full"
+          >
+            <Download className="size-4" />
+            Download Android App (116 MB)
+          </motion.a>
         </motion.div>
 
         {/* Right grid cell: the widget is absolutely placed at the hero bottom. */}
