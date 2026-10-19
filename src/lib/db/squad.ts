@@ -94,9 +94,14 @@ function statusFrom(
   return { status: "offline", label: "Offline" };
 }
 
-export async function fetchSquad(): Promise<SquadMember[]> {
+export interface SquadFetchResult {
+  ok: boolean;
+  members: SquadMember[];
+}
+
+async function loadSquad(): Promise<SquadFetchResult> {
   const me = getUser();
-  if (!me) return [];
+  if (!me) return { ok: false, members: [] };
 
   const { data: linkRows, error } = await supabase
     .from("friendships")
@@ -104,7 +109,8 @@ export async function fetchSquad(): Promise<SquadMember[]> {
     .or(`requester_id.eq.${me.id},addressee_id.eq.${me.id}`)
     .in("status", ["pending", "accepted"]);
 
-  if (error || !Array.isArray(linkRows) || linkRows.length === 0) return [];
+  if (error || !Array.isArray(linkRows)) return { ok: false, members: [] };
+  if (linkRows.length === 0) return { ok: true, members: [] };
 
   const links = linkRows as unknown as FriendshipRow[];
   const peerIds = Array.from(
@@ -120,7 +126,9 @@ export async function fetchSquad(): Promise<SquadMember[]> {
     .select(PROFILE_COLUMNS)
     .in("id", peerIds);
 
-  if (profileError || !Array.isArray(profileRows)) return [];
+  if (profileError || !Array.isArray(profileRows)) {
+    return { ok: false, members: [] };
+  }
 
   const byId = new Map<string, ProfileRow>();
   for (const row of profileRows as unknown as ProfileRow[]) {
@@ -163,7 +171,23 @@ export async function fetchSquad(): Promise<SquadMember[]> {
     });
   }
 
-  return members.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  return {
+    ok: true,
+    members: members.sort((a, b) => a.displayName.localeCompare(b.displayName)),
+  };
+}
+
+export async function fetchSquad(): Promise<SquadMember[]> {
+  return (await loadSquad()).members;
+}
+
+/** Same data as fetchSquad(), with a failure flag for retry surfaces. */
+export async function fetchSquadResult(): Promise<SquadFetchResult> {
+  try {
+    return await loadSquad();
+  } catch {
+    return { ok: false, members: [] };
+  }
 }
 
 export async function acceptInvite(friendshipId: number): Promise<void> {

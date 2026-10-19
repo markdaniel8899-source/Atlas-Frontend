@@ -13,11 +13,13 @@ import {
   ListOrdered,
   Plus,
   Quote,
+  Share2,
   StickyNote,
   Trash2,
   Underline,
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
+import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
@@ -26,6 +28,7 @@ import {
   fetchNotes,
   updateNote,
 } from "../../lib/db/notes";
+import { toShareableId } from "../../lib/db/shares";
 import { useCourses } from "../../hooks/useCourses";
 import { inferSubject } from "../../lib/subjects";
 import { EASE } from "../../lib/motion";
@@ -166,6 +169,7 @@ export default function NotesPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [saved, setSaved] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const { courses, loading: coursesLoading } = useCourses();
@@ -190,6 +194,10 @@ export default function NotesPage() {
   const activeCourseId = selectedCourse ? selectedCourseId : null;
 
   const active = notes.find((n) => n.id === activeId) ?? null;
+  /** Share only persisted notes: numeric positive id, no optimistic rows. */
+  const shareableId =
+    active && toShareableId(active.id) !== null ? active.id : null;
+  const closeShare = useCallback(() => setShareOpen(false), []);
 
   // Drop a stale ?courseId= (course was deleted) once courses are known.
   useEffect(() => {
@@ -475,6 +483,20 @@ export default function NotesPage() {
                   </button>
                 ))}
                 <span className="ml-auto flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShareOpen(true)}
+                    disabled={!shareableId}
+                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
+                    aria-label="Share note"
+                    title={
+                      shareableId
+                        ? "Share note"
+                        : "Wait for this note to save before sharing"
+                    }
+                  >
+                    <Share2 className="size-4" />
+                  </button>
                   <span
                     className={`text-xs transition-opacity duration-300 ${
                       saved ? "text-[#cf9eff]/80 opacity-100" : "opacity-0"
@@ -544,6 +566,13 @@ export default function NotesPage() {
       >
         Content is sanitized with DOMPurify and saved as you type.
       </motion.p>
+
+      <ShareNoteModal
+        open={shareOpen}
+        noteId={shareableId}
+        noteTitle={active?.title ?? ""}
+        onClose={closeShare}
+      />
     </div>
   );
 }
