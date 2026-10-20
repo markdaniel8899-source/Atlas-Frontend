@@ -162,7 +162,7 @@ export default function AiAssistantPage() {
   const hasMessages = turns.length > 0;
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+    <div className="-mb-8 flex min-h-0 w-full flex-1 flex-col overflow-hidden md:-mb-12">
       {hasMessages && (
         <ChatThread key="thread" turns={turns} thinking={thinking} />
       )}
@@ -171,14 +171,14 @@ export default function AiAssistantPage() {
         key="composer-dock"
         className={
           hasMessages
-            ? "mt-auto shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
+            ? "mt-auto shrink-0 bg-[#04040a]/85 backdrop-blur-xl"
             : "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-6"
         }
       >
         <div
           className={
             hasMessages
-              ? "mx-auto w-full max-w-3xl px-4 pb-4 pt-3 sm:px-6 sm:pb-5"
+              ? "mx-auto w-full max-w-3xl px-4 pt-3 sm:px-6"
               : "m-auto w-full max-w-2xl"
           }
         >
