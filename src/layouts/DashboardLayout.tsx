@@ -110,16 +110,21 @@ const PAGES: { path: string; Component: ComponentType }[] = [
 const PageSlot = memo(function PageSlot({
   Component,
   active,
+  fill = false,
 }: {
   Component: ComponentType;
   active: boolean;
+  fill?: boolean;
 }) {
   return (
     // Tab switch transition: fades the slot in when it becomes active (and
     // out when it leaves). Opacity only, so no transform ever becomes the
     // containing block for fixed children inside a page.
+    // `fill` gives full-height pages (like the assistant) a definite height.
     <motion.div
-      className={active ? "block h-full" : "hidden"}
+      className={
+        active ? (fill ? "flex min-h-0 flex-1 flex-col" : "block h-full") : "hidden"
+      }
       aria-hidden={!active}
       animate={{ opacity: active ? 1 : 0 }}
       transition={{ duration: 0.3, ease: EASE }}
@@ -530,13 +535,14 @@ export default function DashboardLayout() {
           isSidebarOpen ? "md:pl-64" : "md:pl-20"
         }`}
       >
-        <div className="mx-auto w-full max-w-[1920px] flex-1 px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
+        <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
           {PAGES.filter(({ path }) => visited.has(path)).map(
             ({ path, Component }) => (
               <PageSlot
                 key={path}
                 Component={Component}
                 active={activePath === path}
+                fill={path === "/app/assistant"}
               />
             ),
           )}
