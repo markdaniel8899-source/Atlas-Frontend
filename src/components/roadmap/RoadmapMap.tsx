@@ -488,15 +488,15 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
                   <Icon
                     className={
                       isBoss
-                        ? "size-7 text-white"
+                        ? "size-6 text-white"
                         : locked
-                          ? "size-5 text-white/70"
-                          : "size-5 text-white"
+                          ? "size-4 text-white/70"
+                          : "size-4 text-white"
                     }
                     strokeWidth={2.4}
                   />
                   {!isBoss && (
-                    <span className="mt-1 text-[9px] font-black tabular-nums tracking-tight text-white/90">
+                    <span className="mt-1 text-[8px] font-black tabular-nums tracking-tight text-white/90">
                       {node.levelNumber}
                     </span>
                   )}

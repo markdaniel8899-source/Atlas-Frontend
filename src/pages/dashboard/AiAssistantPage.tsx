@@ -162,94 +162,66 @@ export default function AiAssistantPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-      {turns.length > 0 && (
+      {turns.length > 0 ? (
         <ChatThread key="thread" turns={turns} thinking={thinking} />
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center px-4 sm:px-6">
+          {!composerFocused && (
+            <div className="w-full max-w-2xl text-center">
+              <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
+                Study companion
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                Ask ATLAS.
+              </h1>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
+                Trained on your roadmap, courses and focus history, so the
+                answer you get is the one you needed.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => handleSuggest(item.prompt)}
+                    disabled={thinking}
+                    className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <div
         key="composer-dock"
-        className={
-          turns.length === 0
-            ? "flex min-h-0 flex-1 flex-col"
-            : "shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
-        }
+        className="mt-auto shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
       >
-        <div
-          className={
-            turns.length === 0
-              ? "mx-auto grid min-h-0 w-full max-w-3xl flex-1 grid-rows-[1fr_auto_1fr] px-4 sm:px-6"
-              : "mx-auto w-full max-w-3xl px-4 py-3 sm:px-6"
-          }
-        >
-          {turns.length === 0 && (
-            <div key="hero" className="flex items-end justify-center pb-6">
-              {!composerFocused && (
-                <div className="text-center">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
-                    Study companion
-                  </p>
-                  <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                    Ask ATLAS.
-                  </h1>
-                  <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
-                    Trained on your roadmap, courses and focus history, so the
-                    answer you get is the one you needed.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="mx-auto w-full max-w-3xl px-4 py-3 sm:px-6">
+          {errorBanner}
 
-          <div key="composer">
-            {errorBanner}
+          <ChatComposer
+            draft={draft}
+            onDraftChange={(value) => {
+              setDraft(value);
+              if (error) setError(null);
+            }}
+            onSend={handleSend}
+            onRetry={handleRetry}
+            disabled={thinking}
+            canRetry={canRetry}
+            onFocus={() => setComposerFocused(true)}
+            floating
+          />
 
-            <ChatComposer
-              draft={draft}
-              onDraftChange={(value) => {
-                setDraft(value);
-                if (error) setError(null);
-              }}
-              onSend={handleSend}
-              onRetry={handleRetry}
-              disabled={thinking}
-              canRetry={canRetry}
-              onFocus={() => setComposerFocused(true)}
-              floating
-            />
-          </div>
-
-          {turns.length === 0 && (
-            <div key="chips" className="flex flex-col items-center gap-3 pt-4">
-              {!composerFocused && (
-                <div className="flex flex-wrap justify-center gap-2">
-                  {SUGGESTIONS.map((item) => (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => handleSuggest(item.prompt)}
-                      disabled={thinking}
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <p className="flex items-center gap-1.5 text-[11px] text-white/30">
-                <Sparkles className="size-3" />
-                Answers use the ATLAS tutor model · keep private data out of
-                prompts.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {turns.length > 0 && (
-          <p className="mx-auto flex w-full max-w-3xl items-center gap-1.5 px-4 pb-3 text-[11px] text-white/30 sm:px-6">
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-white/30">
             <Sparkles className="size-3" />
             Answers use the ATLAS tutor model · keep private data out of prompts.
           </p>
-        )}
+        </div>
       </div>
     </div>
   );
