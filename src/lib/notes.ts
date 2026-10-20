@@ -11,6 +11,7 @@ export interface Note {
   topicId: number | null;
   /** Title of the owning course, used for subject grouping. */
   courseTitle: string | null;
+  sortOrder: number | null;
 }
 
 export function sanitizeHtml(html: string): string {

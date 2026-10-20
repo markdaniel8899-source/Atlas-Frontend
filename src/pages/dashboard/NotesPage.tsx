@@ -7,6 +7,8 @@ import {
   BookOpen,
   Check,
   ChevronDown,
+  ChevronRight,
+  GripVertical,
   Heading2,
   Italic,
   List,
@@ -27,16 +29,63 @@ import {
   deleteNote,
   fetchNotes,
   updateNote,
+  updateNoteOrder,
 } from "../../lib/db/notes";
 import { toShareableId } from "../../lib/db/shares";
 import { useCourses } from "../../hooks/useCourses";
-import { inferSubject } from "../../lib/subjects";
+import { getUser } from "../../lib/auth";
 import { EASE } from "../../lib/motion";
 
 interface Tool {
   label: string;
   icon: typeof Bold;
   run: () => void;
+}
+
+interface NoteGroup {
+  key: string;
+  title: string;
+  notes: Note[];
+}
+
+const NOTE_ORDER_PREFIX = "atlas:note-order:";
+
+function noteOrderKey(): string {
+  return `${NOTE_ORDER_PREFIX}${getUser()?.id ?? "guest"}`;
+}
+
+function readStoredNoteOrder(): string[] {
+  try {
+    const raw = window.localStorage.getItem(noteOrderKey());
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredNoteOrder(ids: string[]) {
+  try {
+    window.localStorage.setItem(noteOrderKey(), JSON.stringify(ids));
+  } catch {
+    return;
+  }
+}
+
+function applyStoredOrder(rows: Note[]): Note[] {
+  if (rows.some((note) => note.sortOrder != null)) return rows;
+  const rank = new Map(readStoredNoteOrder().map((id, index) => [id, index]));
+  if (rank.size === 0) return rows;
+  return [...rows].sort((a, b) => {
+    const aRank = rank.get(a.id);
+    const bRank = rank.get(b.id);
+    if (aRank != null && bRank != null) return aRank - bRank;
+    if (aRank != null) return -1;
+    if (bRank != null) return 1;
+    return 0;
+  });
 }
 
 /**
@@ -171,6 +220,11 @@ export default function NotesPage() {
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { courses, loading: coursesLoading } = useCourses();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -222,7 +276,7 @@ export default function NotesPage() {
 
   // Fetch only the notes of the active context: the selected course's
   // notes when a course is picked, otherwise every note (the list is then
-  // grouped by subject below).
+  // grouped by course below).
   useEffect(() => {
     if (coursesLoading) return;
     if (selectedCourseId != null && activeCourseId == null) return; // stale param
@@ -233,11 +287,12 @@ export default function NotesPage() {
     void fetchNotes(scope)
       .then((rows) => {
         if (!alive) return;
-        setNotes(rows);
+        const ordered = applyStoredOrder(rows);
+        setNotes(ordered);
         setActiveId((current) =>
-          current && rows.some((note) => note.id === current)
+          current && ordered.some((note) => note.id === current)
             ? current
-            : (rows[0]?.id ?? null),
+            : (ordered[0]?.id ?? null),
         );
       })
       .catch(() => undefined)
@@ -249,19 +304,28 @@ export default function NotesPage() {
     };
   }, [coursesLoading, selectedCourseId, activeCourseId]);
 
-  // Subject groups for the "All notes" view; null in a course view (flat).
-  const groupedNotes = useMemo(() => {
-    if (selectedCourseId != null) return null;
-    const groups = new Map<string, Note[]>();
+  const groupedNotes = useMemo<NoteGroup[]>(() => {
+    const groups = new Map<string, NoteGroup>();
     for (const note of notes) {
-      const text = `${note.title} ${note.html.replace(/<[^>]+>/g, " ")}`;
-      const subject = inferSubject(text) ?? note.courseTitle ?? "General";
-      const list = groups.get(subject);
-      if (list) list.push(note);
-      else groups.set(subject, [note]);
+      const key = note.courseId == null ? "general" : `course-${note.courseId}`;
+      const course =
+        note.courseId == null
+          ? null
+          : (courses.find((item) => item.id === note.courseId) ?? null);
+      const title =
+        note.courseId == null
+          ? "General"
+          : (course?.title ?? note.courseTitle ?? "Course");
+      const group = groups.get(key);
+      if (group) group.notes.push(note);
+      else groups.set(key, { key, title, notes: [note] });
     }
-    return Array.from(groups.entries());
-  }, [notes, selectedCourseId]);
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.key === "general") return -1;
+      if (b.key === "general") return 1;
+      return a.title.localeCompare(b.title);
+    });
+  }, [notes, courses]);
 
   useEffect(() => {
     activeRef.current = activeId;
@@ -309,6 +373,36 @@ export default function NotesPage() {
     timerRef.current = window.setTimeout(() => persist(id, { html }), 600);
   };
 
+  const saveOrder = (ordered: Note[]) => {
+    const ids = ordered.map((note) => note.id);
+    writeStoredNoteOrder(ids);
+    void updateNoteOrder(ids);
+  };
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const reorderNotes = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    setNotes((prev) => {
+      const from = prev.findIndex((note) => note.id === sourceId);
+      const to = prev.findIndex((note) => note.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      const ordered = next.map((note, index) => ({ ...note, sortOrder: index }));
+      saveOrder(ordered);
+      return ordered;
+    });
+  };
+
   const addNote = async () => {
     // In a course view the note is owned by the course (and linked to its
     // first topic for subject grouping), so it stays in that course's scope.
@@ -316,14 +410,24 @@ export default function NotesPage() {
     const topicId = selectedCourse?.topics[0]?.id ?? null;
     const note = await createNote({ courseId, topicId });
     if (!note) return;
-    setNotes((prev) => [note, ...prev]);
+    setNotes((prev) => {
+      const ordered = [note, ...prev].map((item, index) => ({
+        ...item,
+        sortOrder: index,
+      }));
+      saveOrder(ordered);
+      return ordered;
+    });
     setActiveId(note.id);
   };
 
   const removeNote = (id: string) => {
     pendingRef.current.delete(id);
-    const next = notes.filter((note) => note.id !== id);
+    const next = notes
+      .filter((note) => note.id !== id)
+      .map((note, index) => ({ ...note, sortOrder: index }));
     setNotes(next);
+    saveOrder(next);
     if (activeId === id) setActiveId(next[0]?.id ?? null);
     void deleteNote(id);
   };
@@ -367,29 +471,74 @@ export default function NotesPage() {
     void addNote();
   };
 
-  const renderNote = (note: Note) => (
-    <li key={note.id}>
-      <button
-        type="button"
-        onClick={() => setActiveId(note.id)}
-        className={`group w-full rounded-xl px-3.5 py-3 text-left transition-colors ${
-          note.id === activeId
-            ? "border border-white/10 bg-white/[0.07]"
-            : "border border-transparent hover:bg-white/[0.04]"
+  const renderNote = (note: Note) => {
+    const dragging = draggingId === note.id;
+    const dragOver = dragOverId === note.id && !dragging;
+    return (
+      <li
+        key={note.id}
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", note.id);
+          setDraggingId(note.id);
+        }}
+        onDragEnd={() => {
+          setDraggingId(null);
+          setDragOverId(null);
+        }}
+        onDragOver={(event) => {
+          if (!draggingId || draggingId === note.id) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          if (dragOverId !== note.id) setDragOverId(note.id);
+        }}
+        onDragLeave={() =>
+          setDragOverId((current) => (current === note.id ? null : current))
+        }
+        onDrop={(event) => {
+          event.preventDefault();
+          const source =
+            event.dataTransfer.getData("text/plain") || draggingId;
+          if (source) reorderNotes(source, note.id);
+          setDraggingId(null);
+          setDragOverId(null);
+        }}
+        className={`rounded-xl transition-[opacity,box-shadow] ${
+          dragging ? "opacity-45" : ""
+        } ${
+          dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
         }`}
       >
-        <span className="block truncate text-sm text-white">
-          {note.title || "Untitled note"}
-        </span>
-        <span className="mt-0.5 block text-xs text-white/35">
-          {new Date(note.updatedAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
-      </button>
-    </li>
-  );
+        <button
+          type="button"
+          onClick={() => setActiveId(note.id)}
+          title="Drag to reorder"
+          className={`group flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition-colors ${
+            note.id === activeId
+              ? "border border-white/10 bg-white/[0.07]"
+              : "border border-transparent hover:bg-white/[0.04]"
+          }`}
+        >
+          <GripVertical
+            className="mt-0.5 size-3.5 shrink-0 cursor-grab text-white/15 transition-colors group-hover:text-white/45"
+            aria-hidden="true"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm text-white">
+              {note.title || "Untitled note"}
+            </span>
+            <span className="mt-0.5 block text-xs text-white/35">
+              {new Date(note.updatedAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          </span>
+        </button>
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -425,40 +574,72 @@ export default function NotesPage() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-        <aside className="glass card-sheen max-h-[65vh] overflow-y-auto rounded-2xl p-3 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-          {loading || (selectedCourseId != null && coursesLoading) ? (
-            <p className="p-4 text-center text-sm text-white/40">
-              Loading notes…
+        <aside className="glass card-sheen flex max-h-[65vh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+          <div className="shrink-0 border-b border-white/[0.07] px-4 py-3">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-white/60">
+              {selectedCourse?.title ?? "All Notes"}
             </p>
-          ) : notes.length === 0 ? (
-            <div className="p-4 text-center">
-              <p className="text-sm text-white/40">
-                {selectedCourse
-                  ? "No notes in this course yet."
-                  : "No notes yet."}
+          </div>
+
+          <div
+            data-lenis-prevent
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3"
+          >
+            {loading || (selectedCourseId != null && coursesLoading) ? (
+              <p className="p-4 text-center text-sm text-white/40">
+                Loading notes…
               </p>
-              <button
-                type="button"
-                onClick={() => void addNote()}
-                className="mt-2 text-sm text-star transition-colors hover:text-white"
-              >
-                {selectedCourse ? "Write one in this course" : "Write the first one"}
-              </button>
-            </div>
-          ) : groupedNotes ? (
-            <div className="space-y-3">
-              {groupedNotes.map(([subject, list]) => (
-                <div key={subject}>
-                  <p className="px-3.5 pt-2 pb-1 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
-                    {subject}
-                  </p>
-                  <ul className="space-y-1.5">{list.map(renderNote)}</ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ul className="space-y-1.5">{notes.map(renderNote)}</ul>
-          )}
+            ) : notes.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-sm text-white/40">
+                  {selectedCourse
+                    ? "No notes in this course yet."
+                    : "No notes yet."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void addNote()}
+                  className="mt-2 text-sm text-star transition-colors hover:text-white"
+                >
+                  {selectedCourse
+                    ? "Write one in this course"
+                    : "Write the first one"}
+                </button>
+              </div>
+            ) : selectedCourseId == null ? (
+              <div className="space-y-3">
+                {groupedNotes.map((group) => {
+                  const collapsed = collapsedGroups.has(group.key);
+                  return (
+                    <div key={group.key}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.key)}
+                        aria-expanded={!collapsed}
+                        className="flex w-full items-center gap-1.5 rounded-lg px-3.5 pt-2 pb-1.5 text-left text-[10px] font-medium uppercase tracking-[0.22em] text-white/35 transition-colors hover:text-white/60"
+                      >
+                        {collapsed ? (
+                          <ChevronRight className="size-3 shrink-0" />
+                        ) : (
+                          <ChevronDown className="size-3 shrink-0" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate">
+                          {group.title}
+                        </span>
+                      </button>
+                      {!collapsed && (
+                        <ul className="space-y-1.5">
+                          {group.notes.map(renderNote)}
+                        </ul>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <ul className="space-y-1.5">{notes.map(renderNote)}</ul>
+            )}
+          </div>
         </aside>
 
         <section className="glass card-sheen flex min-h-[65vh] flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">

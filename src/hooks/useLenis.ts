@@ -21,12 +21,19 @@ export function useLenis() {
     });
     setLenis(lenis);
 
+    const isTypingTarget = (target: EventTarget | null) => {
+      const el = target instanceof HTMLElement ? target : null;
+      if (!el) return false;
+      return Boolean(
+        el.isContentEditable ||
+          el.closest(
+            "input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox'], .monaco-editor, .inputarea",
+          ),
+      );
+    };
+
     const onKeydown = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (
-        el &&
-        el.closest("input, textarea, select, [contenteditable='true']")
-      ) {
+      if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) {
         return;
       }
       const page =

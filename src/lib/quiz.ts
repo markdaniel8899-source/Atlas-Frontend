@@ -26,6 +26,7 @@ export interface QuizSummary {
 
 export interface GenerateInput {
   topic: string;
+  displayLabel?: string;
   kind: KindChoice;
   count: number;
   difficulty: Difficulty;

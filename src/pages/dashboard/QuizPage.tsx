@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -48,9 +49,26 @@ const ACHIEVEMENT_TITLES: Record<string, string> = {
 type Phase = "setup" | "loading" | "running" | "done";
 
 type QuizGeneration =
-  | { kind: "pending"; topic: string; promise: Promise<QuizResult> }
-  | { kind: "ready"; topic: string; result: QuizResult }
+  | {
+      kind: "pending";
+      topic: string;
+      label: string;
+      promise: Promise<QuizResult>;
+    }
+  | { kind: "ready"; topic: string; label: string; result: QuizResult }
   | { kind: "error"; error: unknown };
+
+function keepSpaceInEditor(event: KeyboardEvent<HTMLDivElement>) {
+  if (event.key !== " ") return;
+  const target = event.target as HTMLElement;
+  if (
+    target.closest(
+      "input, textarea, [contenteditable]:not([contenteditable='false']), .monaco-editor",
+    )
+  ) {
+    event.stopPropagation();
+  }
+}
 
 // Module-scope store: an in-flight generation keeps running when the user
 // switches tabs or leaves the page, and its outcome is picked up when the
@@ -94,6 +112,7 @@ export default function QuizPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
+  const [topicLabel, setTopicLabel] = useState("");
   const [unlocked, setUnlocked] = useState<string[]>([]);
 
   /** True while this instance is mounted; a promise that settles after the
@@ -107,7 +126,7 @@ export default function QuizPage() {
   }, []);
 
   const applyResult = useCallback(
-    (result: QuizResult, quizTopic: string): boolean => {
+    (result: QuizResult, quizTopic: string, label: string): boolean => {
       if (result.questions.length === 0) return false;
       setAttempts(
         result.questions.map((item) => ({
@@ -117,6 +136,7 @@ export default function QuizPage() {
         })),
       );
       setTopic(quizTopic);
+      setTopicLabel(label.trim() || quizTopic.trim());
       setIndex(0);
       setAnswer(initialAnswer(result.questions[0]));
       setEvaluation(null);
@@ -134,7 +154,7 @@ export default function QuizPage() {
 
     if (pending.kind === "ready") {
       quizGeneration = null;
-      if (!applyResult(pending.result, pending.topic)) {
+      if (!applyResult(pending.result, pending.topic, pending.label)) {
         setError("The AI returned an empty quiz. Try again.");
         setPhase("setup");
       }
@@ -154,7 +174,7 @@ export default function QuizPage() {
       .then((result) => {
         if (!alive) return;
         quizGeneration = null;
-        if (!applyResult(result, pending.topic)) {
+        if (!applyResult(result, pending.topic, pending.label)) {
           setError("The AI returned an empty quiz. Try again.");
           setPhase("setup");
         }
@@ -191,9 +211,11 @@ export default function QuizPage() {
 
     // Registered at module scope so the request survives leaving the page;
     // a remount picks the outcome back up (pending → loading, then the quiz).
+    const label = input.displayLabel?.trim() || input.topic.trim();
     const pending: QuizGeneration = {
       kind: "pending",
       topic: input.topic,
+      label,
       promise: requestQuiz(input),
     };
     quizGeneration = pending;
@@ -207,11 +229,11 @@ export default function QuizPage() {
                 kind: "error",
                 error: new AiError("The AI returned an empty quiz. Try again.", 0),
               }
-            : { kind: "ready", topic: input.topic, result };
+            : { kind: "ready", topic: input.topic, label, result };
         return;
       }
       quizGeneration = null;
-      if (!applyResult(result, input.topic)) {
+      if (!applyResult(result, input.topic, label)) {
         setError("The AI returned an empty quiz. Try again.");
         setPhase("setup");
       }
@@ -306,6 +328,7 @@ export default function QuizPage() {
     setEvaluation(null);
     setError(null);
     setTopic("");
+    setTopicLabel("");
     setUnlocked([]);
     setPhase("setup");
   };
@@ -413,7 +436,7 @@ export default function QuizPage() {
             className="glass card-sheen rounded-3xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] sm:p-8"
           >
             <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-star/70">
-              {topic}
+              {topicLabel || topic}
             </p>
             <h2 className="mt-3 text-lg font-medium leading-relaxed text-white">
               <RichText text={question.prompt} />
@@ -429,7 +452,7 @@ export default function QuizPage() {
               </div>
             )}
 
-            <div className="mt-5">
+            <div className="mt-5" onKeyDown={keepSpaceInEditor}>
               <QuestionInput
                 question={question}
                 answer={answer}
@@ -566,7 +589,7 @@ export default function QuizPage() {
           <QuizResults
             summary={summary}
             attempts={attempts}
-            topic={topic}
+            topic={topicLabel || topic}
             onRetry={retake}
             onNewQuiz={startOver}
           />

@@ -342,6 +342,7 @@ export function QuizSetup({
     // course title as a focus instruction.
     const topic = resolvedTopic;
     const courseId = course ? Number(course.id) : null;
+    const displayLabel = course?.title.trim() || topic || "General";
     // Without a course, name the topic's subject so the backend scopes the
     // notes to it (English quiz never receives Python notes).
     const subject = course ? "" : (inferSubject(topic) ?? "");
@@ -350,6 +351,7 @@ export function QuizSetup({
       const context = await buildLearnerContext(course, topic);
       onGenerate({
         topic,
+        displayLabel,
         kind,
         count,
         difficulty: difficulty as Difficulty,
@@ -361,6 +363,7 @@ export function QuizSetup({
     } catch {
       onGenerate({
         topic,
+        displayLabel,
         kind,
         count,
         difficulty: difficulty as Difficulty,
@@ -413,6 +416,7 @@ export function QuizSetup({
             value={courseId}
             options={courseOptions}
             onChange={(next) => {
+              if (next !== courseId) setCustomTopic("");
               setCourseId(next);
               setLocalError(null);
             }}

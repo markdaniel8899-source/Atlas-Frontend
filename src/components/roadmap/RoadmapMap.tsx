@@ -130,7 +130,7 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
 
     const update = () => {
       const available = el.clientWidth;
-      setScale(Math.min(1, available / layout.width));
+      setScale(available / layout.width);
     };
     update();
 
@@ -185,24 +185,22 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
         backgroundRepeat: "no-repeat, no-repeat",
       }}
     >
-      {/* Desktop: original full layout. Mobile: scaled + centered canvas. */}
-      <div ref={scrollRef} className="w-full">
       <div
-        className={scale >= 1 ? undefined : "relative mx-auto"}
-        style={
-          scale >= 1
-            ? undefined
-            : { width: layout.width * scale, height: layout.height * scale }
-        }
+        ref={scrollRef}
+        className="flex w-full items-start justify-center"
       >
       <div
-        className={scale >= 1 ? "relative mx-auto" : "relative min-w-full"}
+        className="relative shrink-0"
+        style={{ width: layout.width * scale, height: layout.height * scale }}
+      >
+      <div
+        className="relative"
         style={{
           width: layout.width,
           height: layout.height,
-          ...(scale >= 1
-            ? null
-            : { transform: `scale(${scale})`, transformOrigin: "top left" }),
+          ...(scale < 1
+            ? { transform: `scale(${scale})`, transformOrigin: "top left" }
+            : {}),
         }}
       >
         {/* Theme-coloured soft blur washes behind the map. */}

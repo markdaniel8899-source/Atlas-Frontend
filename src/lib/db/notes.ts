@@ -10,6 +10,7 @@ interface NoteRow {
   updated_at: string;
   course_id: number | null;
   topic_id: number | null;
+  sort_order?: number | null;
 }
 
 const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id";
@@ -25,6 +26,7 @@ function toNote(row: NoteRow): Note {
     courseId: typeof row.course_id === "number" ? row.course_id : null,
     topicId: typeof row.topic_id === "number" ? row.topic_id : null,
     courseTitle: null,
+    sortOrder: typeof row.sort_order === "number" ? row.sort_order : null,
   };
 }
 
@@ -107,27 +109,39 @@ export async function fetchNotes(scope?: NotesScope): Promise<Note[]> {
     return [];
   }
 
-  let query = supabase
-    .from("notes")
-    .select(NOTE_COLUMNS)
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false });
+  const run = async (withSortOrder: boolean) => {
+    let query = supabase
+      .from("notes")
+      .select(
+        withSortOrder ? `${NOTE_COLUMNS}, sort_order` : NOTE_COLUMNS,
+      )
+      .eq("user_id", user.id);
 
-  if (scope?.courseId != null) {
-    if (scope.topicIds && scope.topicIds.length > 0) {
-      // Course view: everything linked to the course directly OR through a
-      // topic (covers rows written before course_id existed).
-      query = query.or(
-        `course_id.eq.${scope.courseId},topic_id.in.(${scope.topicIds.join(",")})`,
-      );
-    } else {
-      query = query.eq("course_id", scope.courseId);
+    if (scope?.courseId != null) {
+      if (scope.topicIds && scope.topicIds.length > 0) {
+        // Course view: everything linked to the course directly OR through a
+        // topic (covers rows written before course_id existed).
+        query = query.or(
+          `course_id.eq.${scope.courseId},topic_id.in.(${scope.topicIds.join(",")})`,
+        );
+      } else {
+        query = query.eq("course_id", scope.courseId);
+      }
+    } else if (scope?.topicIds) {
+      query = query.in("topic_id", scope.topicIds);
     }
-  } else if (scope?.topicIds) {
-    query = query.in("topic_id", scope.topicIds);
-  }
 
-  const { data, error } = await query;
+    return withSortOrder
+      ? query
+          .order("sort_order", { ascending: true, nullsFirst: false })
+          .order("updated_at", { ascending: false })
+      : query.order("updated_at", { ascending: false });
+  };
+
+  let { data, error } = await run(true);
+  if (error) {
+    ({ data, error } = await run(false));
+  }
   if (error || !Array.isArray(data)) return [];
 
   const rows = data as unknown as NoteRow[];
@@ -180,6 +194,7 @@ export async function updateNote(
   const values: Record<string, unknown> = {};
   if (patch.title !== undefined) values.title = patch.title;
   if (patch.html !== undefined) values.content = sanitizeHtml(patch.html);
+  if (patch.sortOrder !== undefined) values.sort_order = patch.sortOrder;
   if (Object.keys(values).length === 0) return;
 
   await supabase.from("notes").update(values).eq("id", parsed);
@@ -189,4 +204,20 @@ export async function deleteNote(id: string): Promise<void> {
   const parsed = toId(id);
   if (parsed === null) return;
   await supabase.from("notes").delete().eq("id", parsed);
+}
+
+export async function updateNoteOrder(ids: string[]): Promise<void> {
+  const user = getUser();
+  if (!user) return;
+  await Promise.all(
+    ids.map(async (id, index) => {
+      const parsed = toId(id);
+      if (parsed === null) return;
+      await supabase
+        .from("notes")
+        .update({ sort_order: index })
+        .eq("id", parsed)
+        .eq("user_id", user.id);
+    }),
+  );
 }
