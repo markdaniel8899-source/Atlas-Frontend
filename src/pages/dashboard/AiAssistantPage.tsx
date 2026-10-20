@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { Sparkles, TriangleAlert } from "lucide-react";
 import { ChatComposer } from "../../components/assistant/ChatComposer";
 import { ChatThread } from "../../components/assistant/ChatThread";
-import { RevealText } from "../../components/RevealText";
 import {
   ask,
   buildLearnerContext,
@@ -15,7 +13,6 @@ import {
 } from "../../lib/assistant";
 import { getUser } from "../../lib/auth";
 import { useDashboard } from "../../hooks/useDashboard";
-import { EASE } from "../../lib/motion";
 
 /** Transcripts older than this are discarded on load. */
 const CHAT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -79,6 +76,7 @@ export default function AiAssistantPage() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
+  const [composerFocused, setComposerFocused] = useState(false);
 
   // Persist every appended user/assistant turn (24h TTL, refreshed per save).
   useEffect(() => {
@@ -148,55 +146,62 @@ export default function AiAssistantPage() {
 
   const canRetry = Boolean(lastSent && !thinking && !draft.trim());
 
-  return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-5">
-      <header className="flex shrink-0 flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
-            Study companion
-          </p>
-          <RevealText
-            as="h1"
-            text="Ask ATLAS."
-            className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl"
-          />
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/50">
-            Trained on your roadmap, courses and focus history, so the answer
-            you get is the one you needed.
-          </p>
-        </div>
-      </header>
-
-      <motion.section
-        initial={{ opacity: 0, y: 18 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.08, ease: EASE }}
-        className="relative flex min-h-0 flex-1 flex-col"
+  const errorBanner = error ? (
+    <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-300/25 bg-rose-500/[0.08] px-3.5 py-2.5 text-sm text-rose-100/90">
+      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+      <span className="flex-1">{error}</span>
+      <button
+        type="button"
+        onClick={() => setError(null)}
+        className="shrink-0 text-xs text-white/45 transition-colors hover:text-white"
       >
-        <div className="glass card-sheen relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-          <div
-            aria-hidden="true"
-            className="atlas-glow pointer-events-none absolute inset-0"
-          />
+        Dismiss
+      </button>
+    </div>
+  ) : null;
 
-          <div className="relative flex min-h-0 flex-1 flex-col">
-            <ChatThread turns={turns} thinking={thinking} />
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
+      {turns.length > 0 && (
+        <ChatThread key="thread" turns={turns} thinking={thinking} />
+      )}
 
-            {error && (
-              <div className="relative border-t border-white/[0.06] px-4 pt-3 sm:px-6">
-                <div className="flex items-start gap-2 rounded-xl border border-rose-300/25 bg-rose-500/[0.08] px-3.5 py-2.5 text-sm text-rose-100/90">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                  <span className="flex-1">{error}</span>
-                  <button
-                    type="button"
-                    onClick={() => setError(null)}
-                    className="shrink-0 text-xs text-white/45 transition-colors hover:text-white"
-                  >
-                    Dismiss
-                  </button>
+      <div
+        key="composer-dock"
+        className={
+          turns.length === 0
+            ? "flex min-h-0 flex-1 flex-col"
+            : "shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
+        }
+      >
+        <div
+          className={
+            turns.length === 0
+              ? "mx-auto grid min-h-0 w-full max-w-3xl flex-1 grid-rows-[1fr_auto_1fr] px-4 sm:px-6"
+              : "mx-auto w-full max-w-3xl px-4 py-3 sm:px-6"
+          }
+        >
+          {turns.length === 0 && (
+            <div key="hero" className="flex items-end justify-center pb-6">
+              {!composerFocused && (
+                <div className="text-center">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
+                    Study companion
+                  </p>
+                  <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                    Ask ATLAS.
+                  </h1>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
+                    Trained on your roadmap, courses and focus history, so the
+                    answer you get is the one you needed.
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
+          <div key="composer">
+            {errorBanner}
 
             <ChatComposer
               draft={draft}
@@ -208,12 +213,14 @@ export default function AiAssistantPage() {
               onRetry={handleRetry}
               disabled={thinking}
               canRetry={canRetry}
+              onFocus={() => setComposerFocused(true)}
+              floating
             />
+          </div>
 
-            {/* ChatGPT-style: suggestion chips sit below the composer while
-                the thread is empty. */}
-            {turns.length === 0 && (
-              <div className="shrink-0 px-3 pb-3 sm:px-4 sm:pb-4">
+          {turns.length === 0 && (
+            <div key="chips" className="flex flex-col items-center gap-3 pt-4">
+              {!composerFocused && (
                 <div className="flex flex-wrap justify-center gap-2">
                   {SUGGESTIONS.map((item) => (
                     <button
@@ -227,16 +234,23 @@ export default function AiAssistantPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              <p className="flex items-center gap-1.5 text-[11px] text-white/30">
+                <Sparkles className="size-3" />
+                Answers use the ATLAS tutor model · keep private data out of
+                prompts.
+              </p>
+            </div>
+          )}
         </div>
 
-        <p className="mt-3 flex shrink-0 items-center gap-1.5 text-[11px] text-white/30">
-          <Sparkles className="size-3" />
-          Answers use the ATLAS tutor model · keep private data out of prompts.
-        </p>
-      </motion.section>
+        {turns.length > 0 && (
+          <p className="mx-auto flex w-full max-w-3xl items-center gap-1.5 px-4 pb-3 text-[11px] text-white/30 sm:px-6">
+            <Sparkles className="size-3" />
+            Answers use the ATLAS tutor model · keep private data out of prompts.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

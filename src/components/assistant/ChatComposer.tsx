@@ -9,6 +9,8 @@ interface ChatComposerProps {
   canRetry: boolean;
   draft: string;
   onDraftChange: (value: string) => void;
+  onFocus?: () => void;
+  floating?: boolean;
 }
 
 const MAX_LENGTH = 8000;
@@ -20,6 +22,8 @@ export function ChatComposer({
   canRetry,
   draft,
   onDraftChange,
+  onFocus,
+  floating = false,
 }: ChatComposerProps) {
   const [focused, setFocused] = useState(false);
   const [narrow, setNarrow] = useState(false);
@@ -58,7 +62,11 @@ export function ChatComposer({
   return (
     <form
       onSubmit={submit}
-      className="shrink-0 border-t border-white/[0.06] p-3 sm:p-4"
+      className={
+        floating
+          ? "shrink-0"
+          : "shrink-0 border-t border-white/[0.06] p-3 sm:p-4"
+      }
     >
       <div
         className={`flex items-end gap-2 rounded-2xl border bg-white/[0.03] px-3 py-2 transition-[border-color] ${
@@ -76,7 +84,10 @@ export function ChatComposer({
               : "Ask about your course, a concept, or your next step…"
           }
           aria-label="Message ATLAS"
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            onFocus?.();
+          }}
           onBlur={() => setFocused(false)}
           onChange={(event) => {
             onDraftChange(event.target.value);

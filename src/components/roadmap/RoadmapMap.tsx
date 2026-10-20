@@ -174,20 +174,10 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
   }, [ordered, trail, graph]);
 
   return (
-    <div
-      className="no-scrollbar relative overflow-auto rounded-3xl border border-white/10 pt-10 sm:pt-[100px] shadow-[0_28px_80px_-45px_rgba(126,34,206,0.65)]"
-      style={{
-        backgroundColor: "#07070f",
-        backgroundImage:
-          "radial-gradient(900px 380px at 14% -6%, rgba(168,85,247,0.10), transparent 65%), " +
-          "radial-gradient(760px 420px at 88% 106%, rgba(157,180,255,0.07), transparent 65%)",
-        backgroundSize: "auto, auto",
-        backgroundRepeat: "no-repeat, no-repeat",
-      }}
-    >
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex w-full items-start justify-center"
+        className="flex w-full justify-center"
       >
       <div
         className="relative shrink-0"
@@ -198,9 +188,8 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
         style={{
           width: layout.width,
           height: layout.height,
-          ...(scale < 1
-            ? { transform: `scale(${scale})`, transformOrigin: "top left" }
-            : {}),
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
         }}
       >
         {/* Theme-coloured soft blur washes behind the map. */}

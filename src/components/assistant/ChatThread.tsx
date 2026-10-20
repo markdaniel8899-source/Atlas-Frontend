@@ -58,10 +58,12 @@ function EmptyThread() {
 }
 
 export function ChatThread({ turns, thinking }: ChatThreadProps) {
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [turns.length, thinking]);
 
   if (turns.length === 0) {
@@ -73,7 +75,10 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
   }
 
   return (
-    <div className="flex-1 space-y-5 overflow-y-auto px-4 py-6 sm:px-6">
+    <div
+      ref={scrollRef}
+      className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-6 sm:px-6"
+    >
       <AnimatePresence initial={false}>
         {turns.map((turn) => {
           const mine = turn.role === "user";
@@ -121,7 +126,6 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
       </AnimatePresence>
 
       <AnimatePresence>{thinking && <TypingIndicator />}</AnimatePresence>
-      <div ref={endRef} />
     </div>
   );
 }
