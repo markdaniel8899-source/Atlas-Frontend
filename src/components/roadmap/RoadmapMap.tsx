@@ -488,10 +488,10 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
                   <Icon
                     className={
                       isBoss
-                        ? "size-6 text-white"
+                        ? "size-5 text-white"
                         : locked
-                          ? "size-4 text-white/70"
-                          : "size-4 text-white"
+                          ? "size-3.5 text-white/70"
+                          : "size-3.5 text-white"
                     }
                     strokeWidth={2.4}
                   />

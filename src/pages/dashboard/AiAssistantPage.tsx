@@ -76,7 +76,6 @@ export default function AiAssistantPage() {
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSent, setLastSent] = useState<string | null>(null);
-  const [composerFocused, setComposerFocused] = useState(false);
 
   // Persist every appended user/assistant turn (24h TTL, refreshed per save).
   useEffect(() => {
@@ -160,14 +159,31 @@ export default function AiAssistantPage() {
     </div>
   ) : null;
 
+  const hasMessages = turns.length > 0;
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
-      {turns.length > 0 ? (
+      {hasMessages && (
         <ChatThread key="thread" turns={turns} thinking={thinking} />
-      ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center px-4 sm:px-6">
-          {!composerFocused && (
-            <div className="w-full max-w-2xl text-center">
+      )}
+
+      <div
+        key="composer-dock"
+        className={
+          hasMessages
+            ? "mt-auto shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
+            : "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-6"
+        }
+      >
+        <div
+          className={
+            hasMessages
+              ? "mx-auto w-full max-w-3xl px-4 pb-4 pt-3 sm:px-6 sm:pb-5"
+              : "m-auto w-full max-w-2xl"
+          }
+        >
+          {!hasMessages && (
+            <div className="mb-7 text-center">
               <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
                 Study companion
               </p>
@@ -193,14 +209,7 @@ export default function AiAssistantPage() {
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      <div
-        key="composer-dock"
-        className="mt-auto shrink-0 border-t border-white/[0.06] bg-[#04040a]/85 backdrop-blur-xl"
-      >
-        <div className="mx-auto w-full max-w-3xl px-4 py-3 sm:px-6">
           {errorBanner}
 
           <ChatComposer
@@ -213,11 +222,14 @@ export default function AiAssistantPage() {
             onRetry={handleRetry}
             disabled={thinking}
             canRetry={canRetry}
-            onFocus={() => setComposerFocused(true)}
             floating
           />
 
-          <p className="mt-2 flex items-center gap-1.5 text-[11px] text-white/30">
+          <p
+            className={`mt-2 flex items-center gap-1.5 text-[11px] text-white/30 ${
+              hasMessages ? "" : "justify-center"
+            }`}
+          >
             <Sparkles className="size-3" />
             Answers use the ATLAS tutor model · keep private data out of prompts.
           </p>
