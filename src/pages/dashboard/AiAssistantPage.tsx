@@ -162,54 +162,47 @@ export default function AiAssistantPage() {
   const hasMessages = turns.length > 0;
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
-      {hasMessages && (
-        <ChatThread key="thread" turns={turns} thinking={thinking} />
-      )}
-
-      <div
-        key="composer-dock"
-        className={
-          hasMessages
-            ? "mt-auto shrink-0 bg-[#04040a]/85 backdrop-blur-xl"
-            : "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-6"
-        }
-      >
-        <div
-          className={
-            hasMessages
-              ? "mx-auto w-full max-w-4xl px-4 pt-3 sm:px-6"
-              : "m-auto w-full max-w-2xl"
-          }
-        >
-          {!hasMessages && (
-            <div className="mb-7 text-center">
-              <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
-                Study companion
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                Ask ATLAS.
-              </h1>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
-                Trained on your roadmap, courses and focus history, so the
-                answer you get is the one you needed.
-              </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => handleSuggest(item.prompt)}
-                    disabled={thinking}
-                    className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
-                  >
-                    {item.label}
-                  </button>
-                ))}
+    <div className="h-full flex flex-col">
+      <div className="flex-1 min-h-0">
+        {hasMessages ? (
+          <ChatThread key="thread" turns={turns} thinking={thinking} />
+        ) : (
+          <div className="flex h-full flex-col overflow-y-auto px-4 py-8 sm:px-6">
+            <div className="m-auto w-full max-w-2xl">
+              <div className="mb-7 text-center">
+                <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
+                  Study companion
+                </p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+                  Ask ATLAS.
+                </h1>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
+                  Trained on your roadmap, courses and focus history, so the
+                  answer you get is the one you needed.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {SUGGESTIONS.map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => handleSuggest(item.prompt)}
+                      disabled={thinking}
+                      className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
 
+              {errorBanner}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="shrink-0 bg-[#04040a]/85 backdrop-blur-xl">
+        <div className="mx-auto w-full max-w-4xl px-4 pt-3 sm:px-6">
           {errorBanner}
 
           <ChatComposer
