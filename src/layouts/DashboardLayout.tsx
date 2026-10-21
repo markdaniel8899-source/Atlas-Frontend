@@ -548,7 +548,11 @@ export default function DashboardLayout() {
           )}
         </div>
         <div className="mx-auto w-full max-w-[1920px] px-4 pb-8 sm:px-6 md:px-8 lg:px-12">
-          <footer className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/[0.06] pt-6 text-xs text-zinc-500 sm:justify-end">
+          <footer
+            className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-6 text-xs text-zinc-500 sm:justify-end ${
+              activePath === "/app/assistant" ? "" : "border-t border-white/[0.06]"
+            }`}
+          >
             <CurtainLink
               to="/privacy"
               className="transition-colors hover:text-white"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Sparkles, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { ChatComposer } from "../../components/assistant/ChatComposer";
 import { ChatThread } from "../../components/assistant/ChatThread";
 import {
@@ -178,7 +178,7 @@ export default function AiAssistantPage() {
         <div
           className={
             hasMessages
-              ? "mx-auto w-full max-w-3xl px-4 pt-3 sm:px-6"
+              ? "mx-auto w-full max-w-4xl px-4 pt-3 sm:px-6"
               : "m-auto w-full max-w-2xl"
           }
         >
@@ -224,15 +224,6 @@ export default function AiAssistantPage() {
             canRetry={canRetry}
             floating
           />
-
-          <p
-            className={`mt-2 flex items-center gap-1.5 text-[11px] text-white/30 ${
-              hasMessages ? "" : "justify-center"
-            }`}
-          >
-            <Sparkles className="size-3" />
-            Answers use the ATLAS tutor model · keep private data out of prompts.
-          </p>
         </div>
       </div>
     </div>

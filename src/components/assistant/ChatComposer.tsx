@@ -69,7 +69,7 @@ export function ChatComposer({
       }
     >
       <div
-        className={`flex items-end gap-2 rounded-2xl border bg-white/[0.03] px-3 py-2 transition-[border-color] ${
+        className={`flex items-end gap-2 rounded-2xl border bg-white/[0.03] px-4 py-2.5 transition-[border-color] ${
           focused ? "border-[#cf9eff]/55" : "border-white/10"
         }`}
       >
@@ -94,7 +94,7 @@ export function ChatComposer({
             grow();
           }}
           onKeyDown={handleKeyDown}
-          className="max-h-[180px] min-h-[44px] w-full min-w-0 flex-1 resize-none bg-transparent py-2.5 text-sm leading-relaxed text-white outline-none placeholder:text-white/30"
+          className="max-h-[180px] min-h-[48px] w-full min-w-0 flex-1 resize-none bg-transparent py-3 text-sm leading-relaxed text-white outline-none placeholder:text-white/30"
         />
 
         {canRetry && !draft.trim() && (
@@ -102,7 +102,7 @@ export function ChatComposer({
             type="button"
             onClick={onRetry}
             disabled={disabled}
-            className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-[border-color,color] hover:border-[#cf9eff]/45 hover:text-white disabled:opacity-40"
+            className="mb-1 flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-white/50 transition-[border-color,color] hover:border-[#cf9eff]/45 hover:text-white disabled:opacity-40"
             aria-label="Retry last message"
             title="Retry"
           >
@@ -114,7 +114,7 @@ export function ChatComposer({
           type="submit"
           disabled={disabled || !draft.trim()}
           aria-label="Send message"
-          className="mb-1 flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#cf9eff] text-[#0a0a14] transition-opacity disabled:cursor-not-allowed disabled:opacity-35"
+          className="mb-1 flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#cf9eff] text-[#0a0a14] transition-opacity disabled:cursor-not-allowed disabled:opacity-35"
         >
           {disabled ? (
             <Loader2 className="size-4 animate-spin" />
@@ -122,15 +122,6 @@ export function ChatComposer({
             <ArrowUp className="size-4" />
           )}
         </button>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between px-1">
-        <p className="text-[11px] text-white/30">
-          Enter to send · Shift + Enter for a new line
-        </p>
-        <p className="text-[11px] tabular-nums text-white/25">
-          {draft.length}/{MAX_LENGTH}
-        </p>
       </div>
     </form>
   );
