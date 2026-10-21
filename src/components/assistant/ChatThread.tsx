@@ -107,7 +107,9 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
   return (
     <div
       ref={scrollRef}
-      className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6"
+      data-lenis-prevent
+      tabIndex={0}
+      className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-6 outline-none sm:px-6"
     >
       <AnimatePresence initial={false}>
         {turns.map((turn) => {
