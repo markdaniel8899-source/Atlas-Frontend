@@ -222,7 +222,7 @@ export default function SettingsPage() {
       .toUpperCase() || "A";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-6 md:pt-8">
       <RevealText
         as="h1"
         text="Settings."
