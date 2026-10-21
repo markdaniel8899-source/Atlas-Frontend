@@ -531,9 +531,11 @@ export default function DashboardLayout() {
       </AnimatePresence>
 
       <main
-        className={`relative z-10 flex min-h-dvh flex-col pt-16 transition-[padding-left] duration-300 md:pt-0 ${
-          isSidebarOpen ? "md:pl-64" : "md:pl-20"
-        }`}
+        className={`relative z-10 flex flex-col pt-16 transition-[padding-left] duration-300 md:pt-0 ${
+          activePath === "/app/assistant"
+            ? "h-dvh overflow-hidden"
+            : "min-h-dvh"
+        } ${isSidebarOpen ? "md:pl-64" : "md:pl-20"}`}
       >
         <div
           className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12 ${
