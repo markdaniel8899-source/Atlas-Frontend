@@ -73,6 +73,7 @@ export default function AiAssistantPage() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +116,7 @@ export default function AiAssistantPage() {
         historyRef.current = turns;
         setTurns((prev) => [...prev, userTurn]);
         setDraft("");
+        setShowSuggestions(false);
       }
 
       setThinking(true);
@@ -144,6 +146,13 @@ export default function AiAssistantPage() {
     void deliver(prompt, true);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(draft);
+    }
+  };
+
   const errorBanner = error ? (
     <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-300/25 bg-rose-500/[0.08] px-3.5 py-2.5 text-sm text-rose-100/90">
       <TriangleAlert className="mt-0.5 size-4 shrink-0" />
@@ -162,10 +171,11 @@ export default function AiAssistantPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-[#04040a]">
-      {/* Messages Area (Scrollable) */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto scroll-smooth">
         {hasMessages ? (
-          <>
+          // STATE 2: Active Chat - Messages with Input at Bottom
+          <div className="p-6 space-y-4">
             {turns.map((turn, index) => {
               const isUser = turn.role === "user";
               return (
@@ -201,66 +211,86 @@ export default function AiAssistantPage() {
               </div>
             )}
             <div ref={messagesEndRef} />
-          </>
+          </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
-              Study companion
-            </p>
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-              Ask ATLAS.
-            </h1>
-            <p className="mx-auto max-w-xl text-sm leading-relaxed text-white/50">
-              Trained on your roadmap, courses and focus history, so the
-              answer you get is the one you needed.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => handleSuggest(item.prompt)}
-                  disabled={thinking}
-                  className="rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-2 text-xs font-medium text-white/55 transition-[border-color,background-color,color] hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
-                >
-                  {item.label}
-                </button>
-              ))}
+          // STATE 1: Empty Chat - Centered Layout
+          <div className="flex flex-col items-center justify-center h-full px-4">
+            {/* Heading */}
+            <div className="text-center mb-8">
+              <p className="text-xs uppercase tracking-widest text-[#cf9eff] mb-2">
+                Study companion
+              </p>
+              <h1 className="text-4xl font-bold text-white mb-3 sm:text-5xl">
+                Ask ATLAS.
+              </h1>
+              <p className="text-white/50 max-w-lg mx-auto text-sm leading-relaxed">
+                Trained on your roadmap, courses and focus history, so the answer
+                you get is the one you needed.
+              </p>
             </div>
+
+            {/* Input Field (Centered) */}
+            <div className="w-full max-w-2xl mb-4">
+              <input
+                type="text"
+                placeholder="Ask about your course, a concept, or your next step..."
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setShowSuggestions(false)}
+                onBlur={() => !hasMessages && setShowSuggestions(true)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#a855f7] placeholder:text-white/30"
+                disabled={thinking}
+              />
+            </div>
+
+            {/* Suggestion Chips (Below Input, Hide on Focus) */}
+            {showSuggestions && (
+              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+                {SUGGESTIONS.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => handleSuggest(item.prompt)}
+                    disabled={thinking}
+                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-white/70 hover:bg-white/10 transition-colors disabled:opacity-50"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {errorBanner}
           </div>
         )}
       </div>
 
-      {/* Input Area (Fixed at bottom naturally via flex) */}
-      <div className="shrink-0 p-4 border-t border-white/10 bg-[#04040a]">
-        {errorBanner}
-        <div className="max-w-3xl mx-auto flex gap-2">
-          <input
-            type="text"
-            placeholder="Ask about your course..."
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend(draft);
-              }
-            }}
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#a855f7] placeholder:text-white/30"
-            disabled={thinking}
-          />
-          <button
-            type="button"
-            onClick={() => handleSend(draft)}
-            disabled={thinking || !draft.trim()}
-            className="bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-xl px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
+      {/* Input Field (Only visible in STATE 2 - Active Chat) */}
+      {hasMessages && (
+        <div className="shrink-0 p-4 border-t border-white/10 bg-[#04040a]">
+          {errorBanner}
+          <div className="max-w-3xl mx-auto flex gap-2">
+            <input
+              type="text"
+              placeholder="Ask about your course..."
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#a855f7] placeholder:text-white/30"
+              disabled={thinking}
+            />
+            <button
+              type="button"
+              onClick={() => handleSend(draft)}
+              disabled={thinking || !draft.trim()}
+              className="bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-xl px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Send
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
