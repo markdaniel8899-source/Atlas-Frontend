@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import { ChatComposer } from "../../components/assistant/ChatComposer";
-import { ChatThread } from "../../components/assistant/ChatThread";
 import {
   ask,
   buildLearnerContext,
@@ -75,7 +73,6 @@ export default function AiAssistantPage() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastSent, setLastSent] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -130,10 +127,8 @@ export default function AiAssistantPage() {
         );
         historyRef.current = [...historyRef.current, reply];
         setTurns((prev) => [...prev, reply]);
-        setLastSent(null);
       } catch (caught) {
         setError(classify(caught));
-        setLastSent(trimmed);
       } finally {
         setThinking(false);
       }
@@ -145,15 +140,9 @@ export default function AiAssistantPage() {
     void deliver(text, true);
   };
 
-  const handleRetry = () => {
-    if (lastSent) void deliver(lastSent, false);
-  };
-
   const handleSuggest = (prompt: string) => {
     void deliver(prompt, true);
   };
-
-  const canRetry = Boolean(lastSent && !thinking && !draft.trim());
 
   const errorBanner = error ? (
     <div className="mb-3 flex items-start gap-2 rounded-xl border border-rose-300/25 bg-rose-500/[0.08] px-3.5 py-2.5 text-sm text-rose-100/90">
@@ -172,29 +161,49 @@ export default function AiAssistantPage() {
   const hasMessages = turns.length > 0;
 
   return (
-    <div className="flex flex-col h-screen w-full max-w-4xl mx-auto px-4 py-6">
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4 scroll-smooth">
+    <div className="flex flex-col h-[calc(100vh-64px)] w-full bg-[#04040a]">
+      {/* Messages Area (Scrollable) */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
         {hasMessages ? (
           <>
-            <ChatThread key="thread" turns={turns} thinking={thinking} />
+            {turns.map((turn, index) => {
+              const isUser = turn.role === "user";
+              return (
+                <div
+                  key={`${turn.id}-${index}`}
+                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      isUser
+                        ? "bg-[#a855f7] text-white"
+                        : "bg-white/5 text-white/90 border border-white/5"
+                    }`}
+                  >
+                    {turn.content}
+                  </div>
+                </div>
+              );
+            })}
             {thinking && (
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-white/60" />
-                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-white/10 bg-white/[0.04] px-4 py-3.5">
-                  {[0, 1, 2].map((index) => (
-                    <span
-                      key={index}
-                      className="size-1.5 rounded-full bg-white/45 animate-pulse"
-                      style={{ animationDelay: `${index * 160}ms` }}
-                    />
-                  ))}
+              <div className="flex justify-start">
+                <div className="max-w-[80%] rounded-2xl bg-white/5 text-white/90 border border-white/5 px-4 py-3">
+                  <div className="flex items-center gap-1.5">
+                    {[0, 1, 2].map((index) => (
+                      <span
+                        key={index}
+                        className="size-1.5 rounded-full bg-white/45 animate-pulse"
+                        style={{ animationDelay: `${index * 160}ms` }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 px-4">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.36em] text-star/70">
               Study companion
             </p>
@@ -224,21 +233,33 @@ export default function AiAssistantPage() {
         )}
       </div>
 
-      <div className="shrink-0 w-full max-w-3xl mx-auto mt-4">
+      {/* Input Area (Fixed at bottom naturally via flex) */}
+      <div className="shrink-0 p-4 border-t border-white/10 bg-[#04040a]">
         {errorBanner}
-
-        <ChatComposer
-          draft={draft}
-          onDraftChange={(value) => {
-            setDraft(value);
-            if (error) setError(null);
-          }}
-          onSend={handleSend}
-          onRetry={handleRetry}
-          disabled={thinking}
-          canRetry={canRetry}
-          floating
-        />
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <input
+            type="text"
+            placeholder="Ask about your course..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend(draft);
+              }
+            }}
+            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#a855f7] placeholder:text-white/30"
+            disabled={thinking}
+          />
+          <button
+            type="button"
+            onClick={() => handleSend(draft)}
+            disabled={thinking || !draft.trim()}
+            className="bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-xl px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );
