@@ -128,14 +128,16 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
     const el = scrollRef.current;
     if (!el) return;
 
+    const host = el.parentElement ?? el;
+
     const update = () => {
-      const available = el.clientWidth;
-      setScale(available / layout.width);
+      const available = host.clientWidth;
+      setScale(Math.min(1, available / layout.width));
     };
     update();
 
     const observer = new ResizeObserver(update);
-    observer.observe(el);
+    observer.observe(host);
     return () => observer.disconnect();
   }, [layout.width]);
 
@@ -174,22 +176,19 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
   }, [ordered, trail, graph]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-      <div
-        ref={scrollRef}
-        className="flex w-full justify-center"
-      >
-      <div
-        className="relative shrink-0"
-        style={{ width: layout.width * scale, height: layout.height * scale }}
-      >
+    <div
+      ref={scrollRef}
+      className="relative mx-auto overflow-hidden"
+      style={{ width: layout.width * scale, height: layout.height * scale }}
+    >
       <div
         className="relative"
         style={{
           width: layout.width,
           height: layout.height,
-          transform: `scale(${scale})`,
-          transformOrigin: "top left",
+          ...(scale < 1
+            ? { transform: `scale(${scale})`, transformOrigin: "top left" }
+            : {}),
         }}
       >
         {/* Theme-coloured soft blur washes behind the map. */}
@@ -553,8 +552,6 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
             </button>
           );
         })}
-        </div>
-      </div>
       </div>
     </div>
   );
