@@ -533,7 +533,7 @@ export default function DashboardLayout() {
       <main
         className={`relative z-10 flex flex-col pt-16 transition-[padding-left] duration-300 md:pt-0 ${
           activePath === "/app/assistant"
-            ? "h-dvh overflow-hidden"
+            ? "h-dvh"
             : "min-h-dvh"
         } ${isSidebarOpen ? "md:pl-64" : "md:pl-20"}`}
       >
