@@ -59,12 +59,42 @@ function EmptyThread() {
 
 export function ChatThread({ turns, thinking }: ChatThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevCount = useRef(turns.length);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+
+    const last = turns[turns.length - 1];
+    const added = turns.length > prevCount.current;
+    prevCount.current = turns.length;
+
+    // Keep the start of a freshly received reply in view so long answers can
+    // be read from the top instead of jumping to their tail.
+    if (added && last?.role === "assistant") {
+      const node = el.querySelector<HTMLElement>(
+        `[data-turn-id="${last.id}"]`,
+      );
+      if (node) {
+        const offset =
+          el.scrollTop +
+          node.getBoundingClientRect().top -
+          el.getBoundingClientRect().top -
+          12;
+        el.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+        return;
+      }
+    }
+
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [turns.length, thinking]);
+  }, [turns]);
+
+  // A retry adds no new turn, so bring the typing indicator into view here.
+  useEffect(() => {
+    if (!thinking) return;
+    const el = scrollRef.current;
+    el?.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [thinking]);
 
   if (turns.length === 0) {
     return (
@@ -77,7 +107,7 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
   return (
     <div
       ref={scrollRef}
-      className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-6 sm:px-6"
+      className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-6 sm:px-6"
     >
       <AnimatePresence initial={false}>
         {turns.map((turn) => {
@@ -85,6 +115,7 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
           return (
             <motion.div
               key={turn.id}
+              data-turn-id={turn.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: EASE }}

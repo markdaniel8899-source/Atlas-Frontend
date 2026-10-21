@@ -128,16 +128,14 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
     const el = scrollRef.current;
     if (!el) return;
 
-    const host = el.parentElement ?? el;
-
     const update = () => {
-      const available = host.clientWidth;
+      const available = el.clientWidth;
       setScale(Math.min(1, available / layout.width));
     };
     update();
 
     const observer = new ResizeObserver(update);
-    observer.observe(host);
+    observer.observe(el);
     return () => observer.disconnect();
   }, [layout.width]);
 
@@ -176,11 +174,11 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
   }, [ordered, trail, graph]);
 
   return (
-    <div
-      ref={scrollRef}
-      className="relative mx-auto overflow-hidden"
-      style={{ width: layout.width * scale, height: layout.height * scale }}
-    >
+    <div ref={scrollRef} className="relative w-full">
+      <div
+        className="relative mx-auto overflow-hidden"
+        style={{ width: layout.width * scale, height: layout.height * scale }}
+      >
       <div
         className="relative"
         style={{
@@ -191,45 +189,6 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
             : {}),
         }}
       >
-        {/* Theme-coloured soft blur washes behind the map. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-[-6%] top-[6%] z-0 h-72 w-96 rounded-full bg-[#cf9eff]/12 blur-[90px]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute right-[-8%] top-[45%] z-0 h-80 w-[26rem] rounded-full bg-[#a855f7]/14 blur-[100px]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute left-[22%] bottom-[8%] z-0 h-64 w-80 rounded-full bg-[#7c3aed]/12 blur-[110px]"
-        />
-        {/* -----------------------------------------------------------
-            BACKGROUND: animated gradient mesh + grid + drifting sparkle
-        ----------------------------------------------------------- */}
-        <div
-          aria-hidden="true"
-          data-animate
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            background:
-              "radial-gradient(560px 420px at 18% 12%, rgba(168,85,247,0.10), transparent 70%), " +
-              "radial-gradient(640px 460px at 78% 38%, rgba(59,130,246,0.09), transparent 70%), " +
-              "radial-gradient(560px 520px at 40% 86%, rgba(34,211,238,0.08), transparent 70%)",
-            animation: "mesh-drift 34s ease-in-out infinite alternate",
-          }}
-        />
-        <div
-          aria-hidden="true"
-          data-animate
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{
-            background:
-              "radial-gradient(520px 480px at 84% 18%, rgba(99,102,241,0.08), transparent 70%), " +
-              "radial-gradient(600px 440px at 22% 72%, rgba(236,72,153,0.06), transparent 70%)",
-            animation: "mesh-drift 46s ease-in-out infinite alternate-reverse",
-          }}
-        />
         {PARTICLES.map((p, i) => (
           <span
             key={`pt-${i}`}
@@ -248,12 +207,6 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
             {p.ch}
           </span>
         ))}
-        {/* Vignette: soft darkening on the edges, under the content. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
-          style={{ boxShadow: "inset 0 0 110px 26px rgba(4,4,10,0.7)" }}
-        />
 
         {/* -----------------------------------------------------------
             TRAIL: gradient ribbon, flowing light, status overlays
@@ -552,6 +505,7 @@ export function RoadmapMap({ graph, selectedKey, onSelect }: RoadmapMapProps) {
             </button>
           );
         })}
+      </div>
       </div>
     </div>
   );

@@ -535,7 +535,11 @@ export default function DashboardLayout() {
           isSidebarOpen ? "md:pl-64" : "md:pl-20"
         }`}
       >
-        <div className="mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12">
+        <div
+          className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12 ${
+            activePath === "/app/assistant" ? "min-h-0" : ""
+          }`}
+        >
           {PAGES.filter(({ path }) => visited.has(path)).map(
             ({ path, Component }) => (
               <PageSlot
