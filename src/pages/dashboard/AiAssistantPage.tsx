@@ -171,7 +171,7 @@ export default function AiAssistantPage() {
         key="composer-dock"
         className={
           hasMessages
-            ? "mt-auto shrink-0 bg-[#04040a]/85 backdrop-blur-xl"
+            ? "mt-auto shrink-0"
             : "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-6"
         }
       >

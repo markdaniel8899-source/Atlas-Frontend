@@ -109,10 +109,17 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
       ref={scrollRef}
       data-lenis-prevent
       tabIndex={0}
-      className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-6 outline-none sm:px-6"
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-16 pt-6 outline-none"
+      style={{
+        WebkitMaskImage:
+          "linear-gradient(to bottom, #000 calc(100% - 56px), transparent)",
+        maskImage:
+          "linear-gradient(to bottom, #000 calc(100% - 56px), transparent)",
+      }}
     >
-      <AnimatePresence initial={false}>
-        {turns.map((turn) => {
+      <div className="mx-auto w-full max-w-4xl space-y-5 px-4 sm:px-6">
+        <AnimatePresence initial={false}>
+          {turns.map((turn) => {
           const mine = turn.role === "user";
           return (
             <motion.div
@@ -159,6 +166,7 @@ export function ChatThread({ turns, thinking }: ChatThreadProps) {
       </AnimatePresence>
 
       <AnimatePresence>{thinking && <TypingIndicator />}</AnimatePresence>
+      </div>
     </div>
   );
 }
