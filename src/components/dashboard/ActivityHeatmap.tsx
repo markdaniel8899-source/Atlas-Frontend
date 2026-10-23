@@ -127,7 +127,7 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
   const hours = Math.round((totalSeconds / 3600) * 10) / 10;
 
   return (
-    <Card className="p-6 sm:p-7">
+    <Card className="w-full p-4 sm:p-7">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.32em] text-star/70">
@@ -149,50 +149,52 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
         role="img"
         aria-label={`Focus activity for the last ${weeks} weeks, ${activeDays} active days.`}
       >
-        <div className="min-w-0 flex-1 pb-1">
-          <div className="relative h-4">
-            {columns.map((column, index) =>
-              column.monthLabel ? (
-                <span
-                  key={`${column.key}-label`}
-                  className="absolute top-0 text-[10px] leading-none text-white/35"
-                  style={{
-                    left: `calc(${index} * (100% + ${GAP}px) / ${columns.length})`,
-                  }}
-                >
-                  {column.monthLabel}
-                </span>
-              ) : null,
-            )}
-          </div>
+        <div className="no-scrollbar min-w-0 flex-1 overflow-x-auto pb-1">
+          <div className="max-sm:min-w-[900px]">
+            <div className="relative h-4">
+              {columns.map((column, index) =>
+                column.monthLabel ? (
+                  <span
+                    key={`${column.key}-label`}
+                    className="absolute top-0 text-[10px] leading-none text-white/35"
+                    style={{
+                      left: `calc(${index} * (100% + ${GAP}px) / ${columns.length})`,
+                    }}
+                  >
+                    {column.monthLabel}
+                  </span>
+                ) : null,
+              )}
+            </div>
 
-          <div
-            className="grid gap-1"
-            style={{
-              gridTemplateColumns: `auto repeat(${columns.length}, minmax(0, 1fr))`,
-            }}
-          >
-            {DAY_LABELS.map((label, dow) => (
-              <Fragment key={dow}>
-                <span className="flex items-center pr-1 text-[10px] leading-none text-white/30">
-                  {label}
-                </span>
-                {columns.map((column) => {
-                  const cell = column.cells[dow];
-                  return (
-                    <span
-                      key={cell.key}
-                      title={cellTitle(cell)}
-                      className={`aspect-square w-full self-center rounded-[3px] ${
-                        cell.future
-                          ? "bg-transparent"
-                          : LEVEL_CLASS[cell.level]
-                      }`}
-                    />
-                  );
-                })}
-              </Fragment>
-            ))}
+            <div
+              className="grid gap-1"
+              style={{
+                gridTemplateColumns: `auto repeat(${columns.length}, minmax(0, 1fr))`,
+              }}
+            >
+              {DAY_LABELS.map((label, dow) => (
+                <Fragment key={dow}>
+                  <span className="flex items-center pr-1 text-[10px] leading-none text-white/30">
+                    {label}
+                  </span>
+                  {columns.map((column) => {
+                    const cell = column.cells[dow];
+                    return (
+                      <span
+                        key={cell.key}
+                        title={cellTitle(cell)}
+                        className={`aspect-square w-full self-center rounded-[3px] ${
+                          cell.future
+                            ? "bg-transparent"
+                            : LEVEL_CLASS[cell.level]
+                        }`}
+                      />
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </div>

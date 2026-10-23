@@ -630,7 +630,7 @@ export default function RoadmapPage() {
             className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl"
           />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 max-sm:w-full max-sm:flex-wrap max-sm:gap-2">
           <CourseSwitcher
             courses={courses}
             value={roadmapCourseId}
@@ -639,7 +639,7 @@ export default function RoadmapPage() {
           {(graph.courseId ?? roadmapCourseId) != null && (
             <Link
               to={`/app/notes?courseId=${graph.courseId ?? roadmapCourseId}`}
-              className="glass inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+              className="glass inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-white transition-colors max-sm:px-4 hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
               title="Open notes for this course"
             >
               <BookOpen className="size-4" />
@@ -649,7 +649,7 @@ export default function RoadmapPage() {
           <button
             type="button"
             onClick={() => setShowBuilder((value) => !value)}
-            className="glass inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+            className="glass inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm text-white transition-colors max-sm:px-4 hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
           >
             {showBuilder ? <X className="size-4" /> : <Sparkles className="size-4" />}
             {showBuilder ? "Cancel" : "New roadmap"}
@@ -658,7 +658,7 @@ export default function RoadmapPage() {
             type="button"
             onClick={() => void removeRoadmap()}
             disabled={busy || nodeBusy}
-            className="inline-flex items-center gap-2 rounded-full border border-rose-400/25 bg-rose-500/[0.08] px-5 py-2.5 text-sm text-rose-200 transition-colors hover:border-rose-400/55 hover:bg-rose-500/[0.14] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-full border border-rose-400/25 bg-rose-500/[0.08] px-5 py-2.5 text-sm text-rose-200 transition-colors max-sm:px-4 hover:border-rose-400/55 hover:bg-rose-500/[0.14] disabled:opacity-50"
           >
             <Trash2 className="size-4" />
             Delete roadmap
