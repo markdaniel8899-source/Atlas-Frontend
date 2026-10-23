@@ -21,6 +21,7 @@ export default function LandingPage() {
       <Preloader onReveal={handleReveal} />
       <Navbar />
 
+      <main>
       {/*
         The hero still scrolls away in plain flow. Below it, the Problem and
         Features sections form a Z-axis stacking pair: Problem sticks to the
@@ -97,6 +98,7 @@ export default function LandingPage() {
       <section className="w-full overflow-hidden">
         <CtaSection />
       </section>
+      </main>
 
       <Footer />
     </div>
