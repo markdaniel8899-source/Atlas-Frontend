@@ -273,8 +273,8 @@ export function Hero({ intro = true }: HeroProps) {
           </motion.div>
 
           <motion.a
-            href="https://github.com/markdaniel8899-source/Atlas-app/releases/download/v1.0.0/atlas.apk"
-            download="atlas.apk"
+            href="https://github.com/markdaniel8899-source/Atlas-app/releases/download/v1.0.2/ATLAS.apk"
+            download="ATLAS.apk"
             target="_blank"
             rel="noopener noreferrer"
             initial={{ opacity: 0, y: 18 }}
@@ -286,6 +286,7 @@ export function Hero({ intro = true }: HeroProps) {
           >
             <Download className="size-4" />
             Download Android App
+            <span className="text-xs font-normal text-[#030305]/60">v1.0.2</span>
           </motion.a>
         </motion.div>
 
