@@ -1,0 +1,13 @@
+{
+  "name": "ATLAS Learning OS",
+  "description": "AI-powered learning platform with chat assistant, quiz generator, and auto blog",
+  "version": "1.0.2",
+  "homepage": "https://atlas.kz.ci",
+  "api": {
+    "blog": "/api/blog",
+    "assistant": "/api/assistant"
+  },
+  "contact": {
+    "email": "hafizmzain786@gmail.com"
+  }
+}
