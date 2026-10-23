@@ -26,7 +26,8 @@ const BOTTOM_LINKS = [
 const HEADING =
   "text-sm font-semibold tracking-[-0.01em] text-white";
 const LINK = "text-sm text-zinc-400 transition-colors hover:text-white";
-const COLUMN = "flex flex-col items-start gap-2.5";
+const COLUMN =
+  "flex flex-col items-center gap-2.5 text-center sm:items-start sm:text-left";
 
 export function Footer() {
   return (
@@ -59,10 +60,10 @@ export function Footer() {
             contact). Mobile: brand as a horizontal top row, links in a
             2-column grid underneath (the wrapper dissolves via lg:contents). */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-4 lg:gap-8">
-          {/* Column 1 — Brand: logo + info side by side on small screens */}
+          {/* Column 1 — Brand: stacked on mobile, logo + info side by side from sm */}
           <motion.div
             variants={staggerItem}
-            className="flex items-start gap-4 lg:block"
+            className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:gap-4 sm:text-left lg:block"
           >
             <CurtainLink
               to="/"
@@ -87,8 +88,8 @@ export function Footer() {
             </p>
           </motion.div>
 
-          {/* Link grid: 2 columns on mobile, 4th-column slots on desktop */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:contents">
+          {/* Link grid: 1 column on mobile, 2 from sm, 4th-column slots on desktop */}
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:contents">
             <motion.nav
               variants={staggerItem}
               aria-label="Quick links"
@@ -121,7 +122,7 @@ export function Footer() {
 
             <motion.div
               variants={staggerItem}
-              className={`col-span-2 lg:col-span-1 ${COLUMN}`}
+              className={`sm:col-span-2 lg:col-span-1 ${COLUMN}`}
             >
               <h2 className={HEADING}>Contact</h2>
               <a
@@ -145,9 +146,9 @@ export function Footer() {
 
       {/* ── Bottom bar ── */}
       <div className="relative z-10 mx-auto w-full max-w-[110rem] border-t border-white/10 px-6 pt-8 sm:px-10 lg:px-16">
-        <div className="flex flex-col items-center justify-between gap-4 pb-8 text-xs text-white/40 sm:flex-row">
+        <div className="flex flex-col items-center justify-between gap-4 pb-24 text-center text-xs text-white/40 sm:flex-row sm:pb-8 sm:text-left">
           <p>© 2026 ATLAS. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             {BOTTOM_LINKS.map((link) => (
               <CurtainLink
                 key={link.label}
