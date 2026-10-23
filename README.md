@@ -22,7 +22,7 @@
 | | Link |
 | --- | --- |
 | 🌐 **Frontend** | [https://atlas-frontend-pearl.vercel.app](https://atlas-frontend-pearl.vercel.app) |
-| ⚙️ **Backend API** | _Cloudflare Tunnel Endpoint_ (port-less, secure exposure — see [Infrastructure](#%EF%B8%8F-tech-stack)) |
+| ⚙️ **Backend API** | [https://api.atlas.kz.ci](https://api.atlas.kz.ci) (direct TLS via Caddy reverse proxy) |
 | 🔐 **Admin Panel** | `https://.../wp-admin` *(placeholder)* |
 
 ---
@@ -44,7 +44,7 @@
 | **🎨 Frontend** | React 19, Vite, TypeScript, Tailwind CSS v4, Framer Motion / GSAP |
 | **⚙️ Backend** | Python, FastAPI (async), Pydantic |
 | **🗄️ Database & Auth** | Supabase (PostgreSQL), Row Level Security (RLS), JWT Authentication |
-| **🏗️ Infrastructure** | Vercel (frontend CDN), Oracle Cloud Free Tier (1 GB RAM backend), Cloudflare Tunnels (secure, port-less exposure) |
+| **🏗️ Infrastructure** | Vercel (frontend CDN), Oracle Cloud Free Tier (1 GB RAM backend), Caddy reverse proxy (TLS), Uvicorn bound to `0.0.0.0:8000` |
 
 ---
 
@@ -114,6 +114,12 @@ Run it:
 
 ```bash
 uvicorn app.main:app --reload --port 8000
+```
+
+On the server, bind Uvicorn to all interfaces behind the reverse proxy:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ---

@@ -16,7 +16,7 @@
 | Router | `react-router-dom` 7.18.4 (client-side) |
 | Styling | **Tailwind CSS v4.3.3** (CSS-first via `@theme` in `src/index.css`; no tailwind.config file) + `@tailwindcss/vite` |
 | DB/Auth | **Supabase** (PostgreSQL + Auth), `@supabase/supabase-js` 2.117.2 |
-| AI backend | **FastAPI** (Python, `backend/`) on Oracle Cloud, exposed via Cloudflare Tunnel |
+| AI backend | **FastAPI** (Python, `backend/`) on Oracle Cloud, exposed via Caddy at `api.atlas.kz.ci` |
 
 ### `package.json` scripts
 
@@ -556,7 +556,7 @@ The Supabase client creation must stay per-platform (browser vs RN AsyncStorage 
 5. **Monaco editor**: no RN port — Notes editor must be redesigned (the existing `RichTextEditor` component or a WebView).
 6. **Version alignment**: web uses React 19.3 / TS 7; Expo SDK 57 pins React 19.2 / TS ~5.x — shared package must target the lower common denominator.
 7. **XP trust model**: `record_activity`/`record_quiz_session` accept client XP with caps (0016). Mobile must call the same RPCs; server-side hardening recommended before shipping mobile.
-8. **Backend CORS**: `ALLOWED_ORIGINS` is a fixed web list — mobile calls need either the same HTTPS tunnel (CORS bypass via native fetch not subject to CORS, but JWT origin checks may apply) or a native-friendly config.
+8. **Backend CORS**: `ALLOWED_ORIGINS` is a fixed web list — mobile calls need either the same HTTPS API domain (CORS bypass via native fetch not subject to CORS, but JWT origin checks may apply) or a native-friendly config.
 9. **`getUser()` fresh-object pattern** (audit.md critical): if copied to mobile hooks, it will reproduce the re-render loops — use primitive `userId` deps.
 
 ---
@@ -617,7 +617,7 @@ Carried from the in-repo `audit.md` (176 lines) — highest-priority items to fi
 6. **Verify `prevent_role_change` (0015) and XP caps (0016) are applied on the live database** — migrations exist in the repo but live state wasn't checked.
 7. **Remove dead code** before sharing packages: 7 unimported landing/gamification components, unused exports (`fetchMyWeeklyRank`, `invalidateTimer`, `XP_PER_MINUTE`, …) — listed in audit.md.
 8. **Backend timeout mismatch**: server allows 180s×3 retries; client aborts at 90s — align before mobile (mobile networks are slower).
-9. **CORS/backend exposure**: confirm the Cloudflare Tunnel endpoint allows native app origins (no cookie-based CORS needed if using Bearer JWT only).
+9. **CORS/backend exposure**: confirm the `api.atlas.kz.ci` endpoint allows native app origins (no cookie-based CORS needed if using Bearer JWT only).
 10. **`site_traffic` table** referenced in audit scope doesn't exist in migrations — verify on live DB; if present, it may have RLS disabled.
 
 ---
