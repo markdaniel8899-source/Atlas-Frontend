@@ -10,6 +10,7 @@ import {
   Key,
   Lock,
   Mail,
+  User,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
@@ -31,6 +32,7 @@ type Mode = "login" | "signup" | "otp";
 type NoticeTone = "error" | "success" | "info";
 
 interface Errors {
+  name?: string;
   email?: string;
   password?: string;
   otp?: string;
@@ -49,6 +51,7 @@ export default function Auth() {
   const from = (location.state as { from?: string } | null)?.from ?? "/app";
 
   const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -105,6 +108,9 @@ export default function Auth() {
         next.otp = "Enter the 8-digit code.";
       }
     } else if (mode === "signup") {
+      if (name.trim().length < 2) {
+        next.name = "Tell us what to call you.";
+      }
       if (password.length < 8) {
         next.password = "Use at least 8 characters.";
       }
@@ -122,7 +128,7 @@ export default function Auth() {
 
     try {
       if (mode === "signup") {
-        result = await signUp(normalizedEmail, password);
+        result = await signUp(name.trim(), normalizedEmail, password);
       } else if (mode === "otp") {
         result = await verifyOtp(normalizedEmail, otp);
       } else {
@@ -320,6 +326,31 @@ export default function Auth() {
           <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
             {mode !== "otp" && (
               <>
+                {mode === "signup" && (
+                  <Field
+                    label="Name"
+                    htmlFor="auth-name"
+                    icon={<User className="size-4" />}
+                    filled={name.length > 0}
+                    error={errors.name}
+                  >
+                    <input
+                      id="auth-name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (errors.name) {
+                          setErrors((prev) => ({ ...prev, name: undefined }));
+                        }
+                      }}
+                      autoComplete="name"
+                      aria-invalid={errors.name ? true : undefined}
+                      className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                    />
+                  </Field>
+                )}
+
                 <Field
                   label="Email"
                   htmlFor="auth-email"

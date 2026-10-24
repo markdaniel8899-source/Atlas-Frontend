@@ -107,6 +107,7 @@ export async function emailExists(email: string): Promise<boolean | null> {
 }
 
 export async function signUp(
+  name: string,
   email: string,
   password: string,
 ): Promise<AuthResult> {
@@ -117,6 +118,7 @@ export async function signUp(
     email: normalized,
     password,
     options: {
+      data: { name: name.trim() },
       emailRedirectTo: `${window.location.origin}/login`,
     },
   });
