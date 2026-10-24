@@ -11,6 +11,10 @@ export interface AuthResult {
   error?: string;
   /** Sign up succeeded but the address still needs confirming by email. */
   needsConfirmation?: boolean;
+  /** OTP sent successfully, user needs to enter code. */
+  needsOtp?: boolean;
+  /** OTP verified successfully. */
+  otpVerified?: boolean;
 }
 
 export const CONFIG_ERROR =
@@ -127,6 +131,51 @@ export async function resetPassword(email: string): Promise<AuthResult> {
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/login`,
+  });
+
+  if (error) return { error: readableError(error.message) };
+
+  return {};
+}
+
+/** Sends an 8-digit OTP to the given email for passwordless login. */
+export async function signInWithOtp(email: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      shouldCreateUser: false, // Only allow existing users to sign in with OTP
+    },
+  });
+
+  if (error) return { error: readableError(error.message) };
+
+  return { needsOtp: true };
+}
+
+/** Verifies the 8-digit OTP code for the given email. */
+export async function verifyOtp(email: string, token: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "email",
+  });
+
+  if (error) return { error: readableError(error.message) };
+
+  if (data.user) writeCache(toAuthUser(data.user));
+  return { otpVerified: true };
+}
+
+/** Updates the user's password. */
+export async function updatePassword(newPassword: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
   });
 
   if (error) return { error: readableError(error.message) };

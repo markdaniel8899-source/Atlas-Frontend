@@ -16,6 +16,9 @@ import {
 // so navigation never waits on the network.
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Auth = lazy(() => import("./pages/Auth"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
+const AccountDisabled = lazy(() => import("./pages/AccountDisabled"));
 const AboutPage = lazy(() => import("./pages/site/AboutPage"));
 const ContactPage = lazy(() => import("./pages/site/ContactPage"));
 const BlogPage = lazy(() => import("./pages/site/BlogPage"));
@@ -183,6 +186,33 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/forgot-password"
+            element={
+              <GroupTransition variant="auth">
+                <Seo path="/forgot-password" title="Forgot Password — ATLAS" index={false} />
+                <ForgotPassword />
+              </GroupTransition>
+            }
+          />
+          <Route
+            path="/update-password"
+            element={
+              <GroupTransition variant="auth">
+                <Seo path="/update-password" title="Update Password — ATLAS" index={false} />
+                <UpdatePassword />
+              </GroupTransition>
+            }
+          />
+          <Route
+            path="/account-disabled"
+            element={
+              <GroupTransition variant="auth">
+                <Seo path="/account-disabled" title="Account Disabled — ATLAS" index={false} />
+                <AccountDisabled />
+              </GroupTransition>
+            }
+          />
+          <Route
             path="/terms"
             element={
               <GroupTransition variant="landing">
@@ -191,7 +221,6 @@ function AnimatedRoutes() {
               </GroupTransition>
             }
           />
-
           <Route element={<ProtectedRoute />}>
             <Route
               path="/app"

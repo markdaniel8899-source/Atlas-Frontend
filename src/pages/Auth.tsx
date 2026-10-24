@@ -1,20 +1,21 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Key } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { resolveSession, resetPassword, signIn, signUp } from "../lib/auth";
+import { resolveSession, signIn, signUp, signInWithOtp, verifyOtp, type AuthResult } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 import { CurtainLink } from "../components/PageCurtain";
 import { doubleCurtainNavigate } from "../components/DoubleCurtain";
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "otp";
 
 interface Errors {
   name?: string;
   email?: string;
   password?: string;
+  otp?: string;
 }
 
 interface Notice {
@@ -32,6 +33,7 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -52,30 +54,34 @@ export default function Auth() {
     setMode(next);
     setErrors({});
     setNotice(null);
+    if (next === "login") setOtp("");
   };
 
-  const forgotPassword = async () => {
+  const sendOtp = async () => {
     if (busy) return;
     const trimmed = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setErrors((prev) => ({
         ...prev,
-        email: "Enter your email above, then tap Forgot password.",
+        email: "Enter a valid email address.",
       }));
       return;
     }
     setBusy(true);
     setNotice(null);
-    const result = await resetPassword(trimmed);
+    const result = await signInWithOtp(trimmed);
     setBusy(false);
     if (result.error) {
       setNotice({ tone: "error", text: result.error });
       return;
     }
-    setNotice({
-      tone: "info",
-      text: `We sent a password reset link to ${trimmed}. Check your inbox.`,
-    });
+    if (result.needsOtp) {
+      setMode("otp");
+      setNotice({
+        tone: "info",
+        text: `We sent an 8-digit code to ${trimmed}. Enter it below to sign in.`,
+      });
+    }
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -89,8 +95,14 @@ export default function Auth() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       next.email = "Enter a valid email address.";
     }
-    if (password.length < 6) {
-      next.password = "Use at least 6 characters.";
+    if (mode === "otp") {
+      if (!/^[0-9]{8}$/.test(otp)) {
+        next.otp = "Enter the 8-digit code.";
+      }
+    } else {
+      if (password.length < 6) {
+        next.password = "Use at least 6 characters.";
+      }
     }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
@@ -98,10 +110,15 @@ export default function Auth() {
     setBusy(true);
     setNotice(null);
 
-    const result =
-      mode === "signup"
-        ? await signUp(name.trim(), email.trim(), password)
-        : await signIn(email.trim(), password);
+    let result: AuthResult;
+
+    if (mode === "signup") {
+      result = await signUp(name.trim(), email.trim(), password);
+    } else if (mode === "otp") {
+      result = await verifyOtp(email.trim(), otp.trim());
+    } else {
+      result = await signIn(email.trim(), password);
+    }
 
     setBusy(false);
 
@@ -116,6 +133,15 @@ export default function Auth() {
         text: `We sent a confirmation link to ${email.trim()}. Confirm it, then sign in.`,
       });
       setMode("login");
+      return;
+    }
+
+    if (result.otpVerified) {
+      setLeaving(true);
+      window.setTimeout(
+        () => doubleCurtainNavigate(navigate, from, { replace: true }),
+        300,
+      );
       return;
     }
 
@@ -267,58 +293,100 @@ export default function Auth() {
             />
           </Field>
 
-          <Field
-            label="Password"
-            htmlFor="auth-password"
-            icon={<Lock className="size-4" />}
-            filled={password.length > 0}
-            error={errors.password}
-            trailing={
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="text-white/35 transition-colors hover:text-white/70"
-                aria-label={showPw ? "Hide password" : "Show password"}
-              >
-                {showPw ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </button>
-            }
-          >
-            <input
-              id="auth-password"
-              type={showPw ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={errors.password ? true : undefined}
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
+          {mode !== "otp" && (
+            <Field
+              label="Password"
+              htmlFor="auth-password"
+              icon={<Lock className="size-4" />}
+              filled={password.length > 0}
+              error={errors.password}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="text-white/35 transition-colors hover:text-white/70"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
               }
-              className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-            />
-          </Field>
+            >
+              <input
+                id="auth-password"
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={errors.password ? true : undefined}
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+              />
+            </Field>
+          )}
 
-          <div className="flex justify-end">
+          {mode === "otp" && (
+            <Field
+              label="8-digit code"
+              htmlFor="auth-otp"
+              icon={<Key className="size-4" />}
+              filled={otp.length > 0}
+              error={errors.otp}
+            >
+              <input
+                id="auth-otp"
+                type="text"
+                inputMode="numeric"
+                maxLength={8}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                autoComplete="one-time-code"
+                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none text-center tracking-widest"
+              />
+            </Field>
+          )}
+
+          {mode !== "otp" && (
+<div className="flex justify-end">
             <button
               type="button"
-              onClick={() => void forgotPassword()}
+              onClick={() => void sendOtp()}
               disabled={busy}
               className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
             >
               Forgot password?
             </button>
           </div>
+          )}
+
+          {mode === "otp" && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => void switchMode("login")}
+                disabled={busy}
+                className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
+              >
+                Back to password
+              </button>
+            </div>
+          )}
 
           <Button type="submit" className="w-full py-3.5" disabled={busy}>
             {busy
               ? mode === "login"
                 ? "Signing in…"
+                : mode === "otp"
+                ? "Verifying code…"
                 : "Creating account…"
               : mode === "login"
                 ? "Enter the dashboard"
+                : mode === "otp"
+                ? "Verify code"
                 : "Create account"}
             {!busy && <ArrowRight className="size-4" />}
           </Button>
@@ -335,13 +403,19 @@ export default function Auth() {
         }
         type="button"
         onClick={() =>
-          switchMode(mode === "login" ? "signup" : "login")
+          switchMode(
+            mode === "login" ? "signup" : mode === "signup" ? "otp" : "login"
+          )
         }
         className="relative mt-6 text-sm text-white/45 transition-colors hover:text-white"
       >
         {mode === "login" ? (
           <>
             New here? <span className="text-star">Create an account</span>
+          </>
+        ) : mode === "otp" ? (
+          <>
+            Already have an account? <span className="text-star">Log in</span>
           </>
         ) : (
           <>
