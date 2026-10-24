@@ -163,7 +163,7 @@ export async function signIn(
     const message = error.message.toLowerCase();
     if (message.includes("email not confirmed")) {
       return {
-        error: "That email isn't verified yet. Enter the 8-digit code we sent you.",
+        error: "That email isn't verified yet. Enter the 6-digit code we sent you.",
         needsVerification: true,
       };
     }

@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import type {
+  ClipboardEvent,
+  FormEvent,
+  KeyboardEvent,
+  ReactNode,
+} from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -7,7 +12,6 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
-  Key,
   Lock,
   Mail,
   User,
@@ -44,6 +48,7 @@ interface Notice {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const OTP_LENGTH = 6;
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -54,7 +59,10 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState<string[]>(() =>
+    Array(OTP_LENGTH).fill(""),
+  );
+  const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [notice, setNotice] = useState<Notice | null>(() => {
@@ -66,6 +74,7 @@ export default function Auth() {
   const [leaving, setLeaving] = useState(false);
 
   const normalizedEmail = normalizeEmail(email);
+  const otpValue = otp.join("");
 
   useEffect(() => {
     let active = true;
@@ -77,12 +86,84 @@ export default function Auth() {
     };
   }, [from, navigate]);
 
+  useEffect(() => {
+    if (mode !== "otp") return;
+    const timer = window.setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    return () => window.clearTimeout(timer);
+  }, [mode]);
+
+  const clearOtp = () => setOtp(Array(OTP_LENGTH).fill(""));
+
   const switchMode = (next: Mode) => {
     if (busy) return;
     setMode(next);
     setErrors({});
     setNotice(null);
-    if (next !== "otp") setOtp("");
+    if (next !== "otp") clearOtp();
+  };
+
+  const setOtpDigit = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, "").slice(-1);
+
+    setOtp((prev) => {
+      const next = [...prev];
+      next[index] = digit;
+      return next;
+    });
+
+    if (errors.otp) {
+      setErrors((prev) => ({ ...prev, otp: undefined }));
+    }
+    if (digit && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const onOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace") {
+      if (otp[index]) {
+        setOtp((prev) => {
+          const next = [...prev];
+          next[index] = "";
+          return next;
+        });
+      } else if (index > 0) {
+        e.preventDefault();
+        setOtp((prev) => {
+          const next = [...prev];
+          next[index - 1] = "";
+          return next;
+        });
+        otpRefs.current[index - 1]?.focus();
+      }
+    } else if (e.key === "ArrowLeft" && index > 0) {
+      e.preventDefault();
+      otpRefs.current[index - 1]?.focus();
+    } else if (e.key === "ArrowRight" && index < OTP_LENGTH - 1) {
+      e.preventDefault();
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const onOtpPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const digits = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, OTP_LENGTH);
+
+    if (!digits) return;
+
+    const next = Array(OTP_LENGTH).fill("");
+    digits.split("").forEach((digit, index) => {
+      next[index] = digit;
+    });
+
+    setOtp(next);
+    if (errors.otp) {
+      setErrors((prev) => ({ ...prev, otp: undefined }));
+    }
+    otpRefs.current[Math.min(digits.length, OTP_LENGTH - 1)]?.focus();
   };
 
   const finish = () => {
@@ -104,8 +185,8 @@ export default function Auth() {
     }
 
     if (mode === "otp") {
-      if (!/^[0-9]{8}$/.test(otp)) {
-        next.otp = "Enter the 8-digit code.";
+      if (!/^[0-9]{6}$/.test(otpValue)) {
+        next.otp = "Enter the 6-digit code.";
       }
     } else if (mode === "signup") {
       if (name.trim().length < 2) {
@@ -130,7 +211,7 @@ export default function Auth() {
       if (mode === "signup") {
         result = await signUp(name.trim(), normalizedEmail, password);
       } else if (mode === "otp") {
-        result = await verifyOtp(normalizedEmail, otp);
+        result = await verifyOtp(normalizedEmail, otpValue);
       } else {
         result = await signIn(normalizedEmail, password);
       }
@@ -146,14 +227,14 @@ export default function Auth() {
       setNotice({ tone: "error", text: result.error });
       if (result.needsVerification) {
         setMode("otp");
-        setOtp("");
+        clearOtp();
       }
       return;
     }
 
     if (result.needsOtp) {
       setMode("otp");
-      setOtp("");
+      clearOtp();
       return;
     }
 
@@ -178,7 +259,7 @@ export default function Auth() {
       }
       setNotice({
         tone: "success",
-        text: "A new 8-digit code is on its way.",
+        text: "A new 6-digit code is on its way.",
       });
     } catch {
       setNotice({
@@ -202,7 +283,7 @@ export default function Auth() {
       ? "Pick up where the streak left off."
       : mode === "signup"
         ? "Set up your learning OS in under a minute."
-        : "Enter the 8-digit code to verify your account.";
+        : "Enter the 6-digit code to verify your account.";
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-void px-6 py-16">
@@ -267,7 +348,7 @@ export default function Auth() {
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#cf9eff]/25 bg-[#cf9eff]/[0.06] px-4 py-3 text-left">
               <Mail className="mt-0.5 size-4 shrink-0 text-[#cf9eff]" />
               <p className="text-xs leading-relaxed text-white/70">
-                We sent an 8-digit code to{" "}
+                We sent a 6-digit code to{" "}
                 <span className="font-medium text-white">
                   {normalizedEmail}
                 </span>
@@ -410,27 +491,37 @@ export default function Auth() {
             )}
 
             {mode === "otp" && (
-              <Field
-                label="8-digit code"
-                htmlFor="auth-otp"
-                icon={<Key className="size-4" />}
-                filled={otp.length > 0}
-                error={errors.otp}
-              >
-                <input
-                  id="auth-otp"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={8}
-                  value={otp}
-                  onChange={(e) =>
-                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
-                  }
-                  aria-invalid={errors.otp ? true : undefined}
-                  className="w-full bg-transparent pt-3 pb-1 text-center text-sm tracking-[0.4em] text-white focus:outline-none"
-                />
-              </Field>
+              <div>
+                <div className="grid grid-cols-6 gap-2 sm:gap-2.5">
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => {
+                        otpRefs.current[index] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete={index === 0 ? "one-time-code" : "off"}
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => setOtpDigit(index, e.target.value)}
+                      onKeyDown={(e) => onOtpKeyDown(index, e)}
+                      onPaste={onOtpPaste}
+                      onFocus={(e) => e.currentTarget.select()}
+                      aria-label={`Digit ${index + 1}`}
+                      aria-invalid={errors.otp ? true : undefined}
+                      className={`h-11 w-full min-w-0 rounded-xl border bg-white/[0.04] text-center text-lg font-medium text-white transition-[border-color,box-shadow] duration-200 focus:border-[#cf9eff]/60 focus:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] focus:outline-none sm:h-12 ${
+                        errors.otp ? "border-red-400/50" : "border-white/10"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {errors.otp && (
+                  <p className="mt-2 text-center text-xs text-red-300/80">
+                    {errors.otp}
+                  </p>
+                )}
+              </div>
             )}
 
             {mode === "login" && (
