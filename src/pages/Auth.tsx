@@ -23,8 +23,9 @@ import {
   normalizeEmail,
   resendSignupOtp,
   resolveSession,
+  sendSignupOtp,
   signIn,
-  signUp,
+  updatePassword,
   verifyOtp,
   type AuthResult,
 } from "../lib/auth";
@@ -72,6 +73,7 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [otpPurpose, setOtpPurpose] = useState<"signup" | "verify">("signup");
 
   const normalizedEmail = normalizeEmail(email);
   const otpValue = otp.join("");
@@ -209,7 +211,7 @@ export default function Auth() {
 
     try {
       if (mode === "signup") {
-        result = await signUp(name.trim(), normalizedEmail, password);
+        result = await sendSignupOtp(name.trim(), normalizedEmail);
       } else if (mode === "otp") {
         result = await verifyOtp(normalizedEmail, otpValue);
       } else {
@@ -226,6 +228,7 @@ export default function Auth() {
     if (result.error) {
       setNotice({ tone: "error", text: result.error });
       if (result.needsVerification) {
+        setOtpPurpose("verify");
         setMode("otp");
         clearOtp();
       }
@@ -233,8 +236,23 @@ export default function Auth() {
     }
 
     if (result.needsOtp) {
+      setOtpPurpose("signup");
       setMode("otp");
       clearOtp();
+      return;
+    }
+
+    if (result.otpVerified) {
+      if (otpPurpose === "signup" && password.length >= 8) {
+        setBusy(true);
+        const passwordResult = await updatePassword(password);
+        setBusy(false);
+        if (passwordResult.error) {
+          setNotice({ tone: "error", text: passwordResult.error });
+          return;
+        }
+      }
+      finish();
       return;
     }
 

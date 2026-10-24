@@ -13,8 +13,6 @@ export interface AuthResult {
   needsOtp?: boolean;
   /** OTP verified successfully and a session was created. */
   otpVerified?: boolean;
-  /** Sign up signed the user in directly (email confirmation is disabled). */
-  sessionEstablished?: boolean;
   /** Sign in failed because the address has not been verified yet. */
   needsVerification?: boolean;
 }
@@ -106,17 +104,25 @@ export async function emailExists(email: string): Promise<boolean | null> {
   return data === true;
 }
 
-export async function signUp(
+/**
+ * Sends a 6-digit email OTP for a new account via `signInWithOtp`.
+ * The password is applied after `verifyOtp` succeeds (see Auth.tsx) so
+ * password sign-in keeps working without Supabase sending a magic link first.
+ */
+export async function sendSignupOtp(
   name: string,
   email: string,
-  password: string,
 ): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const normalized = normalizeEmail(email);
-  const { data, error } = await supabase.auth.signUp({
+  const exists = await emailExists(normalized);
+  if (exists === true) {
+    return { error: "An account with this email already exists." };
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({
     email: normalized,
-    password,
     options: {
       data: { name: name.trim() },
       emailRedirectTo: `${window.location.origin}/login`,
@@ -124,22 +130,22 @@ export async function signUp(
   });
 
   if (error) return { error: readableError(error.message) };
+  return { needsOtp: true };
+}
 
-  // Supabase returns an obfuscated user with no identities when the address
-  // is already registered and email enumeration protection is on.
-  if (
-    data.user &&
-    Array.isArray(data.user.identities) &&
-    data.user.identities.length === 0
-  ) {
-    return { error: "An account with this email already exists." };
-  }
+/** Sends a sign-in OTP to an existing, unverified account. */
+export async function sendLoginOtp(email: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
-  if (data.session && data.user) {
-    writeCache(toAuthUser(data.user));
-    return { sessionEstablished: true };
-  }
+  const { error } = await supabase.auth.signInWithOtp({
+    email: normalizeEmail(email),
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${window.location.origin}/login`,
+    },
+  });
 
+  if (error) return { error: readableError(error.message) };
   return { needsOtp: true };
 }
 
@@ -162,8 +168,11 @@ export async function signIn(
   if (error) {
     const message = error.message.toLowerCase();
     if (message.includes("email not confirmed")) {
+      const sent = await sendLoginOtp(normalized);
+      if (sent.error) return { error: sent.error };
       return {
-        error: "That email isn't verified yet. Enter the 6-digit code we sent you.",
+        error:
+          "That email isn't verified yet. Enter the 6-digit code we just sent you.",
         needsVerification: true,
       };
     }
@@ -215,10 +224,10 @@ export async function verifyOtp(
 export async function resendSignupOtp(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
-  const { error } = await supabase.auth.resend({
-    type: "signup",
+  const { error } = await supabase.auth.signInWithOtp({
     email: normalizeEmail(email),
     options: {
+      shouldCreateUser: false,
       emailRedirectTo: `${window.location.origin}/login`,
     },
   });
