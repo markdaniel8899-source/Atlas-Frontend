@@ -9,18 +9,24 @@ export interface AuthUser {
 
 export interface AuthResult {
   error?: string;
-  /** Sign up succeeded but the address still needs confirming by email. */
-  needsConfirmation?: boolean;
-  /** OTP sent successfully, user needs to enter code. */
+  /** Sign up succeeded but the address still needs verifying with an OTP. */
   needsOtp?: boolean;
-  /** OTP verified successfully. */
+  /** OTP verified successfully and a session was created. */
   otpVerified?: boolean;
+  /** Sign up signed the user in directly (email confirmation is disabled). */
+  sessionEstablished?: boolean;
+  /** Sign in failed because the address has not been verified yet. */
+  needsVerification?: boolean;
 }
 
 export const CONFIG_ERROR =
   "Supabase isn't configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.";
 
 const CACHE_KEY = "atlas.user";
+
+export function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
 
 /** Synchronous read of the cached user, safe for render-time use. */
 export function getUser(): AuthUser | null {
@@ -62,45 +68,77 @@ export function toAuthUser(user: User): AuthUser {
 
 function readableError(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes("invalid login")) {
-    return "That email and password combination didn't work.";
+  if (m.includes("invalid login credentials")) {
+    return "Invalid credentials.";
   }
-  if (m.includes("already registered")) {
+  if (m.includes("user not found")) {
+    return "Email does not exist.";
+  }
+  if (m.includes("already registered") || m.includes("already exists")) {
     return "An account with this email already exists.";
   }
   if (m.includes("at least") && m.includes("password")) {
-    return "Passwords must be at least 6 characters long.";
+    return "Password must be at least 8 characters.";
   }
   if (m.includes("email not confirmed")) {
     return "Confirm your email first, then sign in.";
   }
-  if (m.includes("rate limit")) {
+  if (m.includes("rate limit") || m.includes("too many")) {
     return "Too many attempts. Give it a moment and try again.";
   }
   return message;
 }
 
+/**
+ * The public `profiles` table has no email column (emails live in
+ * `auth.users`) and its RLS only allows authenticated reads, so the
+ * existence check runs through a SECURITY DEFINER RPC instead.
+ * Returns null when the RPC is unavailable so callers can degrade safely.
+ */
+export async function emailExists(email: string): Promise<boolean | null> {
+  if (!isSupabaseConfigured) return null;
+
+  const { data, error } = await supabase.rpc("email_exists", {
+    p_email: normalizeEmail(email),
+  });
+
+  if (error) return null;
+  return data === true;
+}
+
 export async function signUp(
-  name: string,
   email: string,
   password: string,
 ): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
+  const normalized = normalizeEmail(email);
   const { data, error } = await supabase.auth.signUp({
-    email: email.trim().toLowerCase(),
+    email: normalized,
     password,
-    options: { data: { name } },
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+    },
   });
 
   if (error) return { error: readableError(error.message) };
 
-  if (data.session && data.user) {
-    writeCache(toAuthUser(data.user));
-    return {};
+  // Supabase returns an obfuscated user with no identities when the address
+  // is already registered and email enumeration protection is on.
+  if (
+    data.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    return { error: "An account with this email already exists." };
   }
 
-  return { needsConfirmation: true };
+  if (data.session && data.user) {
+    writeCache(toAuthUser(data.user));
+    return { sessionEstablished: true };
+  }
+
+  return { needsOtp: true };
 }
 
 export async function signIn(
@@ -109,69 +147,111 @@ export async function signIn(
 ): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
+  const normalized = normalizeEmail(email);
+  const exists = await emailExists(normalized);
+
+  if (exists === false) return { error: "Email does not exist." };
+
   const { data, error } = await supabase.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
+    email: normalized,
     password,
   });
 
-  if (error) return { error: readableError(error.message) };
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("email not confirmed")) {
+      return {
+        error: "That email isn't verified yet. Enter the 8-digit code we sent you.",
+        needsVerification: true,
+      };
+    }
+    if (message.includes("invalid login credentials")) {
+      return { error: "Invalid credentials." };
+    }
+    return { error: readableError(error.message) };
+  }
 
   if (data.user) writeCache(toAuthUser(data.user));
   return {};
 }
 
-export async function signOut(): Promise<void> {
+export async function verifyOtp(
+  email: string,
+  token: string,
+): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const normalized = normalizeEmail(email);
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: normalized,
+    token: token.trim(),
+    type: "email",
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (
+      message.includes("expired") ||
+      message.includes("invalid") ||
+      message.includes("token")
+    ) {
+      return {
+        error: "That code is invalid or has expired. Resend a new code.",
+      };
+    }
+    return { error: readableError(error.message) };
+  }
+
+  if (!data.user || !data.session) {
+    return { error: "We couldn't verify that code. Try again." };
+  }
+
+  writeCache(toAuthUser(data.user));
+  return { otpVerified: true };
+}
+
+export async function resendSignupOtp(email: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: normalizeEmail(email),
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+    },
+  });
+
+  if (error) return { error: readableError(error.message) };
+  return { needsOtp: true };
+}
+
+export async function signOut(
+  scope: "global" | "local" = "global",
+): Promise<void> {
   writeCache(null);
-  if (isSupabaseConfigured) await supabase.auth.signOut();
+  if (isSupabaseConfigured) await supabase.auth.signOut({ scope });
 }
 
 /** Sends a Supabase password-recovery email for the given address. */
 export async function resetPassword(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${window.location.origin}/login`,
-  });
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    normalizeEmail(email),
+    {
+      redirectTo: `${window.location.origin}/update-password`,
+    },
+  );
 
   if (error) return { error: readableError(error.message) };
 
   return {};
 }
 
-/** Sends an 8-digit OTP to the given email for passwordless login. */
-export async function signInWithOtp(email: string): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.trim().toLowerCase(),
-    options: {
-      shouldCreateUser: false, // Only allow existing users to sign in with OTP
-    },
-  });
-
-  if (error) return { error: readableError(error.message) };
-
-  return { needsOtp: true };
-}
-
-/** Verifies the 8-digit OTP code for the given email. */
-export async function verifyOtp(email: string, token: string): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: email.trim().toLowerCase(),
-    token,
-    type: "email",
-  });
-
-  if (error) return { error: readableError(error.message) };
-
-  if (data.user) writeCache(toAuthUser(data.user));
-  return { otpVerified: true };
-}
-
 /** Updates the user's password. */
-export async function updatePassword(newPassword: string): Promise<AuthResult> {
+export async function updatePassword(
+  newPassword: string,
+): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { error } = await supabase.auth.updateUser({

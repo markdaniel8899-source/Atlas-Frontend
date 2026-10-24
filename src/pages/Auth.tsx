@@ -1,44 +1,68 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Key } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Key,
+  Lock,
+  Mail,
+} from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { resolveSession, signIn, signUp, verifyOtp, type AuthResult } from "../lib/auth";
+import {
+  normalizeEmail,
+  resendSignupOtp,
+  resolveSession,
+  signIn,
+  signUp,
+  verifyOtp,
+  type AuthResult,
+} from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 import { CurtainLink } from "../components/PageCurtain";
 import { doubleCurtainNavigate } from "../components/DoubleCurtain";
+
 type Mode = "login" | "signup" | "otp";
+type NoticeTone = "error" | "success" | "info";
 
 interface Errors {
-  name?: string;
   email?: string;
   password?: string;
   otp?: string;
 }
 
 interface Notice {
-  tone: "error" | "info";
+  tone: NoticeTone;
   text: string;
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
-  const from =
-    (location.state as { from?: string } | null)?.from ?? "/app";
+  const from = (location.state as { from?: string } | null)?.from ?? "/app";
 
   const [mode, setMode] = useState<Mode>("login");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(() => {
+    const incoming = (location.state as { notice?: Notice } | null)?.notice;
+    return incoming ?? null;
+  });
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [leaving, setLeaving] = useState(false);
+
+  const normalizedEmail = normalizeEmail(email);
 
   useEffect(() => {
     let active = true;
@@ -51,34 +75,43 @@ export default function Auth() {
   }, [from, navigate]);
 
   const switchMode = (next: Mode) => {
+    if (busy) return;
     setMode(next);
     setErrors({});
     setNotice(null);
-    if (next === "login") setOtp("");
+    if (next !== "otp") setOtp("");
+  };
+
+  const finish = () => {
+    setLeaving(true);
+    window.setTimeout(
+      () => doubleCurtainNavigate(navigate, from, { replace: true }),
+      300,
+    );
   };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
 
-    const normalizedEmail = email.trim().toLowerCase();
-
     const next: Errors = {};
-    if (mode === "signup" && name.trim().length < 2) {
-      next.name = "Tell us what to call you.";
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
       next.email = "Enter a valid email address.";
     }
+
     if (mode === "otp") {
       if (!/^[0-9]{8}$/.test(otp)) {
         next.otp = "Enter the 8-digit code.";
       }
-    } else {
-      if (password.length < 6) {
-        next.password = "Use at least 6 characters.";
+    } else if (mode === "signup") {
+      if (password.length < 8) {
+        next.password = "Use at least 8 characters.";
       }
+    } else if (password.length === 0) {
+      next.password = "Enter your password.";
     }
+
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -87,55 +120,87 @@ export default function Auth() {
 
     let result: AuthResult;
 
-    if (mode === "signup") {
-      result = await signUp(name.trim(), normalizedEmail, password);
-    } else if (mode === "otp") {
-      result = await verifyOtp(normalizedEmail, otp.trim());
-    } else {
-      result = await signIn(normalizedEmail, password);
+    try {
+      if (mode === "signup") {
+        result = await signUp(normalizedEmail, password);
+      } else if (mode === "otp") {
+        result = await verifyOtp(normalizedEmail, otp);
+      } else {
+        result = await signIn(normalizedEmail, password);
+      }
+    } catch {
+      result = {
+        error: "Something went wrong. Check your connection and try again.",
+      };
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
 
     if (result.error) {
       setNotice({ tone: "error", text: result.error });
+      if (result.needsVerification) {
+        setMode("otp");
+        setOtp("");
+      }
       return;
     }
 
-    if (result.needsConfirmation) {
-      setNotice({
-        tone: "info",
-        text: `We sent a confirmation link to ${email.trim()}. Confirm it, then sign in.`,
-      });
-      setMode("login");
+    if (result.needsOtp) {
+      setMode("otp");
+      setOtp("");
       return;
     }
 
-    if (result.otpVerified) {
-      setLeaving(true);
-      window.setTimeout(
-        () => doubleCurtainNavigate(navigate, from, { replace: true }),
-        300,
-      );
-      return;
-    }
-
-    // Login success: fade the form up first, then the double curtain
-    // closes and parts to carry the swap to the dashboard.
-    setLeaving(true);
-    window.setTimeout(
-      () => doubleCurtainNavigate(navigate, from, { replace: true }),
-      300,
-    );
+    finish();
   };
+
+  const onResend = async () => {
+    if (busy || resending) return;
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setNotice({ tone: "error", text: "Enter a valid email address." });
+      return;
+    }
+
+    setResending(true);
+    setNotice(null);
+
+    try {
+      const result = await resendSignupOtp(normalizedEmail);
+      if (result.error) {
+        setNotice({ tone: "error", text: result.error });
+        return;
+      }
+      setNotice({
+        tone: "success",
+        text: "A new 8-digit code is on its way.",
+      });
+    } catch {
+      setNotice({
+        tone: "error",
+        text: "Something went wrong. Check your connection and try again.",
+      });
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const heading =
+    mode === "login"
+      ? "Welcome back."
+      : mode === "signup"
+        ? "Claim your map."
+        : "Check your inbox.";
+
+  const subheading =
+    mode === "login"
+      ? "Pick up where the streak left off."
+      : mode === "signup"
+        ? "Set up your learning OS in under a minute."
+        : "Enter the 8-digit code to verify your account.";
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-void px-6 py-16">
-      {/* Ambient light pillar backdrop (LightPillar). */}
-      <div
-        aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-      >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <LightPillar
           topColor="#5227FF"
           bottomColor="#FF9FFC"
@@ -167,237 +232,245 @@ export default function Auth() {
         </CurtainLink>
       </motion.div>
 
-      <div className="flex w-full flex-col items-center justify-center origin-center transition-transform duration-300 2xl:scale-90 3xl:scale-75">
-      <motion.div
-        initial={{ opacity: 0, y: 28, scale: 0.97 }}
-        animate={
-          leaving
-            ? { opacity: 0, y: -20, scale: 1 }
-            : { opacity: 1, y: 0, scale: 1 }
-        }
-        transition={
-          leaving
-            ? { duration: 0.3, ease: EASE }
-            : { duration: 0.6, delay: 0.05, ease: EASE }
-        }
-        className="glass card-sheen relative w-full max-w-md rounded-3xl p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_rgba(255,255,255,0.14)] sm:p-10 3xl:max-w-sm"
-      >
-        <div className="flex flex-col items-center text-center">
-          <span className="text-[11px] font-medium uppercase tracking-[0.45em] text-star/70">
-            ATLAS
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-            {mode === "login" ? "Welcome back." : "Claim your map."}
-          </h1>
-          <p className="mt-2 text-sm text-white/45">
-            {mode === "login"
-              ? "Pick up where the streak left off."
-              : "Set up your learning OS in under a minute."}
-          </p>
-        </div>
+      <div className="flex w-full origin-center flex-col items-center justify-center transition-transform duration-300 2xl:scale-90 3xl:scale-75">
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.97 }}
+          animate={
+            leaving
+              ? { opacity: 0, y: -20, scale: 1 }
+              : { opacity: 1, y: 0, scale: 1 }
+          }
+          transition={
+            leaving
+              ? { duration: 0.3, ease: EASE }
+              : { duration: 0.6, delay: 0.05, ease: EASE }
+          }
+          className="glass card-sheen relative w-full max-w-md rounded-3xl p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_rgba(255,255,255,0.14)] sm:p-10 3xl:max-w-sm"
+        >
+          <div className="flex flex-col items-center text-center">
+            <span className="text-[11px] font-medium uppercase tracking-[0.45em] text-star/70">
+              ATLAS
+            </span>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+              {heading}
+            </h1>
+            <p className="mt-2 text-sm text-white/45">{subheading}</p>
+          </div>
 
-        <div className="relative mt-8 grid grid-cols-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
-          {(["login", "signup"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => switchMode(m)}
-              className={`relative rounded-full px-4 py-2 text-sm transition-colors ${
-                mode === m ? "text-white" : "text-white/45 hover:text-white/80"
+          {mode === "otp" && (
+            <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#cf9eff]/25 bg-[#cf9eff]/[0.06] px-4 py-3 text-left">
+              <Mail className="mt-0.5 size-4 shrink-0 text-[#cf9eff]" />
+              <p className="text-xs leading-relaxed text-white/70">
+                We sent an 8-digit code to{" "}
+                <span className="font-medium text-white">
+                  {normalizedEmail}
+                </span>
+                .
+              </p>
+            </div>
+          )}
+
+          {notice && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`mt-6 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
+                notice.tone === "error"
+                  ? "border-red-400/30 bg-red-400/[0.07] text-red-200"
+                  : notice.tone === "success"
+                    ? "border-green-400/30 bg-green-400/[0.07] text-green-200"
+                    : "border-[#cf9eff]/30 bg-[#cf9eff]/[0.08] text-[#e9dcff]"
               }`}
             >
-              {mode === m && (
-                <motion.span
-                  layoutId="auth-tab"
-                  className="absolute inset-0 rounded-full border border-white/10 bg-white/[0.07]"
-                  transition={{ type: "spring", stiffness: 480, damping: 34 }}
-                />
+              {notice.tone === "success" && (
+                <CheckCircle2 className="mt-px size-4 shrink-0 text-green-300" />
               )}
-              <span className="relative z-10">
-                {m === "login" ? "Log in" : "Sign up"}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {notice && (
-          <p
-            className={`mt-6 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
-              notice.tone === "error"
-                ? "border-red-400/30 bg-red-400/[0.07] text-red-200"
-                : "border-[#cf9eff]/30 bg-[#cf9eff]/[0.08] text-[#e9dcff]"
-            }`}
-          >
-            {notice.text}
-          </p>
-        )}
-
-        <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
-          {mode === "signup" && (
-            <Field
-              label="Name"
-              htmlFor="auth-name"
-              filled={name.length > 0}
-              error={errors.name}
-            >
-              <input
-                id="auth-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-              />
-            </Field>
+              <p>{notice.text}</p>
+            </div>
           )}
 
-          <Field
-            label="Enter your email"
-            htmlFor="auth-email"
-            icon={<Mail className="size-4" />}
-            filled={email.length > 0}
-            error={errors.email}
-          >
-            <input
-              id="auth-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-            />
-          </Field>
-
           {mode !== "otp" && (
-            <Field
-              label="Password"
-              htmlFor="auth-password"
-              icon={<Lock className="size-4" />}
-              filled={password.length > 0}
-              error={errors.password}
-              trailing={
+            <div className="relative mt-8 grid grid-cols-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
+              {(["login", "signup"] as Mode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => switchMode(m)}
+                  className={`relative rounded-full px-4 py-2 text-sm transition-colors ${
+                    mode === m
+                      ? "text-white"
+                      : "text-white/45 hover:text-white/80"
+                  }`}
+                >
+                  {mode === m && (
+                    <motion.span
+                      layoutId="auth-tab"
+                      className="absolute inset-0 rounded-full border border-white/10 bg-white/[0.07]"
+                      transition={{ type: "spring", stiffness: 480, damping: 34 }}
+                    />
+                  )}
+                  <span className="relative z-10">
+                    {m === "login" ? "Log in" : "Sign up"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
+            {mode !== "otp" && (
+              <>
+                <Field
+                  label="Email"
+                  htmlFor="auth-email"
+                  icon={<Mail className="size-4" />}
+                  filled={email.length > 0}
+                  error={errors.email}
+                >
+                  <input
+                    id="auth-email"
+                    type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    autoComplete="email"
+                    aria-invalid={errors.email ? true : undefined}
+                    className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                  />
+                </Field>
+
+                <Field
+                  label="Password"
+                  htmlFor="auth-password"
+                  icon={<Lock className="size-4" />}
+                  filled={password.length > 0}
+                  error={errors.password}
+                  trailing={
+                    <button
+                      type="button"
+                      onClick={() => setShowPw((v) => !v)}
+                      className="text-white/35 transition-colors hover:text-white/70"
+                      aria-label={showPw ? "Hide password" : "Show password"}
+                    >
+                      {showPw ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  }
+                >
+                  <input
+                    id="auth-password"
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    aria-invalid={errors.password ? true : undefined}
+                    autoComplete={
+                      mode === "login" ? "current-password" : "new-password"
+                    }
+                    className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                  />
+                </Field>
+              </>
+            )}
+
+            {mode === "otp" && (
+              <Field
+                label="8-digit code"
+                htmlFor="auth-otp"
+                icon={<Key className="size-4" />}
+                filled={otp.length > 0}
+                error={errors.otp}
+              >
+                <input
+                  id="auth-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={8}
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+                  }
+                  aria-invalid={errors.otp ? true : undefined}
+                  className="w-full bg-transparent pt-3 pb-1 text-center text-sm tracking-[0.4em] text-white focus:outline-none"
+                />
+              </Field>
+            )}
+
+            {mode === "login" && (
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="text-white/35 transition-colors hover:text-white/70"
-                  aria-label={showPw ? "Hide password" : "Show password"}
+                  onClick={() => navigate("/forgot-password")}
+                  disabled={busy}
+                  className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
                 >
-                  {showPw ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  Forgot Password?
                 </button>
-              }
-            >
-              <input
-                id="auth-password"
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                aria-invalid={errors.password ? true : undefined}
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
-                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-              />
-            </Field>
-          )}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full py-3.5" disabled={busy}>
+              {busy
+                ? mode === "login"
+                  ? "Signing in..."
+                  : mode === "otp"
+                    ? "Verifying code..."
+                    : "Creating account..."
+                : mode === "login"
+                  ? "Log in"
+                  : mode === "otp"
+                    ? "Verify code"
+                    : "Create account"}
+              {!busy && <ArrowRight className="size-4" />}
+            </Button>
+          </form>
 
           {mode === "otp" && (
-            <Field
-              label="8-digit code"
-              htmlFor="auth-otp"
-              icon={<Key className="size-4" />}
-              filled={otp.length > 0}
-              error={errors.otp}
-            >
-              <input
-                id="auth-otp"
-                type="text"
-                inputMode="numeric"
-                maxLength={8}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                autoComplete="one-time-code"
-                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none text-center tracking-widest"
-              />
-            </Field>
-          )}
-
-          {mode !== "otp" && (
-<div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => navigate("/forgot-password")}
-              disabled={busy}
-              className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
-            >
-              Forgot password?
-            </button>
-          </div>
-          )}
-
-          {mode === "otp" && (
-            <div className="flex justify-center">
+            <div className="mt-5 flex flex-col items-center gap-3 text-xs text-white/45">
               <button
                 type="button"
-                onClick={() => void switchMode("login")}
-                disabled={busy}
-                className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
+                onClick={onResend}
+                disabled={busy || resending}
+                className="transition-colors hover:text-star disabled:opacity-50"
               >
-                Back to password
+                {resending ? "Sending new code..." : "Resend code"}
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                disabled={busy}
+                className="transition-colors hover:text-white disabled:opacity-50"
+              >
+                Back to Login
               </button>
             </div>
           )}
 
-          <Button type="submit" className="w-full py-3.5" disabled={busy}>
-            {busy
-              ? mode === "login"
-                ? "Signing in…"
-                : mode === "otp"
-                ? "Verifying code…"
-                : "Creating account…"
-              : mode === "login"
-                ? "Enter the dashboard"
-                : mode === "otp"
-                ? "Verify code"
-                : "Create account"}
-            {!busy && <ArrowRight className="size-4" />}
-          </Button>
-        </form>
-      </motion.div>
-
-      <motion.button
-        initial={{ opacity: 0 }}
-        animate={leaving ? { opacity: 0, y: -12 } : { opacity: 1, y: 0 }}
-        transition={
-          leaving
-            ? { duration: 0.3, ease: EASE }
-            : { duration: 0.5, delay: 0.35, ease: EASE }
-        }
-        type="button"
-        onClick={() =>
-          switchMode(
-            mode === "login" ? "signup" : mode === "signup" ? "otp" : "login"
-          )
-        }
-        className="relative mt-6 text-sm text-white/45 transition-colors hover:text-white"
-      >
-        {mode === "login" ? (
-          <>
-            New here? <span className="text-star">Create an account</span>
-          </>
-        ) : mode === "otp" ? (
-          <>
-            Already have an account? <span className="text-star">Log in</span>
-          </>
-        ) : (
-          <>
-            Already climbing? <span className="text-star">Log in</span>
-          </>
-        )}
-      </motion.button>
+          {mode !== "otp" && (
+            <button
+              type="button"
+              onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+              className="mt-6 w-full text-center text-sm text-white/45 transition-colors hover:text-white"
+            >
+              {mode === "login" ? (
+                <>
+                  New here? <span className="text-star">Create Account</span>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <span className="text-star">Log in</span>
+                </>
+              )}
+            </button>
+          )}
+        </motion.div>
       </div>
     </div>
   );
@@ -417,7 +490,6 @@ function Field({
   icon?: ReactNode;
   error?: string;
   trailing?: ReactNode;
-  /** Floats the label up once the input holds a value (autofill included). */
   filled: boolean;
   children: ReactNode;
 }) {
