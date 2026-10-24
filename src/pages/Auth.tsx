@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Key } from "lucide-reac
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { resolveSession, signIn, signUp, signInWithOtp, verifyOtp, type AuthResult } from "../lib/auth";
+import { resolveSession, signIn, signUp, verifyOtp, type AuthResult } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 import { CurtainLink } from "../components/PageCurtain";
 import { doubleCurtainNavigate } from "../components/DoubleCurtain";
@@ -57,42 +57,17 @@ export default function Auth() {
     if (next === "login") setOtp("");
   };
 
-  const sendOtp = async () => {
-    if (busy) return;
-    const trimmed = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setErrors((prev) => ({
-        ...prev,
-        email: "Enter a valid email address.",
-      }));
-      return;
-    }
-    setBusy(true);
-    setNotice(null);
-    const result = await signInWithOtp(trimmed);
-    setBusy(false);
-    if (result.error) {
-      setNotice({ tone: "error", text: result.error });
-      return;
-    }
-    if (result.needsOtp) {
-      setMode("otp");
-      setNotice({
-        tone: "info",
-        text: `We sent an 8-digit code to ${trimmed}. Enter it below to sign in.`,
-      });
-    }
-  };
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     const next: Errors = {};
     if (mode === "signup" && name.trim().length < 2) {
       next.name = "Tell us what to call you.";
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       next.email = "Enter a valid email address.";
     }
     if (mode === "otp") {
@@ -113,11 +88,11 @@ export default function Auth() {
     let result: AuthResult;
 
     if (mode === "signup") {
-      result = await signUp(name.trim(), email.trim(), password);
+      result = await signUp(name.trim(), normalizedEmail, password);
     } else if (mode === "otp") {
-      result = await verifyOtp(email.trim(), otp.trim());
+      result = await verifyOtp(normalizedEmail, otp.trim());
     } else {
-      result = await signIn(email.trim(), password);
+      result = await signIn(normalizedEmail, password);
     }
 
     setBusy(false);
@@ -354,7 +329,7 @@ export default function Auth() {
 <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => void sendOtp()}
+              onClick={() => navigate("/forgot-password")}
               disabled={busy}
               className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
             >

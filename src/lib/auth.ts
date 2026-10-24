@@ -88,7 +88,7 @@ export async function signUp(
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: email.trim().toLowerCase(),
     password,
     options: { data: { name } },
   });
@@ -110,7 +110,7 @@ export async function signIn(
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: email.trim().toLowerCase(),
     password,
   });
 
@@ -129,7 +129,7 @@ export async function signOut(): Promise<void> {
 export async function resetPassword(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     redirectTo: `${window.location.origin}/login`,
   });
 
@@ -143,7 +143,7 @@ export async function signInWithOtp(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { error } = await supabase.auth.signInWithOtp({
-    email,
+    email: email.trim().toLowerCase(),
     options: {
       shouldCreateUser: false, // Only allow existing users to sign in with OTP
     },
@@ -159,7 +159,7 @@ export async function verifyOtp(email: string, token: string): Promise<AuthResul
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { data, error } = await supabase.auth.verifyOtp({
-    email,
+    email: email.trim().toLowerCase(),
     token,
     type: "email",
   });

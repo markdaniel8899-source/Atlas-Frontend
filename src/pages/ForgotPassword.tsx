@@ -17,7 +17,7 @@ export default function ForgotPassword() {
   const [busy, setBusy] = useState(false);
 
   const sendResetLink = async () => {
-    const trimmed = email.trim();
+    const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setErrors((prev) => ({ ...prev, email: "Enter a valid email address." }));
       return;
@@ -37,8 +37,10 @@ export default function ForgotPassword() {
     e.preventDefault();
     if (busy) return;
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const next: Errors = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       next.email = "Enter a valid email address.";
     }
     setErrors(next);
