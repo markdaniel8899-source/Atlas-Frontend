@@ -14,6 +14,10 @@ export function CustomCursor() {
   const { pathname } = useLocation();
   const snappy =
     pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/verify-otp" ||
+    pathname === "/forgot-password" ||
+    pathname === "/update-password" ||
     pathname === "/wp-admin/login" ||
     pathname.startsWith("/app");
   const x = useMotionValue(-100);

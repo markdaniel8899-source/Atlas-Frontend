@@ -1,32 +1,32 @@
+// IMPORTANT: In Supabase Dashboard > Authentication > Providers > Email,
+// set "Confirm email" to OFF. Signup uses OTP only (no confirmation links).
+// The Magic Link email template must render {{ .Token }}, not {{ .ConfirmationURL }}.
+
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
   Eye,
   EyeOff,
   Lock,
   Mail,
   User,
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
 import {
   normalizeEmail,
   resolveSession,
-  signIn,
+  sendEmailOtp,
+  signOut,
   signUp,
   type AuthResult,
 } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 import { CurtainLink } from "../components/PageCurtain";
-import { doubleCurtainNavigate } from "../components/DoubleCurtain";
-
-type Mode = "login" | "signup";
-type NoticeTone = "error" | "success" | "info";
 
 interface Errors {
   name?: string;
@@ -35,56 +35,34 @@ interface Errors {
 }
 
 interface Notice {
-  tone: NoticeTone;
+  tone: "error";
   text: string;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function Auth() {
+export default function Signup() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/app";
 
-  const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
-  const [notice, setNotice] = useState<Notice | null>(() => {
-    const incoming = (location.state as { notice?: Notice } | null)?.notice;
-    return incoming ?? null;
-  });
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [busy, setBusy] = useState(false);
-  const [leaving, setLeaving] = useState(false);
 
   const normalizedEmail = normalizeEmail(email);
 
   useEffect(() => {
     let active = true;
     resolveSession().then((user) => {
-      if (active && user) navigate(from, { replace: true });
+      if (active && user) navigate("/app", { replace: true });
     });
     return () => {
       active = false;
     };
-  }, [from, navigate]);
-
-  const switchMode = (next: Mode) => {
-    if (busy) return;
-    setMode(next);
-    setErrors({});
-    setNotice(null);
-  };
-
-  const finish = () => {
-    setLeaving(true);
-    window.setTimeout(
-      () => doubleCurtainNavigate(navigate, from, { replace: true }),
-      300,
-    );
-  };
+  }, [navigate]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -92,19 +70,14 @@ export default function Auth() {
 
     const next: Errors = {};
 
+    if (name.trim().length < 2) {
+      next.name = "Tell us what to call you.";
+    }
     if (!EMAIL_PATTERN.test(normalizedEmail)) {
       next.email = "Enter a valid email address.";
     }
-
-    if (mode === "signup") {
-      if (name.trim().length < 2) {
-        next.name = "Tell us what to call you.";
-      }
-      if (password.length < 8) {
-        next.password = "Use at least 8 characters.";
-      }
-    } else if (password.length === 0) {
-      next.password = "Enter your password.";
+    if (password.length < 8) {
+      next.password = "Use at least 8 characters.";
     }
 
     setErrors(next);
@@ -116,44 +89,33 @@ export default function Auth() {
     let result: AuthResult;
 
     try {
-      result =
-        mode === "signup"
-          ? await signUp(name.trim(), normalizedEmail, password)
-          : await signIn(normalizedEmail, password);
+      result = await signUp(name.trim(), normalizedEmail, password);
+      if (result.error) {
+        setNotice({ tone: "error", text: result.error });
+        return;
+      }
+
+      result = await sendEmailOtp(normalizedEmail);
+      if (result.error) {
+        setNotice({ tone: "error", text: result.error });
+        return;
+      }
+
+      await signOut("local").catch(() => undefined);
     } catch {
-      result = {
-        error: "Something went wrong. Check your connection and try again.",
-      };
+      setNotice({
+        tone: "error",
+        text: "Something went wrong. Check your connection and try again.",
+      });
+      return;
     } finally {
       setBusy(false);
     }
 
-    if (result.error) {
-      setNotice({ tone: "error", text: result.error });
-      return;
-    }
-
-    if (result.needsConfirmation) {
-      setMode("login");
-      setPassword("");
-      setName("");
-      setErrors({});
-      setNotice({
-        tone: "success",
-        text: "Check your email to confirm your account.",
-      });
-      return;
-    }
-
-    finish();
+    navigate(
+      `/verify-otp?email=${encodeURIComponent(normalizedEmail)}&mode=signup`,
+    );
   };
-
-  const heading = mode === "login" ? "Welcome back." : "Claim your map.";
-
-  const subheading =
-    mode === "login"
-      ? "Pick up where the streak left off."
-      : "Set up your learning OS in under a minute.";
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-void px-6 py-16">
@@ -192,16 +154,8 @@ export default function Auth() {
       <div className="flex w-full origin-center flex-col items-center justify-center transition-transform duration-300 2xl:scale-90 3xl:scale-75">
         <motion.div
           initial={{ opacity: 0, y: 28, scale: 0.97 }}
-          animate={
-            leaving
-              ? { opacity: 0, y: -20, scale: 1 }
-              : { opacity: 1, y: 0, scale: 1 }
-          }
-          transition={
-            leaving
-              ? { duration: 0.3, ease: EASE }
-              : { duration: 0.6, delay: 0.05, ease: EASE }
-          }
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.05, ease: EASE }}
           className="glass card-sheen relative w-full max-w-md rounded-3xl p-8 shadow-[0_8px_32px_0_rgba(0,0,0,0.37),inset_0_1px_0_rgba(255,255,255,0.14)] sm:p-10 3xl:max-w-sm"
         >
           <div className="flex flex-col items-center text-center">
@@ -209,91 +163,56 @@ export default function Auth() {
               ATLAS
             </span>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {heading}
+              Claim your map.
             </h1>
-            <p className="mt-2 text-sm text-white/45">{subheading}</p>
+            <p className="mt-2 text-sm text-white/45">
+              Set up your learning OS in under a minute.
+            </p>
           </div>
 
           {notice && (
             <div
               role="status"
               aria-live="polite"
-              className={`mt-6 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs leading-relaxed ${
-                notice.tone === "error"
-                  ? "border-red-400/30 bg-red-400/[0.07] text-red-200"
-                  : notice.tone === "success"
-                    ? "border-green-400/30 bg-green-400/[0.07] text-green-200"
-                    : "border-[#cf9eff]/30 bg-[#cf9eff]/[0.08] text-[#e9dcff]"
-              }`}
+              className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-400/30 bg-red-400/[0.07] px-4 py-3 text-xs leading-relaxed text-red-200"
             >
-              {notice.tone === "success" && (
-                <CheckCircle2 className="mt-px size-4 shrink-0 text-green-300" />
-              )}
               <p>{notice.text}</p>
             </div>
           )}
 
-          <div className="relative mt-8 grid grid-cols-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {(["login", "signup"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => switchMode(m)}
-                className={`relative rounded-full px-4 py-2 text-sm transition-colors ${
-                  mode === m
-                    ? "text-white"
-                    : "text-white/45 hover:text-white/80"
-                }`}
-              >
-                {mode === m && (
-                  <motion.span
-                    layoutId="auth-tab"
-                    className="absolute inset-0 rounded-full border border-white/10 bg-white/[0.07]"
-                    transition={{ type: "spring", stiffness: 480, damping: 34 }}
-                  />
-                )}
-                <span className="relative z-10">
-                  {m === "login" ? "Log in" : "Sign up"}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
-            {mode === "signup" && (
-              <Field
-                label="Name"
-                htmlFor="auth-name"
-                icon={<User className="size-4" />}
-                filled={name.length > 0}
-                error={errors.name}
-              >
-                <input
-                  id="auth-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (errors.name) {
-                      setErrors((prev) => ({ ...prev, name: undefined }));
-                    }
-                  }}
-                  autoComplete="name"
-                  aria-invalid={errors.name ? true : undefined}
-                  className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-                />
-              </Field>
-            )}
+          <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
+            <Field
+              label="Full name"
+              htmlFor="signup-name"
+              icon={<User className="size-4" />}
+              filled={name.length > 0}
+              error={errors.name}
+            >
+              <input
+                id="signup-name"
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) {
+                    setErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
+                autoComplete="name"
+                aria-invalid={errors.name ? true : undefined}
+                className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+              />
+            </Field>
 
             <Field
               label="Email"
-              htmlFor="auth-email"
+              htmlFor="signup-email"
               icon={<Mail className="size-4" />}
               filled={email.length > 0}
               error={errors.email}
             >
               <input
-                id="auth-email"
+                id="signup-email"
                 type="email"
                 inputMode="email"
                 autoCapitalize="none"
@@ -309,7 +228,7 @@ export default function Auth() {
 
             <Field
               label="Password"
-              htmlFor="auth-password"
+              htmlFor="signup-password"
               icon={<Lock className="size-4" />}
               filled={password.length > 0}
               error={errors.password}
@@ -329,59 +248,28 @@ export default function Auth() {
               }
             >
               <input
-                id="auth-password"
+                id="signup-password"
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={errors.password ? true : undefined}
-                autoComplete={
-                  mode === "login" ? "current-password" : "new-password"
-                }
+                autoComplete="new-password"
                 className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
               />
             </Field>
 
-            {mode === "login" && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/forgot-password")}
-                  disabled={busy}
-                  className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            )}
-
             <Button type="submit" className="w-full py-3.5" disabled={busy}>
-              {busy
-                ? mode === "login"
-                  ? "Signing in..."
-                  : "Creating account..."
-                : mode === "login"
-                  ? "Log in"
-                  : "Create account"}
+              {busy ? "Creating account..." : "Sign Up"}
               {!busy && <ArrowRight className="size-4" />}
             </Button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => switchMode(mode === "login" ? "signup" : "login")}
-            className="mt-6 w-full text-center text-sm text-white/45 transition-colors hover:text-white"
+          <Link
+            to="/login"
+            className="mt-6 block w-full text-center text-sm text-white/45 transition-colors hover:text-white"
           >
-            {mode === "login" ? (
-              <>
-                New here? <span className="text-star">Create Account</span>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <span className="text-star">Log in</span>
-              </>
-            )}
-          </button>
+            Already have an account? <span className="text-star">Log in</span>
+          </Link>
         </motion.div>
       </div>
     </div>

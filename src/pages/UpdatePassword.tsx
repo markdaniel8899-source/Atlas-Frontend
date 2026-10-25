@@ -2,11 +2,15 @@ import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, ArrowLeft, Eye, EyeOff, Lock } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { resolveSession, signOut, updatePassword } from "../lib/auth";
-import { supabase } from "../lib/supabase";
+import {
+  normalizeEmail,
+  resolveSession,
+  signOut,
+  updatePassword,
+} from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
 
 type Status = "checking" | "ready" | "invalid";
@@ -18,8 +22,10 @@ interface Errors {
 
 export default function UpdatePassword() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<Status>("checking");
+  const [searchParams] = useSearchParams();
+  const email = normalizeEmail(searchParams.get("email") ?? "");
 
+  const [status, setStatus] = useState<Status>("checking");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -31,52 +37,17 @@ export default function UpdatePassword() {
   useEffect(() => {
     let active = true;
 
-    const search = new URLSearchParams(window.location.search);
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-
-    if (search.get("error") || hash.get("error")) {
-      setStatus("invalid");
-      return;
-    }
-
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === "PASSWORD_RECOVERY" || (session && event === "SIGNED_IN")) {
-        setStatus("ready");
-      }
-    });
-
-    const tokenHash = search.get("token_hash");
-    if (tokenHash) {
-      supabase.auth
-        .verifyOtp({ token_hash: tokenHash, type: "recovery" })
-        .then(({ error }) => {
-          if (!active) return;
-          setStatus(error ? "invalid" : "ready");
-        })
-        .catch(() => {
-          if (active) setStatus("invalid");
-        });
-    } else {
-      resolveSession()
-        .then((user) => {
-          if (!active) return;
-          if (user) setStatus("ready");
-        })
-        .catch(() => {
-          if (active) setStatus("invalid");
-        });
-    }
-
-    const timer = window.setTimeout(() => {
-      if (!active) return;
-      setStatus((prev) => (prev === "checking" ? "invalid" : prev));
-    }, 2500);
+    resolveSession()
+      .then((user) => {
+        if (!active) return;
+        setStatus(user ? "ready" : "invalid");
+      })
+      .catch(() => {
+        if (active) setStatus("invalid");
+      });
 
     return () => {
       active = false;
-      window.clearTimeout(timer);
-      data.subscription.unsubscribe();
     };
   }, []);
 
@@ -106,15 +77,12 @@ export default function UpdatePassword() {
       }
 
       await signOut("local").catch(() => undefined);
-      navigate("/login", {
-        replace: true,
-        state: {
-          notice: {
-            tone: "success",
-            text: "Password updated! Sign in with your new password.",
-          },
-        },
-      });
+      navigate(
+        `/login?message=${encodeURIComponent(
+          "Password updated. Please login.",
+        )}`,
+        { replace: true },
+      );
     } catch {
       setFormError("Something went wrong. Check your connection and try again.");
     } finally {
@@ -127,7 +95,7 @@ export default function UpdatePassword() {
       <Shell>
         <div className="flex flex-col items-center gap-4 py-8 text-center">
           <span className="size-8 animate-spin rounded-full border-2 border-white/10 border-t-[#cf9eff]" />
-          <p className="text-sm text-white/45">Verifying reset link...</p>
+          <p className="text-sm text-white/45">Verifying your session...</p>
         </div>
       </Shell>
     );
@@ -144,11 +112,11 @@ export default function UpdatePassword() {
             <AlertCircle className="size-5 text-red-400" />
           </div>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-            Invalid or expired link
+            Verify your email first
           </h1>
           <p className="mt-2 text-sm text-white/45">
-            This password reset link is invalid or has expired. Request a new
-            one to continue.
+            Your verification session has expired. Request a new code to
+            continue.
           </p>
         </div>
         <div className="mt-7 space-y-3">
@@ -156,7 +124,7 @@ export default function UpdatePassword() {
             onClick={() => navigate("/forgot-password")}
             className="w-full py-3.5"
           >
-            Request new link
+            Start over
           </Button>
           <Button
             onClick={() => navigate("/login")}
@@ -181,7 +149,9 @@ export default function UpdatePassword() {
           Set new password
         </h1>
         <p className="mt-2 text-sm text-white/45">
-          Choose a strong password for your account.
+          {email
+            ? `Choose a strong password for ${email}.`
+            : "Choose a strong password for your account."}
         </p>
       </div>
 
@@ -308,7 +278,7 @@ export default function UpdatePassword() {
         </div>
 
         <Button type="submit" className="w-full py-3.5" disabled={busy}>
-          {busy ? "Updating password..." : "Update password"}
+          {busy ? "Updating password..." : "Update Password"}
         </Button>
       </form>
     </Shell>

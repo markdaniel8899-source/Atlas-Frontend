@@ -15,7 +15,9 @@ import {
 // demand and warmed in the background during idle time (see prefetch below),
 // so navigation never waits on the network.
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const Auth = lazy(() => import("./pages/Auth"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const VerifyOtp = lazy(() => import("./pages/VerifyOtp"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const AccountDisabled = lazy(() => import("./pages/AccountDisabled"));
@@ -50,6 +52,16 @@ import {
   useLocation,
 } from "react-router-dom";
 import type { ReactNode } from "react";
+
+const AUTH_SEGMENTS = new Set([
+  "login",
+  "signup",
+  "verify-otp",
+  "forgot-password",
+  "update-password",
+  "account-disabled",
+  "auth",
+]);
 
 function GroupTransition({
   variant,
@@ -99,12 +111,11 @@ function GroupTransition({
 function AnimatedRoutes() {
   const location = useLocation();
   const segment = location.pathname.split("/")[1] ?? "";
-  const key =
-    segment === "login" || segment === "auth"
-      ? "auth"
-      : segment === "app"
-        ? "app"
-        : "landing";
+  const key = AUTH_SEGMENTS.has(segment)
+    ? "auth"
+    : segment === "app"
+      ? "app"
+      : "landing";
 
   useEffect(() => {
     scrollToTop();
@@ -134,7 +145,33 @@ function AnimatedRoutes() {
             element={
               <GroupTransition variant="auth">
                 <Seo {...PAGES.login} />
-                <Auth />
+                <Login />
+              </GroupTransition>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <GroupTransition variant="auth">
+                <Seo
+                  path="/signup"
+                  title="Create Account — ATLAS"
+                  index={false}
+                />
+                <Signup />
+              </GroupTransition>
+            }
+          />
+          <Route
+            path="/verify-otp"
+            element={
+              <GroupTransition variant="auth">
+                <Seo
+                  path="/verify-otp"
+                  title="Verify Email — ATLAS"
+                  index={false}
+                />
+                <VerifyOtp />
               </GroupTransition>
             }
           />
@@ -326,7 +363,11 @@ export default function App() {
     idle(() => {
       void Promise.allSettled([
         import("./pages/LandingPage"),
-        import("./pages/Auth"),
+        import("./pages/Login"),
+        import("./pages/Signup"),
+        import("./pages/VerifyOtp"),
+        import("./pages/ForgotPassword"),
+        import("./pages/UpdatePassword"),
         import("./pages/site/AboutPage"),
         import("./pages/site/ContactPage"),
         import("./pages/site/BlogPage"),

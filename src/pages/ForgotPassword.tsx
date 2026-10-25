@@ -1,20 +1,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
-import { normalizeEmail, resetPassword } from "../lib/auth";
+import { normalizeEmail, sendEmailOtp } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
-
-type Step = "email" | "success";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,12 +31,14 @@ export default function ForgotPassword() {
     setError(null);
 
     try {
-      const result = await resetPassword(normalized);
+      const result = await sendEmailOtp(normalized);
       if (result.error) {
         setError(result.error);
         return;
       }
-      setStep("success");
+      navigate(
+        `/verify-otp?email=${encodeURIComponent(normalized)}&mode=forgot`,
+      );
     } catch {
       setError("Something went wrong. Check your connection and try again.");
     } finally {
@@ -93,87 +92,72 @@ export default function ForgotPassword() {
               ATLAS
             </span>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {step === "email" ? "Forgot password?" : "Check your inbox"}
+              Forgot password?
             </h1>
             <p className="mt-2 text-sm text-white/45">
-              {step === "email"
-                ? "Enter your email and we'll send you a reset link."
-                : "Follow the link in the email to set a new password."}
+              Enter your email and we'll send you a 6-digit verification code.
             </p>
           </div>
 
-          {step === "email" && (
-            <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
-              <div
-                className={`group flex items-center gap-3 rounded-xl border bg-white/[0.04] px-4 py-2 transition-[border-color,box-shadow] duration-200 focus-within:border-[#cf9eff]/60 focus-within:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] ${
-                  error ? "border-red-400/50" : "border-white/10"
-                }`}
-              >
-                <span className={error ? "text-red-300/70" : "text-white/30"}>
-                  <Mail className="size-4" />
-                </span>
-                <div className="relative min-w-0 flex-1">
-                  <input
-                    id="forgot-email"
-                    type="email"
-                    inputMode="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value.toLowerCase());
-                      if (error) setError(null);
-                    }}
-                    autoComplete="email"
-                    aria-invalid={error ? true : undefined}
-                    aria-describedby={error ? "forgot-error" : undefined}
-                    className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-                  />
-                  <label
-                    htmlFor="forgot-email"
-                    className="pointer-events-none absolute left-0 top-0 translate-y-0 text-[10px] font-medium leading-none text-white/45 transition-all duration-200 ease-out group-focus-within:text-star/80"
-                  >
-                    Email
-                  </label>
-                </div>
-              </div>
-
-              {error && (
-                <p
-                  id="forgot-error"
-                  role="status"
-                  aria-live="polite"
-                  className="rounded-xl border border-red-400/30 bg-red-400/[0.07] px-4 py-3 text-xs leading-relaxed text-red-200"
+          <form onSubmit={onSubmit} className="mt-7 space-y-4" noValidate>
+            <div
+              className={`group flex items-center gap-3 rounded-xl border bg-white/[0.04] px-4 py-2 transition-[border-color,box-shadow] duration-200 focus-within:border-[#cf9eff]/60 focus-within:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] ${
+                error ? "border-red-400/50" : "border-white/10"
+              }`}
+            >
+              <span className={error ? "text-red-300/70" : "text-white/30"}>
+                <Mail className="size-4" />
+              </span>
+              <div className="relative min-w-0 flex-1">
+                <input
+                  id="forgot-email"
+                  type="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value.toLowerCase());
+                    if (error) setError(null);
+                  }}
+                  autoComplete="email"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "forgot-error" : undefined}
+                  className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                />
+                <label
+                  htmlFor="forgot-email"
+                  className="pointer-events-none absolute left-0 top-0 translate-y-0 text-[10px] font-medium leading-none text-white/45 transition-all duration-200 ease-out group-focus-within:text-star/80"
                 >
-                  {error}
-                </p>
-              )}
-
-              <Button type="submit" className="w-full py-3.5" disabled={busy}>
-                {busy ? "Sending link..." : "Send reset link"}
-              </Button>
-            </form>
-          )}
-
-          {step === "success" && (
-            <div className="mt-7 space-y-4">
-              <div className="flex items-start gap-3 rounded-xl border border-green-400/30 bg-green-400/[0.07] px-4 py-4 text-green-200">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
-                <p className="text-sm font-medium">
-                  Reset link sent! Check your email.
-                </p>
+                  Email
+                </label>
               </div>
-              <Button
-                onClick={() => navigate("/login")}
-                className="w-full py-3.5"
-                variant="outline"
-              >
-                <ArrowLeft className="size-4" />
-                Back to Login
-              </Button>
             </div>
-          )}
+
+            {error && (
+              <p
+                id="forgot-error"
+                role="status"
+                aria-live="polite"
+                className="rounded-xl border border-red-400/30 bg-red-400/[0.07] px-4 py-3 text-xs leading-relaxed text-red-200"
+              >
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" className="w-full py-3.5" disabled={busy}>
+              {busy ? "Sending code..." : "Send OTP"}
+              {!busy && <ArrowRight className="size-4" />}
+            </Button>
+          </form>
+
+          <Link
+            to="/login"
+            className="mt-6 block w-full text-center text-sm text-white/45 transition-colors hover:text-white"
+          >
+            Remembered it? <span className="text-star">Log in</span>
+          </Link>
         </motion.div>
       </div>
     </div>

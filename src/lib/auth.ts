@@ -9,10 +9,6 @@ export interface AuthUser {
 
 export interface AuthResult {
   error?: string;
-  /** Sign up succeeded and the address still needs confirming via email link. */
-  needsConfirmation?: boolean;
-  /** Sign up signed the user in directly (email confirmation is disabled). */
-  sessionEstablished?: boolean;
 }
 
 export const CONFIG_ERROR =
@@ -102,7 +98,14 @@ export async function emailExists(email: string): Promise<boolean | null> {
   return data === true;
 }
 
-/** Creates an account and lets Supabase send the confirmation email. */
+/**
+ * Creates an account without sending a confirmation link.
+ *
+ * IMPORTANT: In Supabase Dashboard > Authentication > Providers > Email,
+ * set "Confirm email" to OFF. OTP delivery is handled separately by
+ * sendEmailOtp(), and the Magic Link email template must render
+ * {{ .Token }} instead of {{ .ConfirmationURL }}.
+ */
 export async function signUp(
   name: string,
   email: string,
@@ -114,8 +117,7 @@ export async function signUp(
     email: normalizeEmail(email),
     password,
     options: {
-      data: { name: name.trim() },
-      emailRedirectTo: `${window.location.origin}/login`,
+      data: { full_name: name.trim() },
     },
   });
 
@@ -131,12 +133,61 @@ export async function signUp(
     return { error: "An account with this email already exists." };
   }
 
-  if (data.session && data.user) {
-    writeCache(toAuthUser(data.user));
-    return { sessionEstablished: true };
+  // With email confirmation disabled Supabase signs the user in immediately;
+  // drop that local session so verification always goes through the OTP step.
+  if (data.session) await supabase.auth.signOut({ scope: "local" });
+
+  return {};
+}
+
+/** Sends a 6-digit email OTP without ever creating a new account. */
+export async function sendEmailOtp(email: string): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email: normalizeEmail(email),
+    options: {
+      shouldCreateUser: false,
+    },
+  });
+
+  if (error) return { error: readableError(error.message) };
+  return {};
+}
+
+/** Verifies a 6-digit email OTP for signup or password recovery. */
+export async function verifyEmailOtp(
+  email: string,
+  token: string,
+): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: normalizeEmail(email),
+    token: token.trim(),
+    type: "email",
+  });
+
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (
+      message.includes("expired") ||
+      message.includes("invalid") ||
+      message.includes("token")
+    ) {
+      return {
+        error: "That code is invalid or has expired. Resend a new code.",
+      };
+    }
+    return { error: readableError(error.message) };
   }
 
-  return { needsConfirmation: true };
+  if (!data.user || !data.session) {
+    return { error: "We couldn't verify that code. Try again." };
+  }
+
+  writeCache(toAuthUser(data.user));
+  return {};
 }
 
 /** Default login: email + password, no OTP. */
@@ -167,22 +218,6 @@ export async function signOut(
 ): Promise<void> {
   writeCache(null);
   if (isSupabaseConfigured) await supabase.auth.signOut({ scope });
-}
-
-/** Sends a Supabase password-recovery email for the given address. */
-export async function resetPassword(email: string): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    normalizeEmail(email),
-    {
-      redirectTo: `${window.location.origin}/update-password`,
-    },
-  );
-
-  if (error) return { error: readableError(error.message) };
-
-  return {};
 }
 
 /** Updates the user's password. */
