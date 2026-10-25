@@ -5,7 +5,7 @@ const item =
   "relative z-10 flex-1 rounded-full py-2 text-center text-sm font-medium transition-colors duration-300";
 
 const glassActive =
-  "absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full border border-[#cf9eff]/30 bg-[linear-gradient(180deg,rgba(207,158,255,0.22),rgba(255,255,255,0.06))] shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_24px_-12px_rgba(207,158,255,0.8)] backdrop-blur-xl";
+  "absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-full border border-white/15 bg-transparent";
 
 export function AuthModeToggle({ mode }: { mode: "login" | "signup" }) {
   const isLogin = mode === "login";
