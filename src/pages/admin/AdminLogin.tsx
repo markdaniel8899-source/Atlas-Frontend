@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail, ShieldCheck } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { resolveSession } from "../../lib/auth";
 import { isAdmin } from "../../lib/admin";
 import { supabase } from "../../lib/supabase";
@@ -219,13 +219,6 @@ export default function AdminLogin() {
             {isLoading ? "Signing in…" : "Sign in"}
           </button>
         </form>
-
-        <Link
-          to="/login"
-          className="mt-4 block text-center text-sm text-gray-400 transition-colors hover:text-white"
-        >
-          Forgot Password? Reset here.
-        </Link>
       </motion.div>
     </div>
   );
