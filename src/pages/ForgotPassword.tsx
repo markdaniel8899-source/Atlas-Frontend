@@ -161,7 +161,7 @@ export default function ForgotPassword() {
               <div className="flex items-start gap-3 rounded-xl border border-green-400/30 bg-green-400/[0.07] px-4 py-4 text-green-200">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0" />
                 <p className="text-sm font-medium">
-                  Reset link sent! Check your inbox.
+                  Reset link sent! Check your email.
                 </p>
               </div>
               <Button

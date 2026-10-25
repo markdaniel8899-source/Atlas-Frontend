@@ -9,10 +9,10 @@ export interface AuthUser {
 
 export interface AuthResult {
   error?: string;
-  /** Sign up or sign in succeeded but the address still needs verifying with an OTP. */
-  needsOtp?: boolean;
-  /** OTP verified successfully and a session was created. */
-  otpVerified?: boolean;
+  /** Sign up succeeded and the address still needs confirming via email link. */
+  needsConfirmation?: boolean;
+  /** Sign up signed the user in directly (email confirmation is disabled). */
+  sessionEstablished?: boolean;
 }
 
 export const CONFIG_ERROR =
@@ -102,100 +102,64 @@ export async function emailExists(email: string): Promise<boolean | null> {
   return data === true;
 }
 
-/**
- * Sends a 6-digit email OTP for a new account via `signInWithOtp`.
- * The password is applied after `verifyOtp` succeeds (see Auth.tsx) so
- * password recovery keeps working without Supabase sending a magic link first.
- */
-export async function sendSignupOtp(
+/** Creates an account and lets Supabase send the confirmation email. */
+export async function signUp(
   name: string,
   email: string,
+  password: string,
+): Promise<AuthResult> {
+  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
+
+  const { data, error } = await supabase.auth.signUp({
+    email: normalizeEmail(email),
+    password,
+    options: {
+      data: { name: name.trim() },
+      emailRedirectTo: `${window.location.origin}/login`,
+    },
+  });
+
+  if (error) return { error: readableError(error.message) };
+
+  // Supabase returns an obfuscated user with no identities when the address
+  // is already registered and email enumeration protection is on.
+  if (
+    data.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    return { error: "An account with this email already exists." };
+  }
+
+  if (data.session && data.user) {
+    writeCache(toAuthUser(data.user));
+    return { sessionEstablished: true };
+  }
+
+  return { needsConfirmation: true };
+}
+
+/** Default login: email + password, no OTP. */
+export async function signIn(
+  email: string,
+  password: string,
 ): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const normalized = normalizeEmail(email);
   const exists = await emailExists(normalized);
-  if (exists === true) {
-    return { error: "An account with this email already exists." };
-  }
 
-  const { error } = await supabase.auth.signInWithOtp({
+  if (exists === false) return { error: "Email does not exist." };
+
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: normalized,
-    options: {
-      data: { name: name.trim() },
-    },
+    password,
   });
 
   if (error) return { error: readableError(error.message) };
-  return { needsOtp: true };
-}
 
-/**
- * Passwordless login: emails a 6-digit OTP to an existing account.
- * Never creates users and never uses `signInWithPassword` on the first step.
- */
-export async function signIn(email: string): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: normalizeEmail(email),
-    options: {
-      shouldCreateUser: false,
-    },
-  });
-
-  if (error) return { error: readableError(error.message) };
-  return { needsOtp: true };
-}
-
-export async function verifyOtp(
-  email: string,
-  token: string,
-): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const normalized = normalizeEmail(email);
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: normalized,
-    token: token.trim(),
-    type: "email",
-  });
-
-  if (error) {
-    const message = error.message.toLowerCase();
-    if (
-      message.includes("expired") ||
-      message.includes("invalid") ||
-      message.includes("token")
-    ) {
-      return {
-        error: "That code is invalid or has expired. Resend a new code.",
-      };
-    }
-    return { error: readableError(error.message) };
-  }
-
-  if (!data.user || !data.session) {
-    return { error: "We couldn't verify that code. Try again." };
-  }
-
-  writeCache(toAuthUser(data.user));
-  return { otpVerified: true };
-}
-
-/** Resends a 6-digit OTP without ever creating a new account. */
-export async function resendSignupOtp(email: string): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email: normalizeEmail(email),
-    options: {
-      shouldCreateUser: false,
-    },
-  });
-
-  if (error) return { error: readableError(error.message) };
-  return { needsOtp: true };
+  if (data.user) writeCache(toAuthUser(data.user));
+  return {};
 }
 
 export async function signOut(
