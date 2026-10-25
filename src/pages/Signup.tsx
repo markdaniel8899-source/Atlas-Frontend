@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { AuthModeToggle } from "../components/ui/AuthModeToggle";
 import { EASE } from "../lib/motion";
 import {
   normalizeEmail,
@@ -170,6 +171,8 @@ export default function Signup() {
             </p>
           </div>
 
+          <AuthModeToggle mode="signup" />
+
           {notice && (
             <div
               role="status"
@@ -180,7 +183,7 @@ export default function Signup() {
             </div>
           )}
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <Field
               label="Full name"
               htmlFor="signup-name"
@@ -264,12 +267,15 @@ export default function Signup() {
             </Button>
           </form>
 
-          <Link
-            to="/login"
-            className="mt-6 block w-full text-center text-sm text-white/45 transition-colors hover:text-white"
-          >
-            Already have an account? <span className="text-star">Log in</span>
-          </Link>
+          <p className="mt-6 text-center text-sm text-white/45">
+            Already have an account?{" "}
+            <Link
+              to="/login"
+              className="font-medium text-star transition-colors hover:text-white hover:underline"
+            >
+              Log in
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>

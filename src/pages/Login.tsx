@@ -17,6 +17,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { Button } from "../components/ui/Button";
+import { AuthModeToggle } from "../components/ui/AuthModeToggle";
 import { EASE } from "../lib/motion";
 import {
   normalizeEmail,
@@ -181,6 +182,8 @@ export default function Login() {
             </p>
           </div>
 
+          <AuthModeToggle mode="signin" />
+
           {notice && (
             <div
               role="status"
@@ -200,7 +203,7 @@ export default function Login() {
             </div>
           )}
 
-          <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
+          <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <Field
               label="Email"
               htmlFor="login-email"
@@ -270,12 +273,15 @@ export default function Login() {
             </Button>
           </form>
 
-          <Link
-            to="/signup"
-            className="mt-6 block w-full text-center text-sm text-white/45 transition-colors hover:text-white"
-          >
-            New here? <span className="text-star">Create Account</span>
-          </Link>
+          <p className="mt-6 text-center text-sm text-white/45">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="font-medium text-star transition-colors hover:text-white hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
         </motion.div>
       </div>
     </div>
