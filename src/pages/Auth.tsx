@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,7 @@ import {
   EyeOff,
   Lock,
   Mail,
+  User,
 } from "lucide-react";
 import {
   Link,
@@ -22,7 +23,10 @@ import { EASE } from "../lib/motion";
 import {
   normalizeEmail,
   resolveSession,
+  sendEmailOtp,
   signIn,
+  signOut,
+  signUp,
   type AuthResult,
 } from "../lib/auth";
 import LightPillar from "../components/effects/LightPillar";
@@ -32,6 +36,7 @@ import { doubleCurtainNavigate } from "../components/DoubleCurtain";
 type NoticeTone = "error" | "success" | "info";
 
 interface Errors {
+  name?: string;
   email?: string;
   password?: string;
 }
@@ -43,24 +48,28 @@ interface Notice {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function Login() {
+export default function Auth({ mode }: { mode: "login" | "signup" }) {
+  const isSignup = mode === "signup";
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const from = (location.state as { from?: string } | null)?.from ?? "/app";
   const message = searchParams.get("message");
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [notice, setNotice] = useState<Notice | null>(() => {
+    if (mode !== "login") return null;
     const incoming = (location.state as { notice?: Notice } | null)?.notice;
     if (incoming) return incoming;
     return message ? { tone: "success", text: message } : null;
   });
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const prevMode = useRef(mode);
 
   const normalizedEmail = normalizeEmail(email);
 
@@ -73,6 +82,15 @@ export default function Login() {
       active = false;
     };
   }, [from, navigate]);
+
+  useEffect(() => {
+    if (prevMode.current === mode) return;
+    prevMode.current = mode;
+    setPassword("");
+    setShowPw(false);
+    setErrors({});
+    setNotice(null);
+  }, [mode]);
 
   const finish = () => {
     setLeaving(true);
@@ -88,11 +106,23 @@ export default function Login() {
 
     const next: Errors = {};
 
-    if (!EMAIL_PATTERN.test(normalizedEmail)) {
-      next.email = "Enter a valid email address.";
-    }
-    if (password.length === 0) {
-      next.password = "Enter your password.";
+    if (isSignup) {
+      if (name.trim().length < 2) {
+        next.name = "Tell us what to call you.";
+      }
+      if (!EMAIL_PATTERN.test(normalizedEmail)) {
+        next.email = "Enter a valid email address.";
+      }
+      if (password.length < 8) {
+        next.password = "Use at least 8 characters.";
+      }
+    } else {
+      if (!EMAIL_PATTERN.test(normalizedEmail)) {
+        next.email = "Enter a valid email address.";
+      }
+      if (password.length === 0) {
+        next.password = "Enter your password.";
+      }
     }
 
     setErrors(next);
@@ -101,24 +131,52 @@ export default function Login() {
     setBusy(true);
     setNotice(null);
 
-    let result: AuthResult;
-
     try {
-      result = await signIn(normalizedEmail, password);
+      if (isSignup) {
+        let result = await signUp(name.trim(), normalizedEmail, password);
+        if (result.error) {
+          setNotice({ tone: "error", text: result.error });
+          return;
+        }
+
+        result = await sendEmailOtp(normalizedEmail);
+        if (result.error) {
+          setNotice({ tone: "error", text: result.error });
+          return;
+        }
+
+        await signOut("local").catch(() => undefined);
+
+        navigate(
+          `/verify-otp?email=${encodeURIComponent(normalizedEmail)}&mode=signup`,
+        );
+        return;
+      }
+
+      let result: AuthResult;
+
+      try {
+        result = await signIn(normalizedEmail, password);
+      } catch {
+        result = {
+          error: "Something went wrong. Check your connection and try again.",
+        };
+      }
+
+      if (result.error) {
+        setNotice({ tone: "error", text: result.error });
+        return;
+      }
+
+      finish();
     } catch {
-      result = {
-        error: "Something went wrong. Check your connection and try again.",
-      };
+      setNotice({
+        tone: "error",
+        text: "Something went wrong. Check your connection and try again.",
+      });
     } finally {
       setBusy(false);
     }
-
-    if (result.error) {
-      setNotice({ tone: "error", text: result.error });
-      return;
-    }
-
-    finish();
   };
 
   return (
@@ -175,14 +233,16 @@ export default function Login() {
               ATLAS
             </span>
             <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-              Welcome back.
+              {isSignup ? "Claim your map." : "Welcome back."}
             </h1>
             <p className="mt-2 text-sm text-white/45">
-              Pick up where the streak left off.
+              {isSignup
+                ? "Set up your learning OS in under a minute."
+                : "Pick up where the streak left off."}
             </p>
           </div>
 
-          <AuthModeToggle mode="signin" />
+          <AuthModeToggle mode={mode} />
 
           {notice && (
             <div
@@ -204,15 +264,40 @@ export default function Login() {
           )}
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+            {isSignup && (
+              <Field
+                label="Full name"
+                htmlFor="auth-name"
+                icon={<User className="size-4" />}
+                filled={name.length > 0}
+                error={errors.name}
+              >
+                <input
+                  id="auth-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) {
+                      setErrors((prev) => ({ ...prev, name: undefined }));
+                    }
+                  }}
+                  autoComplete="name"
+                  aria-invalid={errors.name ? true : undefined}
+                  className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                />
+              </Field>
+            )}
+
             <Field
               label="Email"
-              htmlFor="login-email"
+              htmlFor="auth-email"
               icon={<Mail className="size-4" />}
               filled={email.length > 0}
               error={errors.email}
             >
               <input
-                id="login-email"
+                id="auth-email"
                 type="email"
                 inputMode="email"
                 autoCapitalize="none"
@@ -228,7 +313,7 @@ export default function Login() {
 
             <Field
               label="Password"
-              htmlFor="login-password"
+              htmlFor="auth-password"
               icon={<Lock className="size-4" />}
               filled={password.length > 0}
               error={errors.password}
@@ -248,38 +333,46 @@ export default function Login() {
               }
             >
               <input
-                id="login-password"
+                id="auth-password"
                 type={showPw ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={errors.password ? true : undefined}
-                autoComplete="current-password"
+                autoComplete={isSignup ? "new-password" : "current-password"}
                 className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
               />
             </Field>
 
-            <div className="flex justify-end">
-              <Link
-                to="/forgot-password"
-                className="text-xs text-white/45 transition-colors hover:text-star"
-              >
-                Forgot Password?
-              </Link>
-            </div>
+            {!isSignup && (
+              <div className="flex justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-white/45 transition-colors hover:text-star"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
+            )}
 
             <Button type="submit" className="w-full py-3.5" disabled={busy}>
-              {busy ? "Signing in..." : "Log in"}
+              {busy
+                ? isSignup
+                  ? "Creating account..."
+                  : "Signing in..."
+                : isSignup
+                  ? "Sign Up"
+                  : "Log in"}
               {!busy && <ArrowRight className="size-4" />}
             </Button>
           </form>
 
           <p className="mt-6 text-center text-sm text-white/45">
-            Don't have an account?{" "}
+            {isSignup ? "Already have an account? " : "Don't have an account? "}
             <Link
-              to="/signup"
+              to={isSignup ? "/login" : "/signup"}
               className="font-medium text-star transition-colors hover:text-white hover:underline"
             >
-              Sign up
+              {isSignup ? "Log in" : "Sign up"}
             </Link>
           </p>
         </motion.div>

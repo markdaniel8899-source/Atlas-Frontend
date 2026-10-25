@@ -15,8 +15,7 @@ import {
 // demand and warmed in the background during idle time (see prefetch below),
 // so navigation never waits on the network.
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const Login = lazy(() => import("./pages/Login"));
-const Signup = lazy(() => import("./pages/Signup"));
+const Auth = lazy(() => import("./pages/Auth"));
 const VerifyOtp = lazy(() => import("./pages/VerifyOtp"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
@@ -145,7 +144,7 @@ function AnimatedRoutes() {
             element={
               <GroupTransition variant="auth">
                 <Seo {...PAGES.login} />
-                <Login />
+                <Auth mode="login" />
               </GroupTransition>
             }
           />
@@ -158,7 +157,7 @@ function AnimatedRoutes() {
                   title="Create Account — ATLAS"
                   index={false}
                 />
-                <Signup />
+                <Auth mode="signup" />
               </GroupTransition>
             }
           />
@@ -363,8 +362,7 @@ export default function App() {
     idle(() => {
       void Promise.allSettled([
         import("./pages/LandingPage"),
-        import("./pages/Login"),
-        import("./pages/Signup"),
+        import("./pages/Auth"),
         import("./pages/VerifyOtp"),
         import("./pages/ForgotPassword"),
         import("./pages/UpdatePassword"),
