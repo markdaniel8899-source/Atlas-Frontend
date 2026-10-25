@@ -9,12 +9,10 @@ export interface AuthUser {
 
 export interface AuthResult {
   error?: string;
-  /** Sign up succeeded but the address still needs verifying with an OTP. */
+  /** Sign up or sign in succeeded but the address still needs verifying with an OTP. */
   needsOtp?: boolean;
   /** OTP verified successfully and a session was created. */
   otpVerified?: boolean;
-  /** Sign in failed because the address has not been verified yet. */
-  needsVerification?: boolean;
 }
 
 export const CONFIG_ERROR =
@@ -69,7 +67,7 @@ function readableError(message: string): string {
   if (m.includes("invalid login credentials")) {
     return "Invalid credentials.";
   }
-  if (m.includes("user not found")) {
+  if (m.includes("user not found") || m.includes("signups not allowed")) {
     return "Email does not exist.";
   }
   if (m.includes("already registered") || m.includes("already exists")) {
@@ -105,9 +103,9 @@ export async function emailExists(email: string): Promise<boolean | null> {
 }
 
 /**
- * Sends a 6-digit email OTP for a new account via `signInWithOtp`.
+ * Sends an 8-digit email OTP for a new account via `signInWithOtp`.
  * The password is applied after `verifyOtp` succeeds (see Auth.tsx) so
- * password sign-in keeps working without Supabase sending a magic link first.
+ * password recovery keeps working without Supabase sending a magic link first.
  */
 export async function sendSignupOtp(
   name: string,
@@ -125,7 +123,6 @@ export async function sendSignupOtp(
     email: normalized,
     options: {
       data: { name: name.trim() },
-      emailRedirectTo: `${window.location.origin}/login`,
     },
   });
 
@@ -133,57 +130,22 @@ export async function sendSignupOtp(
   return { needsOtp: true };
 }
 
-/** Sends a sign-in OTP to an existing, unverified account. */
-export async function sendLoginOtp(email: string): Promise<AuthResult> {
+/**
+ * Passwordless login: emails an 8-digit OTP to an existing account.
+ * Never creates users and never uses `signInWithPassword` on the first step.
+ */
+export async function signIn(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizeEmail(email),
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: `${window.location.origin}/login`,
     },
   });
 
   if (error) return { error: readableError(error.message) };
   return { needsOtp: true };
-}
-
-export async function signIn(
-  email: string,
-  password: string,
-): Promise<AuthResult> {
-  if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
-
-  const normalized = normalizeEmail(email);
-  const exists = await emailExists(normalized);
-
-  if (exists === false) return { error: "Email does not exist." };
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: normalized,
-    password,
-  });
-
-  if (error) {
-    const message = error.message.toLowerCase();
-    if (message.includes("email not confirmed")) {
-      const sent = await sendLoginOtp(normalized);
-      if (sent.error) return { error: sent.error };
-      return {
-        error:
-          "That email isn't verified yet. Enter the 6-digit code we just sent you.",
-        needsVerification: true,
-      };
-    }
-    if (message.includes("invalid login credentials")) {
-      return { error: "Invalid credentials." };
-    }
-    return { error: readableError(error.message) };
-  }
-
-  if (data.user) writeCache(toAuthUser(data.user));
-  return {};
 }
 
 export async function verifyOtp(
@@ -221,6 +183,7 @@ export async function verifyOtp(
   return { otpVerified: true };
 }
 
+/** Resends an 8-digit OTP without ever creating a new account. */
 export async function resendSignupOtp(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 
@@ -228,7 +191,6 @@ export async function resendSignupOtp(email: string): Promise<AuthResult> {
     email: normalizeEmail(email),
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: `${window.location.origin}/login`,
     },
   });
 

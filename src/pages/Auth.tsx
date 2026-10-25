@@ -49,7 +49,7 @@ interface Notice {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const OTP_LENGTH = 6;
+const OTP_LENGTH = 8;
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -187,8 +187,8 @@ export default function Auth() {
     }
 
     if (mode === "otp") {
-      if (!/^[0-9]{6}$/.test(otpValue)) {
-        next.otp = "Enter the 6-digit code.";
+      if (!/^[0-9]{8}$/.test(otpValue)) {
+        next.otp = "Enter the 8-digit code.";
       }
     } else if (mode === "signup") {
       if (name.trim().length < 2) {
@@ -197,8 +197,6 @@ export default function Auth() {
       if (password.length < 8) {
         next.password = "Use at least 8 characters.";
       }
-    } else if (password.length === 0) {
-      next.password = "Enter your password.";
     }
 
     setErrors(next);
@@ -215,7 +213,7 @@ export default function Auth() {
       } else if (mode === "otp") {
         result = await verifyOtp(normalizedEmail, otpValue);
       } else {
-        result = await signIn(normalizedEmail, password);
+        result = await signIn(normalizedEmail);
       }
     } catch {
       result = {
@@ -227,16 +225,11 @@ export default function Auth() {
 
     if (result.error) {
       setNotice({ tone: "error", text: result.error });
-      if (result.needsVerification) {
-        setOtpPurpose("verify");
-        setMode("otp");
-        clearOtp();
-      }
       return;
     }
 
     if (result.needsOtp) {
-      setOtpPurpose("signup");
+      setOtpPurpose(mode === "signup" ? "signup" : "verify");
       setMode("otp");
       clearOtp();
       return;
@@ -277,7 +270,7 @@ export default function Auth() {
       }
       setNotice({
         tone: "success",
-        text: "A new 6-digit code is on its way.",
+        text: "A new 8-digit code is on its way.",
       });
     } catch {
       setNotice({
@@ -298,10 +291,10 @@ export default function Auth() {
 
   const subheading =
     mode === "login"
-      ? "Pick up where the streak left off."
+      ? "Enter your email and we'll send a one-time sign-in code."
       : mode === "signup"
         ? "Set up your learning OS in under a minute."
-        : "Enter the 6-digit code to verify your account.";
+        : "Enter the 8-digit code to verify your account.";
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-void px-6 py-16">
@@ -366,7 +359,7 @@ export default function Auth() {
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#cf9eff]/25 bg-[#cf9eff]/[0.06] px-4 py-3 text-left">
               <Mail className="mt-0.5 size-4 shrink-0 text-[#cf9eff]" />
               <p className="text-xs leading-relaxed text-white/70">
-                We sent a 6-digit code to{" "}
+                We sent an 8-digit code to{" "}
                 <span className="font-medium text-white">
                   {normalizedEmail}
                 </span>
@@ -472,45 +465,45 @@ export default function Auth() {
                   />
                 </Field>
 
-                <Field
-                  label="Password"
-                  htmlFor="auth-password"
-                  icon={<Lock className="size-4" />}
-                  filled={password.length > 0}
-                  error={errors.password}
-                  trailing={
-                    <button
-                      type="button"
-                      onClick={() => setShowPw((v) => !v)}
-                      className="text-white/35 transition-colors hover:text-white/70"
-                      aria-label={showPw ? "Hide password" : "Show password"}
-                    >
-                      {showPw ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  }
-                >
-                  <input
-                    id="auth-password"
-                    type={showPw ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={errors.password ? true : undefined}
-                    autoComplete={
-                      mode === "login" ? "current-password" : "new-password"
+                {mode === "signup" && (
+                  <Field
+                    label="Password"
+                    htmlFor="auth-password"
+                    icon={<Lock className="size-4" />}
+                    filled={password.length > 0}
+                    error={errors.password}
+                    trailing={
+                      <button
+                        type="button"
+                        onClick={() => setShowPw((v) => !v)}
+                        className="text-white/35 transition-colors hover:text-white/70"
+                        aria-label={showPw ? "Hide password" : "Show password"}
+                      >
+                        {showPw ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </button>
                     }
-                    className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
-                  />
-                </Field>
+                  >
+                    <input
+                      id="auth-password"
+                      type={showPw ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      aria-invalid={errors.password ? true : undefined}
+                      autoComplete="new-password"
+                      className="w-full bg-transparent pt-3 pb-1 text-sm text-white focus:outline-none"
+                    />
+                  </Field>
+                )}
               </>
             )}
 
             {mode === "otp" && (
               <div>
-                <div className="grid grid-cols-6 gap-2 sm:gap-2.5">
+                <div className="grid grid-cols-8 gap-1.5 sm:gap-2">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
@@ -528,7 +521,7 @@ export default function Auth() {
                       onFocus={(e) => e.currentTarget.select()}
                       aria-label={`Digit ${index + 1}`}
                       aria-invalid={errors.otp ? true : undefined}
-                      className={`h-11 w-full min-w-0 rounded-xl border bg-white/[0.04] text-center text-lg font-medium text-white transition-[border-color,box-shadow] duration-200 focus:border-[#cf9eff]/60 focus:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] focus:outline-none sm:h-12 ${
+                      className={`h-11 w-full min-w-0 rounded-xl border bg-white/[0.04] text-center text-base font-medium text-white transition-[border-color,box-shadow] duration-200 focus:border-[#cf9eff]/60 focus:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] focus:outline-none sm:h-12 sm:text-lg ${
                         errors.otp ? "border-red-400/50" : "border-white/10"
                       }`}
                     />
@@ -542,28 +535,15 @@ export default function Auth() {
               </div>
             )}
 
-            {mode === "login" && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => navigate("/forgot-password")}
-                  disabled={busy}
-                  className="text-xs text-white/45 transition-colors hover:text-star disabled:opacity-50"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            )}
-
             <Button type="submit" className="w-full py-3.5" disabled={busy}>
               {busy
                 ? mode === "login"
-                  ? "Signing in..."
+                  ? "Sending code..."
                   : mode === "otp"
                     ? "Verifying code..."
                     : "Creating account..."
                 : mode === "login"
-                  ? "Log in"
+                  ? "Send sign-in code"
                   : mode === "otp"
                     ? "Verify code"
                     : "Create account"}
