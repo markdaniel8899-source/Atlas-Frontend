@@ -103,7 +103,7 @@ export async function emailExists(email: string): Promise<boolean | null> {
 }
 
 /**
- * Sends an 8-digit email OTP for a new account via `signInWithOtp`.
+ * Sends a 6-digit email OTP for a new account via `signInWithOtp`.
  * The password is applied after `verifyOtp` succeeds (see Auth.tsx) so
  * password recovery keeps working without Supabase sending a magic link first.
  */
@@ -131,7 +131,7 @@ export async function sendSignupOtp(
 }
 
 /**
- * Passwordless login: emails an 8-digit OTP to an existing account.
+ * Passwordless login: emails a 6-digit OTP to an existing account.
  * Never creates users and never uses `signInWithPassword` on the first step.
  */
 export async function signIn(email: string): Promise<AuthResult> {
@@ -183,7 +183,7 @@ export async function verifyOtp(
   return { otpVerified: true };
 }
 
-/** Resends an 8-digit OTP without ever creating a new account. */
+/** Resends a 6-digit OTP without ever creating a new account. */
 export async function resendSignupOtp(email: string): Promise<AuthResult> {
   if (!isSupabaseConfigured) return { error: CONFIG_ERROR };
 

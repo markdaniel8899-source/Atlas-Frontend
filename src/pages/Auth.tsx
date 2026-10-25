@@ -49,7 +49,7 @@ interface Notice {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const OTP_LENGTH = 8;
+const OTP_LENGTH = 6;
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -187,8 +187,8 @@ export default function Auth() {
     }
 
     if (mode === "otp") {
-      if (!/^[0-9]{8}$/.test(otpValue)) {
-        next.otp = "Enter the 8-digit code.";
+      if (!/^[0-9]{6}$/.test(otpValue)) {
+        next.otp = "Enter the 6-digit code.";
       }
     } else if (mode === "signup") {
       if (name.trim().length < 2) {
@@ -270,7 +270,7 @@ export default function Auth() {
       }
       setNotice({
         tone: "success",
-        text: "A new 8-digit code is on its way.",
+        text: "A new 6-digit code is on its way.",
       });
     } catch {
       setNotice({
@@ -294,7 +294,7 @@ export default function Auth() {
       ? "Enter your email and we'll send a one-time sign-in code."
       : mode === "signup"
         ? "Set up your learning OS in under a minute."
-        : "Enter the 8-digit code to verify your account.";
+        : "Enter the 6-digit code to verify your account.";
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-void px-6 py-16">
@@ -359,7 +359,7 @@ export default function Auth() {
             <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#cf9eff]/25 bg-[#cf9eff]/[0.06] px-4 py-3 text-left">
               <Mail className="mt-0.5 size-4 shrink-0 text-[#cf9eff]" />
               <p className="text-xs leading-relaxed text-white/70">
-                We sent an 8-digit code to{" "}
+                We sent a 6-digit code to{" "}
                 <span className="font-medium text-white">
                   {normalizedEmail}
                 </span>
@@ -503,7 +503,7 @@ export default function Auth() {
 
             {mode === "otp" && (
               <div>
-                <div className="grid grid-cols-8 gap-1.5 sm:gap-2">
+                <div className="grid grid-cols-6 gap-2 sm:gap-2.5">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
@@ -521,7 +521,7 @@ export default function Auth() {
                       onFocus={(e) => e.currentTarget.select()}
                       aria-label={`Digit ${index + 1}`}
                       aria-invalid={errors.otp ? true : undefined}
-                      className={`h-11 w-full min-w-0 rounded-xl border bg-white/[0.04] text-center text-base font-medium text-white transition-[border-color,box-shadow] duration-200 focus:border-[#cf9eff]/60 focus:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] focus:outline-none sm:h-12 sm:text-lg ${
+                      className={`h-11 w-full min-w-0 rounded-xl border bg-white/[0.04] text-center text-lg font-medium text-white transition-[border-color,box-shadow] duration-200 focus:border-[#cf9eff]/60 focus:shadow-[0_0_0_1px_rgba(207,158,255,0.28),0_0_20px_rgba(207,158,255,0.42)] focus:outline-none sm:h-12 ${
                         errors.otp ? "border-red-400/50" : "border-white/10"
                       }`}
                     />
