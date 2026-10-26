@@ -1001,36 +1001,42 @@ export default function NotesPage() {
                   <button
                     type="button"
                     onClick={() => active && enterSelectionMode('download')}
-                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
+                    className="relative rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white group"
                     aria-label="Download notes"
-                    title="Download notes (select multiple)"
                   >
                     <Download className="size-4" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                      Download notes (select multiple)
+                    </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => active && enterSelectionMode('share')}
                     disabled={!shareableId}
-                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
+                    className="relative rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45 group"
                     aria-label="Share notes"
-                    title={shareableId ? "Share notes (select multiple)" : "Wait for this note to save before sharing"}
                   >
                     <Share2 className="size-4" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                      {shareableId ? "Share notes (select multiple)" : "Wait for this note to save before sharing"}
+                    </span>
                   </button>
 {active && courses.length > 0 && (
                       <div className="relative" ref={courseMenuRef}>
                         <button
                           type="button"
                           onClick={() => setCourseMenuOpen((prev) => !prev)}
-                          className={`rounded-lg p-2 transition-colors ${
+                          className={`relative rounded-lg p-2 transition-colors group ${
                             courseMenuOpen
                               ? "bg-[#cf9eff]/15 text-[#cf9eff]"
                               : "text-white/45 hover:bg-white/[0.07] hover:text-white"
                           }`}
                           aria-label="Move note to course"
-                          title="Move note to course"
                         >
                           <BookOpen className="size-4" />
+                          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                            Move note to course
+                          </span>
                         </button>
 
                         <AnimatePresence>
@@ -1137,11 +1143,13 @@ export default function NotesPage() {
                   <button
                     type="button"
                     onClick={() => active && setDeleteConfirmId(active.id)}
-                    className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-red-300"
+                    className="relative rounded-lg p-2 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-red-300 group"
                     aria-label="Delete note"
-                    title="Delete note"
                   >
                     <Trash2 className="size-4" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                      Delete note
+                    </span>
                   </button>
                 </span>
               </div>
