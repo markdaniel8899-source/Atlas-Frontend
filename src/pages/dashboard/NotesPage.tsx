@@ -25,7 +25,7 @@ import {
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
-import { sanitizeHtml } from "../../lib/notes";
+import { sanitizeHtml, htmlToPlainText } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
   bulkDownloadNotes,
@@ -479,11 +479,11 @@ export default function NotesPage() {
       );
       const downloadNotes = await bulkDownloadNotes(ids);
       
-      // Create a text file with all notes content
+      // Create a text file with all notes content (clean HTML to plain text)
       const content = downloadNotes
         .map(
           (note) =>
-            `--- ${note.title} ---\n${note.html}\n\n`,
+            `--- ${note.title} ---\n${htmlToPlainText(note.html)}\n\n`,
         )
         .join("\n");
       
@@ -664,7 +664,7 @@ export default function NotesPage() {
                   title="Shared with you"
                 >
                   <Users className="size-2.5" />
-                  Shared
+                  Shared by {note.sharedByName || "User"}
                 </span>
               )}
             </div>

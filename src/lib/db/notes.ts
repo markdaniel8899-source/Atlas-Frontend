@@ -13,11 +13,13 @@ interface NoteRow {
   sort_order?: number | null;
   shared_by: string | null;
   shared_at: string | null;
+  shared_by_name: { display_name: string; username: string } | null;
 }
 
-const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at";
+const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at, profiles:shared_by(display_name, username)";
 
 function toNote(row: NoteRow): Note {
+  const sharedByName = row.shared_by_name?.display_name || row.shared_by_name?.username || null;
   return {
     id: String(row.id),
     title: row.title,
@@ -30,6 +32,7 @@ function toNote(row: NoteRow): Note {
     courseTitle: null,
     sortOrder: typeof row.sort_order === "number" ? row.sort_order : null,
     sharedBy: row.shared_by ?? null,
+    sharedByName,
     sharedAt:
       row.shared_at && !Number.isNaN(Date.parse(row.shared_at))
         ? Date.parse(row.shared_at)
