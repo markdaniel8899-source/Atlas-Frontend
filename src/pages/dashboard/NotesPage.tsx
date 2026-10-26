@@ -662,11 +662,12 @@ export default function NotesPage() {
     void addNote();
   };
 
-  const renderNote = (note: Note) => {
+  const renderNote = (note: Note, context: 'sidebar' | 'selection' = 'sidebar') => {
     const dragging = draggingId === note.id;
     const dragOver = dragOverId === note.id && !dragging;
     const isSelected = selectedIds.has(note.id);
     const hasSender = note.sharedBy != null;
+    const isSelectionContext = context === 'selection';
 
     return (
       <li
@@ -708,7 +709,7 @@ export default function NotesPage() {
           ? "bg-[#cf9eff]/10 border border-[#cf9eff]/30 backdrop-blur-sm"
           : ""}`}
       >
-        {selectionMode && (
+        {selectionMode && isSelectionContext && (
           <label
             className="absolute right-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 cursor-pointer"
             htmlFor={`note-checkbox-${note.id}`}
@@ -770,7 +771,7 @@ export default function NotesPage() {
               <span className="truncate text-sm text-white">
                 {note.title || "Untitled note"}
               </span>
-              {hasSender && (
+              {hasSender && !isSelectionContext && (
                 <span
                   className="shrink-0 rounded-full border border-[#cf9eff]/30 bg-[#cf9eff]/10 px-2 py-0.5 text-[10px] font-medium text-[#cf9eff] transition-all duration-200"
                   title="Shared with you"
@@ -880,7 +881,7 @@ export default function NotesPage() {
                       </button>
                       {!collapsed && (
                         <ul className="space-y-1.5">
-                          {group.notes.map(renderNote)}
+                          {group.notes.map((note) => renderNote(note, 'sidebar'))}
                         </ul>
                       )}
                     </div>
@@ -888,7 +889,7 @@ export default function NotesPage() {
                 })}
               </div>
             ) : (
-              <ul className="space-y-1.5">{notes.map(renderNote)}</ul>
+              <ul className="space-y-1.5">{notes.map((note) => renderNote(note, 'sidebar'))}</ul>
             )}
           </div>
         </aside>
@@ -961,7 +962,7 @@ export default function NotesPage() {
                         </button>
                         {!collapsed && (
                           <ul className="space-y-1.5">
-                            {group.notes.map(renderNote)}
+{group.notes.map((note) => renderNote(note, 'selection'))}
                           </ul>
                         )}
                       </div>
@@ -969,7 +970,7 @@ export default function NotesPage() {
                   })}
                 </div>
               ) : (
-                <ul className="space-y-1.5">{notes.map(renderNote)}</ul>
+<ul className="space-y-1.5">{notes.map((note) => renderNote(note, 'selection'))}</ul>
               )}
             </div>
           </aside>
@@ -1158,15 +1159,21 @@ export default function NotesPage() {
                 />
               </div>
 
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                onInput={handleInput}
-                spellCheck={false}
-                className={`min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${selectionMode ? "pb-20" : ""}`}
-                aria-label="Note content"
-              />
+              {!selectionMode ? (
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onInput={handleInput}
+                  spellCheck={false}
+                  className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                  aria-label="Note content"
+                />
+              ) : (
+                <div className="min-h-[38vh] flex-1 px-6 py-5 flex items-center justify-center">
+                  <p className="text-white/30 text-center">Select notes from the sidebar to perform bulk actions</p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
