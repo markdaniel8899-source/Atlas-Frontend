@@ -593,7 +593,7 @@ export default function NotesPage() {
         } ${
           dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
         } ${isSelected
-          ? "bg-[#cf9eff]/10 shadow-[0_0_24px_rgba(207,158,255,0.25)]"
+          ? "bg-[#cf9eff]/20 border border-[#cf9eff]/30"
           : ""}`}
       >
         {selectionMode && (
