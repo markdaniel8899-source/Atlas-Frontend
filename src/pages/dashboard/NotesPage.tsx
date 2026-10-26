@@ -598,7 +598,7 @@ export default function NotesPage() {
       >
         {selectionMode && (
           <label
-            className="absolute left-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 cursor-pointer"
+            className="absolute right-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 cursor-pointer"
             htmlFor={`note-checkbox-${note.id}`}
           >
             <input
