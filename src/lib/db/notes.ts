@@ -11,9 +11,11 @@ interface NoteRow {
   course_id: number | null;
   topic_id: number | null;
   sort_order?: number | null;
+  shared_by: string | null;
+  shared_at: string | null;
 }
 
-const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id";
+const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at";
 
 function toNote(row: NoteRow): Note {
   return {
@@ -27,6 +29,11 @@ function toNote(row: NoteRow): Note {
     topicId: typeof row.topic_id === "number" ? row.topic_id : null,
     courseTitle: null,
     sortOrder: typeof row.sort_order === "number" ? row.sort_order : null,
+    sharedBy: row.shared_by ?? null,
+    sharedAt:
+      row.shared_at && !Number.isNaN(Date.parse(row.shared_at))
+        ? Date.parse(row.shared_at)
+        : null,
   };
 }
 
@@ -220,4 +227,60 @@ export async function updateNoteOrder(ids: string[]): Promise<void> {
         .eq("user_id", user.id);
     }),
   );
+}
+
+/**
+ * Fetch multiple notes by their IDs for bulk operations.
+ * Returns notes that the current user owns.
+ */
+export async function fetchNotesByIds(noteIds: string[]): Promise<Note[]> {
+  const user = getUser();
+  if (!user || noteIds.length === 0) return [];
+
+  const numericIds = noteIds
+    .map(toId)
+    .filter((id): id is number => id !== null);
+
+  if (numericIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("notes")
+    .select(NOTE_COLUMNS + ", sort_order")
+    .eq("user_id", user.id)
+    .in("id", numericIds);
+
+  if (error || !Array.isArray(data)) return [];
+
+  const rows = data as unknown as NoteRow[];
+  const courseByNote = await loadCourseTitles(rows);
+  return rows.map((row) => {
+    const note = toNote(row);
+    note.courseTitle = courseByNote.get(row.id) ?? null;
+    return note;
+  });
+}
+
+/**
+ * Bulk download: fetch notes and return as a ZIP-compatible structure.
+ * Returns an array of note objects with metadata for client-side ZIP creation.
+ */
+export interface BulkDownloadNote {
+  id: string;
+  title: string;
+  html: string;
+  updatedAt: number;
+  courseTitle: string | null;
+}
+
+export async function bulkDownloadNotes(
+  noteIds: string[],
+): Promise<BulkDownloadNote[]> {
+  const notes = await fetchNotesByIds(noteIds);
+  return notes.map((note) => ({
+    id: note.id,
+    title: note.title,
+    html: note.html,
+    updatedAt: note.updatedAt,
+    courseTitle: note.courseTitle,
+  }));
 }

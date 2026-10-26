@@ -8,6 +8,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Download,
   GripVertical,
   Heading2,
   Italic,
@@ -19,12 +20,15 @@ import {
   StickyNote,
   Trash2,
   Underline,
+  Users,
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
+import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
+  bulkDownloadNotes,
   createNote,
   deleteNote,
   fetchNotes,
@@ -35,6 +39,7 @@ import { toShareableId } from "../../lib/db/shares";
 import { useCourses } from "../../hooks/useCourses";
 import { getUser } from "../../lib/auth";
 import { EASE } from "../../lib/motion";
+import { toast } from "../../lib/toast";
 
 interface Tool {
   label: string;
@@ -233,6 +238,12 @@ export default function NotesPage() {
   const networkRef = useRef<number | null>(null);
   const pendingRef = useRef<Map<string, Partial<Omit<Note, "id">>>>(new Map());
   const activeRef = useRef<string | null>(activeId);
+
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkShareOpen, setBulkShareOpen] = useState(false);
+  const [bulkDownloading, setBulkDownloading] = useState(false);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -436,6 +447,74 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
+  // Selection mode handlers
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      const next = !prev;
+      if (!next) {
+        setSelectedIds(new Set());
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    const allIds = notes.map((n) => n.id);
+    const allSelected = allIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allIds));
+    }
+  }, [notes, selectedIds]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  }, []);
+
+  const handleBulkDownload = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDownloading(true);
+    try {
+      const ids = Array.from(selectedIds).filter(
+        (id): id is string => typeof id === "string",
+      );
+      const downloadNotes = await bulkDownloadNotes(ids);
+      
+      // Create a text file with all notes content
+      const content = downloadNotes
+        .map(
+          (note) =>
+            `--- ${note.title} ---\n${note.html}\n\n`,
+        )
+        .join("\n");
+      
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `notes-${new Date().toISOString().split("T")[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success(`Downloaded ${downloadNotes.length} note${downloadNotes.length > 1 ? "s" : ""}`);
+    } catch (error) {
+      toast.error("Failed to download notes");
+      console.error(error);
+    } finally {
+      setBulkDownloading(false);
+    }
+  }, [selectedIds]);
+
+  const handleBulkShare = useCallback(() => {
+    if (selectedIds.size > 0) {
+      setBulkShareOpen(true);
+    }
+  }, [selectedIds]);
+
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
     { label: "Italic", icon: Italic, run: () => document.execCommand("italic") },
@@ -474,11 +553,15 @@ export default function NotesPage() {
   const renderNote = (note: Note) => {
     const dragging = draggingId === note.id;
     const dragOver = dragOverId === note.id && !dragging;
+    const isSelected = selectedIds.has(note.id);
+    const hasSender = note.sharedBy != null;
+
     return (
       <li
         key={note.id}
         draggable
         onDragStart={(event) => {
+          if (selectionMode) return;
           event.dataTransfer.effectAllowed = "move";
           event.dataTransfer.setData("text/plain", note.id);
           setDraggingId(note.id);
@@ -488,7 +571,7 @@ export default function NotesPage() {
           setDragOverId(null);
         }}
         onDragOver={(event) => {
-          if (!draggingId || draggingId === note.id) return;
+          if (selectionMode || !draggingId || draggingId === note.id) return;
           event.preventDefault();
           event.dataTransfer.dropEffect = "move";
           if (dragOverId !== note.id) setDragOverId(note.id);
@@ -497,6 +580,7 @@ export default function NotesPage() {
           setDragOverId((current) => (current === note.id ? null : current))
         }
         onDrop={(event) => {
+          if (selectionMode) return;
           event.preventDefault();
           const source =
             event.dataTransfer.getData("text/plain") || draggingId;
@@ -508,26 +592,75 @@ export default function NotesPage() {
           dragging ? "opacity-45" : ""
         } ${
           dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
-        }`}
+        } ${isSelected ? "ring-2 ring-[#cf9eff]/50 bg-white/[0.05]" : ""}`}
       >
+        {selectionMode && (
+          <label
+            className="absolute left-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded border border-white/20 bg-white/[0.03] text-white/50 transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 hover:text-[#cf9eff] cursor-pointer"
+            htmlFor={`note-checkbox-${note.id}`}
+          >
+            <input
+              type="checkbox"
+              id={`note-checkbox-${note.id}`}
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (e.target.checked) next.add(note.id);
+                  else next.delete(note.id);
+                  return next;
+                });
+              }}
+              className="sr-only"
+            />
+            <Check className="size-3.5" aria-hidden="true" />
+          </label>
+        )}
         <button
           type="button"
-          onClick={() => setActiveId(note.id)}
-          title="Drag to reorder"
+          onClick={() => {
+            if (selectionMode) {
+              setSelectedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(note.id)) next.delete(note.id);
+                else next.add(note.id);
+                return next;
+              });
+            } else {
+              setActiveId(note.id);
+            }
+          }}
+          title={selectionMode ? "Toggle selection" : "Drag to reorder"}
           className={`group flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition-colors ${
-            note.id === activeId
+            note.id === activeId && !selectionMode
               ? "border border-white/10 bg-white/[0.07]"
-              : "border border-transparent hover:bg-white/[0.04]"
+              : isSelected
+                ? "border border-[#cf9eff]/30 bg-[#cf9eff]/5"
+                : "border border-transparent hover:bg-white/[0.04]"
           }`}
         >
-          <GripVertical
-            className="mt-0.5 size-3.5 shrink-0 cursor-grab text-white/15 transition-colors group-hover:text-white/45"
-            aria-hidden="true"
-          />
+          {!selectionMode && (
+            <GripVertical
+              className="mt-0.5 size-3.5 shrink-0 cursor-grab text-white/15 transition-colors group-hover:text-white/45"
+              aria-hidden="true"
+            />
+          )}
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm text-white">
-              {note.title || "Untitled note"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm text-white">
+                {note.title || "Untitled note"}
+              </span>
+              {hasSender && (
+                <span
+                  className="flex items-center gap-1 shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-white/60"
+                  title="Shared with you"
+                >
+                  <Users className="size-2.5" />
+                  Shared
+                </span>
+              )}
+            </div>
             <span className="mt-0.5 block text-xs text-white/35">
               {new Date(note.updatedAt).toLocaleDateString("en-US", {
                 month: "short",
@@ -642,6 +775,78 @@ export default function NotesPage() {
           </div>
         </aside>
 
+        {selectionMode && (
+          <aside className="glass card-sheen flex max-h-[65vh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] border border-[#cf9eff]/30 bg-[#cf9eff]/5">
+            <div className="shrink-0 border-b border-white/[0.07] px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notes.length > 0 && notes.every((n) => selectedIds.has(n.id))}
+                    onChange={toggleSelectAll}
+                    className="size-4 rounded border-white/20 bg-white/[0.03] text-[#cf9eff] focus:ring-2 focus:ring-[#cf9eff]/50"
+                    aria-label="Select all notes"
+                  />
+                  <span className="text-sm font-medium text-white">
+                    {notes.length > 0 && notes.every((n) => selectedIds.has(n.id))
+                      ? "Deselect all"
+                      : "Select all"}
+                  </span>
+                </label>
+                <span className="text-xs text-white/50 px-2 py-0.5 rounded-full bg-white/[0.05]">
+                  {selectedIds.size} selected
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="text-sm text-white/60 hover:text-white transition-colors"
+                aria-label="Cancel selection"
+              >
+                Cancel
+              </button>
+            </div>
+            <div
+              data-lenis-prevent
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3"
+            >
+              {selectedCourseId == null ? (
+                <div className="space-y-3">
+                  {groupedNotes.map((group) => {
+                    const collapsed = collapsedGroups.has(group.key);
+                    return (
+                      <div key={group.key}>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(group.key)}
+                          aria-expanded={!collapsed}
+                          className="flex w-full items-center gap-1.5 rounded-lg px-3.5 pt-2 pb-1.5 text-left text-[10px] font-medium uppercase tracking-[0.22em] text-white/35 transition-colors hover:text-white/60"
+                        >
+                          {collapsed ? (
+                            <ChevronRight className="size-3 shrink-0" />
+                          ) : (
+                            <ChevronDown className="size-3 shrink-0" />
+                          )}
+                          <span className="min-w-0 flex-1 truncate">
+                            {group.title}
+                          </span>
+                        </button>
+                        {!collapsed && (
+                          <ul className="space-y-1.5">
+                            {group.notes.map(renderNote)}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <ul className="space-y-1.5">{notes.map(renderNote)}</ul>
+              )}
+            </div>
+          </aside>
+        )}
+
         <section className="glass card-sheen flex min-h-[65vh] flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
           {active ? (
             <>
@@ -666,15 +871,14 @@ export default function NotesPage() {
                 <span className="ml-auto flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => setShareOpen(true)}
-                    disabled={!shareableId}
-                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
-                    aria-label="Share note"
-                    title={
-                      shareableId
-                        ? "Share note"
-                        : "Wait for this note to save before sharing"
-                    }
+                    onClick={toggleSelectionMode}
+                    className={`rounded-lg p-2 transition-colors ${
+                      selectionMode
+                        ? "bg-[#cf9eff]/15 text-[#cf9eff]"
+                        : "text-white/45 hover:bg-white/[0.07] hover:text-white"
+                    }`}
+                    aria-label={selectionMode ? "Exit selection mode" : "Select notes for bulk actions"}
+                    title={selectionMode ? "Exit selection mode" : "Select notes for bulk share/download"}
                   >
                     <Share2 className="size-4" />
                   </button>
@@ -753,6 +957,49 @@ export default function NotesPage() {
         noteId={shareableId}
         noteTitle={active?.title ?? ""}
         onClose={closeShare}
+      />
+
+      {selectionMode && selectedIds.size > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.2, ease: EASE }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
+          style={{ backgroundColor: "rgba(10, 10, 18, 0.95)" }}
+          role="region"
+          aria-label="Bulk actions"
+        >
+          <span className="text-xs text-white/50 shrink-0">
+            {selectedIds.size} note{selectedIds.size > 1 ? "s" : ""} selected
+          </span>
+          <button
+            type="button"
+            onClick={handleBulkDownload}
+            disabled={bulkDownloading}
+            className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Download selected notes"
+          >
+            <Download className="size-3.5" />
+            <span>Download</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleBulkShare}
+            className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+            aria-label="Share selected notes"
+          >
+            <Users className="size-3.5" />
+            <span>Share</span>
+          </button>
+        </motion.div>
+      )}
+
+      <BulkShareModal
+        open={bulkShareOpen}
+        noteIds={Array.from(selectedIds).filter((id): id is string => typeof id === "string")}
+        noteCount={selectedIds.size}
+        onClose={() => setBulkShareOpen(false)}
       />
     </div>
   );

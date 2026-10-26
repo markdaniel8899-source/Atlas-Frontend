@@ -12,6 +12,10 @@ export interface Note {
   /** Title of the owning course, used for subject grouping. */
   courseTitle: string | null;
   sortOrder: number | null;
+  /** User ID of who shared this note (for sender tags). */
+  sharedBy: string | null;
+  /** When this note was shared (for sender tags). */
+  sharedAt: number | null;
 }
 
 export function sanitizeHtml(html: string): string {
