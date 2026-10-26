@@ -24,6 +24,8 @@ import {
 } from "../../lib/db/squad";
 import { PROFILE_CHANGED_EVENT } from "../../lib/db/profile";
 import { EASE } from "../../lib/motion";
+import { supabase } from "../../lib/supabase";
+import { getUser } from "../../lib/auth";
 
 const STATUS_LABEL: Record<SquadStatus, string> = {
   studying: "Active today",
@@ -253,7 +255,45 @@ export default function SquadPage() {
     void load();
     const refresh = () => void load();
     window.addEventListener(PROFILE_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(PROFILE_CHANGED_EVENT, refresh);
+
+    // Real-time subscription for friendships
+    const me = getUser();
+    if (me) {
+      const channel = supabase
+        .channel("squad-changes")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "friendships",
+            filter: `requester_id=eq.${me.id},addressee_id=eq.${me.id}`,
+          },
+          () => {
+            void load();
+          },
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "profiles",
+          },
+          () => {
+            void load();
+          },
+        )
+        .subscribe();
+
+      return () => {
+        window.removeEventListener(PROFILE_CHANGED_EVENT, refresh);
+        supabase.removeChannel(channel);
+      };
+    }
+    return () => {
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refresh);
+    };
   }, [load]);
 
   const friends = useMemo(
@@ -282,7 +322,6 @@ export default function SquadPage() {
     }
     setBusyId(null);
     setError(null);
-    await load();
   };
 
   const onInvite = async (event: FormEvent) => {

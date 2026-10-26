@@ -197,13 +197,23 @@ export function BulkShareModal({
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="border-b border-white/[0.07] px-6 py-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedFriends.size === friends.length && friends.length > 0}
-                      onChange={selectAllFriends}
-                      className="size-4 rounded border-white/20 bg-white/[0.03] text-[#cf9eff] focus:ring-2 focus:ring-[#cf9eff]/50"
-                      aria-label="Select all friends"
-                    />
+                    <span className="relative flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10">
+                      <input
+                        type="checkbox"
+                        checked={selectedFriends.size === friends.length && friends.length > 0}
+                        onChange={selectAllFriends}
+                        className="sr-only"
+                        aria-label="Select all friends"
+                      />
+                      <Check
+                        className={`size-3.5 transition-all duration-200 ${
+                          selectedFriends.size === friends.length && friends.length > 0
+                            ? "text-[#cf9eff] opacity-100 scale-100"
+                            : "text-white/50 opacity-0 scale-50"
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </span>
                     <span className="text-sm font-medium text-white">
                       {selectedFriends.size === friends.length && friends.length > 0
                         ? "Deselect all"
