@@ -27,6 +27,7 @@ import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
+import { supabase } from "../../lib/supabase";
 import {
   bulkDownloadNotes,
   createNote,
@@ -334,6 +335,37 @@ export default function NotesPage() {
       .finally(() => {
         if (alive) setLoading(false);
       });
+
+    // Real-time subscription for notes
+    const me = getUser();
+    if (me) {
+      const channel = supabase
+        .channel("notes-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notes",
+            filter: `user_id=eq.${me.id}`,
+          },
+          () => {
+            if (alive) {
+              void fetchNotes(scope).then((rows) => {
+                if (!alive) return;
+                const ordered = applyStoredOrder(rows);
+                setNotes(ordered);
+              });
+            }
+          },
+        )
+        .subscribe();
+
+      return () => {
+        alive = false;
+        supabase.removeChannel(channel);
+      };
+    }
     return () => {
       alive = false;
     };
@@ -1168,21 +1200,24 @@ export default function NotesPage() {
               </div>
 
 {!selectionMode ? (
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  suppressContentEditableWarning
-                  onInput={handleInput}
-                  spellCheck={false}
-                  className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                  aria-label="Note content"
-                />
+                <>
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={handleInput}
+                    spellCheck={false}
+                    className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                    aria-label="Note content"
+                  />
+                </>
               ) : (
                 <div className="min-h-[38vh] flex-1 px-6 py-5 flex items-center justify-center">
                   <p className="text-white/30 text-center">Select notes from the sidebar to perform bulk actions</p>
                 </div>
               )}
-            </> ) : (
+            </>
+          ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
               <p className="text-sm text-white/40">
                 {loading

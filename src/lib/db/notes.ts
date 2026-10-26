@@ -237,6 +237,7 @@ export async function updateNote(
   if (patch.title !== undefined) values.title = patch.title;
   if (patch.html !== undefined) values.content = sanitizeHtml(patch.html);
   if (patch.sortOrder !== undefined) values.sort_order = patch.sortOrder;
+  if (patch.courseId !== undefined) values.course_id = patch.courseId;
   if (Object.keys(values).length === 0) return;
 
   await supabase.from("notes").update(values).eq("id", parsed);
