@@ -13,13 +13,11 @@ interface NoteRow {
   sort_order?: number | null;
   shared_by: string | null;
   shared_at: string | null;
-  shared_by_name: { display_name: string; username: string } | null;
 }
 
-const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at, profiles:shared_by(display_name, username)";
+const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at";
 
 function toNote(row: NoteRow): Note {
-  const sharedByName = row.shared_by_name?.display_name || row.shared_by_name?.username || null;
   return {
     id: String(row.id),
     title: row.title,
@@ -32,7 +30,7 @@ function toNote(row: NoteRow): Note {
     courseTitle: null,
     sortOrder: typeof row.sort_order === "number" ? row.sort_order : null,
     sharedBy: row.shared_by ?? null,
-    sharedByName,
+    sharedByName: null,
     sharedAt:
       row.shared_at && !Number.isNaN(Date.parse(row.shared_at))
         ? Date.parse(row.shared_at)
@@ -101,6 +99,38 @@ async function loadCourseTitles(rows: NoteRow[]): Promise<Map<number, string>> {
   return byNote;
 }
 
+/**
+ * Map each note id to its sender's display name or username.
+ * Fetches from profiles table using shared_by (user_id).
+ */
+async function loadSenderNames(rows: NoteRow[]): Promise<Map<number, string>> {
+  const byNote = new Map<number, string>();
+  const senderIds = new Set<string>(
+    rows
+      .map((row) => row.shared_by)
+      .filter((id): id is string => typeof id === "string"),
+  );
+  if (senderIds.size === 0) return byNote;
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, display_name, username")
+    .in("id", [...senderIds]);
+  if (!Array.isArray(profiles)) return byNote;
+
+  const nameById = new Map<string, string>();
+  for (const profile of profiles as { id: string; display_name: string; username: string }[]) {
+    nameById.set(profile.id, profile.display_name || profile.username);
+  }
+  for (const row of rows) {
+    if (row.shared_by) {
+      const name = nameById.get(row.shared_by);
+      if (name) byNote.set(row.id, name);
+    }
+  }
+  return byNote;
+}
+
 export interface NotesScope {
   /** Only notes of this course (notes.course_id) - the "course selected" view. */
   courseId?: number;
@@ -156,9 +186,11 @@ export async function fetchNotes(scope?: NotesScope): Promise<Note[]> {
 
   const rows = data as unknown as NoteRow[];
   const courseByNote = await loadCourseTitles(rows);
+  const senderByNote = await loadSenderNames(rows);
   return rows.map((row) => {
     const note = toNote(row);
     note.courseTitle = courseByNote.get(row.id) ?? null;
+    note.sharedByName = senderByNote.get(row.id) ?? null;
     return note;
   });
 }
@@ -256,9 +288,11 @@ export async function fetchNotesByIds(noteIds: string[]): Promise<Note[]> {
 
   const rows = data as unknown as NoteRow[];
   const courseByNote = await loadCourseTitles(rows);
+  const senderByNote = await loadSenderNames(rows);
   return rows.map((row) => {
     const note = toNote(row);
     note.courseTitle = courseByNote.get(row.id) ?? null;
+    note.sharedByName = senderByNote.get(row.id) ?? null;
     return note;
   });
 }
