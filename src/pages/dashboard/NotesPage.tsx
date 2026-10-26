@@ -25,7 +25,7 @@ import {
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
-import { sanitizeHtml, htmlToPlainText } from "../../lib/notes";
+import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
   bulkDownloadNotes,
@@ -518,19 +518,92 @@ export default function NotesPage() {
       );
       const downloadNotes = await bulkDownloadNotes(ids);
       
-      // Create a text file with all notes content (clean HTML to plain text)
+      // Create HTML file with all notes content (preserves rich text formatting)
       const content = downloadNotes
         .map(
-          (note) =>
-            `--- ${note.title} ---\n${htmlToPlainText(note.html)}\n\n`,
+          (note) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${note.title}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      color: #111;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+    h1 { font-size: 2.5rem; border-bottom: 2px solid #eaeaea; padding-bottom: 8px; }
+    h2 { font-size: 1.8rem; }
+    h3 { font-size: 1.4rem; }
+    p { margin: 12px 0; }
+    ul, ol { margin: 12px 0; padding-left: 24px; }
+    li { margin: 6px 0; }
+    code {
+      background: #f4f4f4;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SF Mono", "Fira Code", "Monaco", monospace;
+      font-size: 0.9em;
+    }
+    pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: 0.9rem;
+    }
+    blockquote {
+      border-left: 4px solid #cf9eff;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #666;
+      font-style: italic;
+    }
+    a { color: #cf9eff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    hr { border: none; border-top: 1px solid #eaeaea; margin: 24px 0; }
+    strong { font-weight: 600; }
+    em { font-style: italic; }
+    u { text-decoration: underline; }
+    .note-separator {
+      border-top: 2px dashed #cf9eff;
+      margin: 40px 0;
+      padding-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>${note.title}</h1>
+  <div>${note.html}</div>
+</body>
+</html>
+`,
         )
-        .join("\n");
+        .join('<div class="note-separator"></div>');
       
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `notes-${new Date().toISOString().split("T")[0]}.txt`;
+      a.download = `notes-${new Date().toISOString().split("T")[0]}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
