@@ -1,4 +1,4 @@
-import { Mail, Phone } from "lucide-react";
+import { Mail, Github, Linkedin, Twitter, Discord } from "lucide-react";
 import SideRays from "../effects/SideRays";
 import { motion } from "framer-motion";
 import { CurtainLink } from "../PageCurtain";
@@ -124,7 +124,7 @@ export function Footer() {
               variants={staggerItem}
               className={`sm:col-span-2 lg:col-span-1 ${COLUMN}`}
             >
-              <h2 className={HEADING}>Contact</h2>
+              <h2 className={HEADING}>Connect</h2>
               <a
                 href="mailto:hafizmzain786@gmail.com"
                 className={`inline-flex items-center gap-2 ${LINK}`}
@@ -132,13 +132,44 @@ export function Footer() {
                 <Mail className="size-4 shrink-0 text-white/40" />
                 hafizmzain786@gmail.com
               </a>
-              <a
-                href="tel:+923074477250"
-                className={`inline-flex items-center gap-2 ${LINK}`}
-              >
-                <Phone className="size-4 shrink-0 text-white/40" />
-                +92-3074477250
-              </a>
+              <div className="flex items-center gap-3 mt-3">
+                <a
+                  href="https://github.com/markdaniel8899-source"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
+                  aria-label="GitHub"
+                >
+                  <Github className="size-4" />
+                </a>
+                <a
+                  href="https://x.com/markdaniel8899"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
+                  aria-label="Twitter"
+                >
+                  <Twitter className="size-4" />
+                </a>
+                <a
+                  href="https://linkedin.com/in/markdaniel8899"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="size-4" />
+                </a>
+                <a
+                  href="https://discord.gg/atlas"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
+                  aria-label="Discord"
+                >
+                  <Discord className="size-4" />
+                </a>
+              </div>
             </motion.div>
           </div>
         </div>
