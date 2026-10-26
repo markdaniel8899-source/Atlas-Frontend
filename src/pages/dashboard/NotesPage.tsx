@@ -1167,7 +1167,7 @@ export default function NotesPage() {
                 />
               </div>
 
-              {!selectionMode && (
+{!selectionMode ? (
                 <div
                   ref={editorRef}
                   contentEditable
@@ -1177,14 +1177,12 @@ export default function NotesPage() {
                   className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                   aria-label="Note content"
                 />
-              )}
-              {selectionMode && (
+              ) : (
                 <div className="min-h-[38vh] flex-1 px-6 py-5 flex items-center justify-center">
                   <p className="text-white/30 text-center">Select notes from the sidebar to perform bulk actions</p>
                 </div>
               )}
-            </>
-          ) : (
+            </> ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
               <p className="text-sm text-white/40">
                 {loading
