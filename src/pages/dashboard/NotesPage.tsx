@@ -515,6 +515,16 @@ export default function NotesPage() {
     }
   }, [selectedIds]);
 
+  const handleBulkDelete = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds).filter(
+      (id): id is string => typeof id === "string",
+    );
+    ids.forEach((id) => removeNote(id));
+    clearSelection();
+    toast.success(`Deleted ${ids.length} note${ids.length > 1 ? "s" : ""}`);
+  }, [selectedIds, clearSelection]);
+
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
     { label: "Italic", icon: Italic, run: () => document.execCommand("italic") },
@@ -588,11 +598,11 @@ export default function NotesPage() {
           setDraggingId(null);
           setDragOverId(null);
         }}
-        className={`rounded-xl transition-[opacity,box-shadow] ${
+        className={`rounded-xl transition-all duration-200 ease-in-out ${
           dragging ? "opacity-45" : ""
         } ${
           dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
-        } ${isSelected ? "ring-2 ring-[#cf9eff]/50 bg-white/[0.05]" : ""}`}
+        } ${isSelected ? "ring-2 ring-[#cf9eff]/40 shadow-[0_0_20px_rgba(207,158,255,0.3)] bg-white/[0.03]" : ""}`}
       >
         {selectionMode && (
           <label
@@ -636,7 +646,7 @@ export default function NotesPage() {
             note.id === activeId && !selectionMode
               ? "border border-white/10 bg-white/[0.07]"
               : isSelected
-                ? "border border-[#cf9eff]/30 bg-[#cf9eff]/5"
+                ? "bg-[#cf9eff]/5"
                 : "border border-transparent hover:bg-white/[0.04]"
           }`}
         >
@@ -973,25 +983,38 @@ export default function NotesPage() {
           <span className="text-xs text-white/50 shrink-0">
             {selectedIds.size} note{selectedIds.size > 1 ? "s" : ""} selected
           </span>
-          <button
-            type="button"
-            onClick={handleBulkDownload}
-            disabled={bulkDownloading}
-            className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Download selected notes"
-          >
-            <Download className="size-3.5" />
-            <span>Download</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleBulkShare}
-            className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
-            aria-label="Share selected notes"
-          >
-            <Users className="size-3.5" />
-            <span>Share</span>
-          </button>
+          <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+            <button
+              type="button"
+              onClick={handleBulkDownload}
+              disabled={bulkDownloading}
+              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Download selected notes"
+            >
+              <Download className="size-3.5" />
+              <span>Download</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkShare}
+              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+              aria-label="Share selected notes"
+            >
+              <Users className="size-3.5" />
+              <span>Share</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-red-300 transition-colors hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-200"
+              aria-label="Delete selected notes"
+            >
+              <Trash2 className="size-3.5" />
+              <span>Delete</span>
+            </button>
+          </div>
         </motion.div>
       )}
 
