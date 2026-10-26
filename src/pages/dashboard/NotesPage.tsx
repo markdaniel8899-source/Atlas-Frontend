@@ -444,6 +444,22 @@ export default function NotesPage() {
     void deleteNote(id);
   };
 
+  const updateNoteCourse = useCallback(async (noteId: string, courseId: number | null) => {
+    if (!active) return;
+    try {
+      await updateNote(noteId, { courseId });
+      setNotes((prev) =>
+        prev.map((note) =>
+          note.id === noteId ? { ...note, courseId } : note,
+        ),
+      );
+      toast.success(courseId ? "Note moved to course" : "Note moved to General");
+    } catch (error) {
+      toast.error("Failed to move note");
+      console.error(error);
+    }
+  }, [active]);
+
   const focusEditor = () => {
     editorRef.current?.focus();
   };
@@ -904,6 +920,54 @@ export default function NotesPage() {
                   >
                     <Share2 className="size-4" />
                   </button>
+                  {active && courses.length > 0 && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
+                        aria-label="Move note to course"
+                        title="Move note to course"
+                      >
+                        <BookOpen className="size-4" />
+                      </button>
+                      <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-white/10 bg-[#111] py-1.5 shadow-xl backdrop-blur-2xl">
+                        <button
+                          type="button"
+                          onClick={() => updateNoteCourse(active.id, null)}
+                          className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                            active.courseId === null
+                              ? "bg-[#cf9eff]/10 text-[#cf9eff]"
+                              : "text-white/75 hover:bg-white/[0.07] hover:text-white"
+                          }`}
+                        >
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.05]">
+                            <StickyNote className="size-3.5 text-white/50" />
+                          </span>
+                          <span className="truncate">General</span>
+                        </button>
+                        {courses.map((course) => (
+                          <button
+                            key={course.id}
+                            type="button"
+                            onClick={() => updateNoteCourse(active.id, course.id)}
+                            className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
+                              active.courseId === course.id
+                                ? "bg-[#cf9eff]/10 text-[#cf9eff]"
+                                : "text-white/75 hover:bg-white/[0.07] hover:text-white"
+                            }`}
+                          >
+                            <span
+                              className="flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.05]"
+                              style={{ backgroundColor: `${course.accent}20` }}
+                            >
+                              <BookOpen className="size-3.5" style={{ color: course.accent }} />
+                            </span>
+                            <span className="truncate">{course.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <span
                     className={`text-xs transition-opacity duration-300 ${
                       saved ? "text-[#cf9eff]/80 opacity-100" : "opacity-0"
@@ -941,8 +1005,8 @@ export default function NotesPage() {
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleInput}
-                spellCheck
-                className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                spellCheck={false}
+                className={`min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 ${selectionMode ? "pb-20" : ""}`}
                 aria-label="Note content"
               />
             </>
