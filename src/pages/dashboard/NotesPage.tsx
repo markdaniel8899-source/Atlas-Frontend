@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
+import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
@@ -242,6 +243,8 @@ export default function NotesPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -459,9 +462,11 @@ export default function NotesPage() {
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setSelectionMode(false);
+    setBulkActionType(null);
   }, []);
 
-  const enterSelectionMode = useCallback(() => {
+  const enterSelectionMode = useCallback((type: 'download' | 'share') => {
+    setBulkActionType(type);
     setSelectionMode(true);
   }, []);
 
@@ -501,6 +506,14 @@ export default function NotesPage() {
       setBulkDownloading(false);
     }
   }, [selectedIds, clearSelection]);
+
+  const handleBulkShare = useCallback(() => {
+    if (selectedIds.size > 0) {
+      setBulkShareOpen(true);
+    }
+  }, [selectedIds]);
+  
+  const [bulkShareOpen, setBulkShareOpen] = useState(false);
 
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
@@ -858,7 +871,7 @@ export default function NotesPage() {
                 <span className="ml-auto flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => active && enterSelectionMode()}
+                    onClick={() => active && enterSelectionMode('download')}
                     className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
                     aria-label="Download notes"
                     title="Download notes (select multiple)"
@@ -867,11 +880,11 @@ export default function NotesPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => shareableId && setShareOpen(true)}
+                    onClick={() => active && enterSelectionMode('share')}
                     disabled={!shareableId}
                     className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
-                    aria-label="Share note"
-                    title={shareableId ? "Share this note" : "Wait for this note to save before sharing"}
+                    aria-label="Share notes"
+                    title={shareableId ? "Share notes (select multiple)" : "Wait for this note to save before sharing"}
                   >
                     <Share2 className="size-4" />
                   </button>
@@ -884,7 +897,7 @@ export default function NotesPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => removeNote(active.id)}
+                    onClick={() => active && setDeleteConfirmId(active.id)}
                     className="rounded-lg p-2 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-red-300"
                     aria-label="Delete note"
                     title="Delete note"
@@ -966,19 +979,101 @@ export default function NotesPage() {
           <span className="text-xs text-white/50 shrink-0">
             {selectedIds.size} note{selectedIds.size > 1 ? "s" : ""} selected
           </span>
-          <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
-            <button
-              type="button"
-              onClick={handleBulkDownload}
-              disabled={bulkDownloading}
-              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Download selected notes"
-            >
-              <Download className="size-3.5" />
-              <span>Download</span>
-            </button>
-          </div>
+          {bulkActionType === 'download' && (
+            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+              <button
+                type="button"
+                onClick={handleBulkDownload}
+                disabled={bulkDownloading}
+                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Download selected notes"
+              >
+                <Download className="size-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          )}
+          {bulkActionType === 'share' && (
+            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+              <button
+                type="button"
+                onClick={handleBulkShare}
+                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+                aria-label="Share selected notes"
+              >
+                <Users className="size-3.5" />
+                <span>Share</span>
+              </button>
+            </div>
+          )}
         </motion.div>
+      )}
+
+      <BulkShareModal
+        open={bulkShareOpen}
+        noteIds={Array.from(selectedIds).filter((id): id is string => typeof id === "string")}
+        noteCount={selectedIds.size}
+        onClose={() => setBulkShareOpen(false)}
+      />
+
+      {deleteConfirmId && (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-50 grid place-items-center p-4"
+            onClick={() => setDeleteConfirmId(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: EASE }}
+              className="relative flex max-w-md w-full flex-col overflow-hidden rounded-2xl border border-white/10 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)]"
+              style={{ backgroundColor: "#0a0a12" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 px-6 pt-5 pb-4">
+                <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl border border-red-400/25 bg-red-500/10 text-red-400">
+                  <Trash2 className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-white/45">
+                    Delete note
+                  </p>
+                  <h3 className="mt-1 truncate text-base font-semibold text-white">
+                    Are you sure?
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-white/45">
+                    This will permanently delete the selected note. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="border-t border-white/[0.07] px-6 py-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const note = notes.find((n) => n.id === deleteConfirmId);
+                    if (note) removeNote(note.id);
+                    setDeleteConfirmId(null);
+                  }}
+                  className="rounded-xl border border-red-400/25 bg-red-500/15 px-4 py-2 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/25 hover:text-red-200"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
       )}
 
       </div>
