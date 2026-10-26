@@ -1,4 +1,4 @@
-import { Mail, Github, Linkedin, Twitter, Discord } from "lucide-react";
+import { Mail, Code2, Briefcase, MessageCircle, Users } from "lucide-react";
 import SideRays from "../effects/SideRays";
 import { motion } from "framer-motion";
 import { CurtainLink } from "../PageCurtain";
@@ -140,7 +140,7 @@ export function Footer() {
                   className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
                   aria-label="GitHub"
                 >
-                  <Github className="size-4" />
+                  <Code2 className="size-4" />
                 </a>
                 <a
                   href="https://x.com/markdaniel8899"
@@ -149,7 +149,7 @@ export function Footer() {
                   className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
                   aria-label="Twitter"
                 >
-                  <Twitter className="size-4" />
+                  <MessageCircle className="size-4" />
                 </a>
                 <a
                   href="https://linkedin.com/in/markdaniel8899"
@@ -158,7 +158,7 @@ export function Footer() {
                   className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
                   aria-label="LinkedIn"
                 >
-                  <Linkedin className="size-4" />
+                  <Briefcase className="size-4" />
                 </a>
                 <a
                   href="https://discord.gg/atlas"
@@ -167,7 +167,7 @@ export function Footer() {
                   className="inline-flex items-center justify-center size-9 rounded-lg border border-white/10 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-white/[0.06] hover:text-white"
                   aria-label="Discord"
                 >
-                  <Discord className="size-4" />
+                  <Users className="size-4" />
                 </a>
               </div>
             </motion.div>
