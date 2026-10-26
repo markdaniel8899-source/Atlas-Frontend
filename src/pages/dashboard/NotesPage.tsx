@@ -592,11 +592,13 @@ export default function NotesPage() {
           dragging ? "opacity-45" : ""
         } ${
           dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
-        } ${isSelected ? "ring-2 ring-[#cf9eff]/40 shadow-[0_0_20px_rgba(207,158,255,0.3)] bg-white/[0.03]" : ""}`}
+        } ${isSelected
+          ? "bg-[#cf9eff]/10 shadow-[0_0_24px_rgba(207,158,255,0.25)]"
+          : ""}`}
       >
         {selectionMode && (
           <label
-            className="absolute left-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded border border-white/20 bg-white/[0.03] text-white/50 transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 hover:text-[#cf9eff] cursor-pointer"
+            className="absolute left-2 top-2 z-10 flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10 cursor-pointer"
             htmlFor={`note-checkbox-${note.id}`}
           >
             <input
@@ -614,7 +616,12 @@ export default function NotesPage() {
               }}
               className="sr-only"
             />
-            <Check className="size-3.5" aria-hidden="true" />
+            <Check
+              className={`size-3.5 transition-all duration-200 ${
+                isSelected ? "text-[#cf9eff] opacity-100 scale-100" : "text-white/50 opacity-0 scale-50"
+              }`}
+              aria-hidden="true"
+            />
           </label>
         )}
         <button
@@ -636,7 +643,7 @@ export default function NotesPage() {
             note.id === activeId && !selectionMode
               ? "border border-white/10 bg-white/[0.07]"
               : isSelected
-                ? "bg-[#cf9eff]/5"
+                ? "bg-transparent"
                 : "border border-transparent hover:bg-white/[0.04]"
           }`}
         >
@@ -780,13 +787,23 @@ export default function NotesPage() {
             <div className="shrink-0 border-b border-white/[0.07] px-4 py-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={notes.length > 0 && notes.every((n) => selectedIds.has(n.id))}
-                    onChange={toggleSelectAll}
-                    className="size-4 rounded border-white/20 bg-white/[0.03] text-[#cf9eff] focus:ring-2 focus:ring-[#cf9eff]/50"
-                    aria-label="Select all notes"
-                  />
+                  <span className="relative flex items-center justify-center size-5 shrink-0 rounded-full border border-white/20 bg-white/[0.03] transition-colors hover:border-[#cf9eff]/50 hover:bg-[#cf9eff]/10">
+                    <input
+                      type="checkbox"
+                      checked={notes.length > 0 && notes.every((n) => selectedIds.has(n.id))}
+                      onChange={toggleSelectAll}
+                      className="sr-only"
+                      aria-label="Select all notes"
+                    />
+                    <Check
+                      className={`size-3.5 transition-all duration-200 ${
+                        notes.length > 0 && notes.every((n) => selectedIds.has(n.id))
+                          ? "text-[#cf9eff] opacity-100 scale-100"
+                          : "text-white/50 opacity-0 scale-50"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </span>
                   <span className="text-sm font-medium text-white">
                     {notes.length > 0 && notes.every((n) => selectedIds.has(n.id))
                       ? "Deselect all"
