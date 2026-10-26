@@ -245,6 +245,8 @@ export default function NotesPage() {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [courseMenuOpen, setCourseMenuOpen] = useState(false);
+  const courseMenuRef = useRef<HTMLDivElement>(null);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -285,6 +287,27 @@ export default function NotesPage() {
       await updateNote(id, patch);
     }
   }, []);
+
+  // Close course menu on outside click
+  useEffect(() => {
+    if (!courseMenuOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!courseMenuRef.current?.contains(event.target as Node)) {
+        setCourseMenuOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCourseMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [courseMenuOpen]);
 
   // Fetch only the notes of the active context: the selected course's
   // notes when a course is picked, otherwise every note (the list is then
@@ -920,54 +943,116 @@ export default function NotesPage() {
                   >
                     <Share2 className="size-4" />
                   </button>
-                  {active && courses.length > 0 && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
-                        aria-label="Move note to course"
-                        title="Move note to course"
-                      >
-                        <BookOpen className="size-4" />
-                      </button>
-                      <div className="absolute right-0 top-full mt-1.5 z-20 min-w-[160px] rounded-xl border border-white/10 bg-[#111] py-1.5 shadow-xl backdrop-blur-2xl">
+{active && courses.length > 0 && (
+                      <div className="relative" ref={courseMenuRef}>
                         <button
                           type="button"
-                          onClick={() => updateNoteCourse(active.id, null)}
-                          className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                            active.courseId === null
-                              ? "bg-[#cf9eff]/10 text-[#cf9eff]"
-                              : "text-white/75 hover:bg-white/[0.07] hover:text-white"
+                          onClick={() => setCourseMenuOpen((prev) => !prev)}
+                          className={`rounded-lg p-2 transition-colors ${
+                            courseMenuOpen
+                              ? "bg-[#cf9eff]/15 text-[#cf9eff]"
+                              : "text-white/45 hover:bg-white/[0.07] hover:text-white"
                           }`}
+                          aria-label="Move note to course"
+                          title="Move note to course"
                         >
-                          <span className="flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.05]">
-                            <StickyNote className="size-3.5 text-white/50" />
-                          </span>
-                          <span className="truncate">General</span>
+                          <BookOpen className="size-4" />
                         </button>
-                        {courses.map((course) => (
-                          <button
-                            key={course.id}
-                            type="button"
-                            onClick={() => updateNoteCourse(active.id, course.id)}
-                            className={`flex w-full items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                              active.courseId === course.id
-                                ? "bg-[#cf9eff]/10 text-[#cf9eff]"
-                                : "text-white/75 hover:bg-white/[0.07] hover:text-white"
-                            }`}
-                          >
-                            <span
-                              className="flex size-5 shrink-0 items-center justify-center rounded bg-white/[0.05]"
-                              style={{ backgroundColor: `${course.accent}20` }}
+
+                        <AnimatePresence>
+                          {courseMenuOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                              transition={{ duration: 0.16, ease: EASE }}
+                              className="absolute right-0 top-full mt-2 z-50 min-w-[180px] max-w-[90vw] rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl"
                             >
-                              <BookOpen className="size-3.5" style={{ color: course.accent }} />
-                            </span>
-                            <span className="truncate">{course.title}</span>
-                          </button>
-                        ))}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateNoteCourse(active.id, null);
+                                  setCourseMenuOpen(false);
+                                }}
+                                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
+                                  active.courseId === null
+                                    ? "bg-[#cf9eff]/12 text-[#cf9eff]"
+                                    : "hover:bg-white/[0.07] text-white/75"
+                                }`}
+                              >
+                                <span
+                                  className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+                                    active.courseId === null
+                                      ? "border-[#cf9eff]/40 bg-[#cf9eff]/15 text-[#cf9eff]"
+                                      : "border-white/10 bg-white/[0.05] text-white/45"
+                                  }`}
+                                >
+                                  <StickyNote className="size-4" />
+                                </span>
+                                <span
+                                  className={`min-w-0 flex-1 truncate ${
+                                    active.courseId === null
+                                      ? "font-medium text-white"
+                                      : "text-white/75"
+                                  }`}
+                                >
+                                  General
+                                </span>
+                                {active.courseId === null && (
+                                  <Check className="size-4 shrink-0 text-[#cf9eff]" />
+                                )}
+                              </button>
+                              {courses.map((course) => (
+                                <button
+                                  key={course.id}
+                                  type="button"
+                                  onClick={() => {
+                                    updateNoteCourse(active.id, course.id);
+                                    setCourseMenuOpen(false);
+                                  }}
+                                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
+                                    active.courseId === course.id
+                                      ? "bg-[#cf9eff]/12"
+                                      : "hover:bg-white/[0.07]"
+                                  }`}
+                                >
+                                  <span
+                                    className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+                                      active.courseId === course.id
+                                        ? "border-[#cf9eff]/40 bg-[#cf9eff]/15"
+                                        : "border-white/10 bg-white/[0.05]"
+                                    }`}
+                                    style={{
+                                      color:
+                                        active.courseId === course.id
+                                          ? course.accent
+                                          : "white",
+                                    }}
+                                  >
+                                    <BookOpen className="size-4" style={{ color: course.accent }} />
+                                  </span>
+                                  <span
+                                    className={`min-w-0 flex-1 truncate ${
+                                      active.courseId === course.id
+                                        ? "font-medium text-white"
+                                        : "text-white/75"
+                                    }`}
+                                  >
+                                    {course.title}
+                                  </span>
+                                  {active.courseId === course.id && (
+                                    <Check
+                                      className="size-4 shrink-0"
+                                      style={{ color: course.accent }}
+                                    />
+                                  )}
+                                </button>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    </div>
-                  )}
+                    )}
                   <span
                     className={`text-xs transition-opacity duration-300 ${
                       saved ? "text-[#cf9eff]/80 opacity-100" : "opacity-0"
