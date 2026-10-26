@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
-import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import {
@@ -242,9 +241,7 @@ export default function NotesPage() {
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkShareOpen, setBulkShareOpen] = useState(false);
   const [bulkDownloading, setBulkDownloading] = useState(false);
-  const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -462,11 +459,9 @@ export default function NotesPage() {
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setSelectionMode(false);
-    setBulkActionType(null);
   }, []);
 
-  const enterSelectionMode = useCallback((type: 'download' | 'share') => {
-    setBulkActionType(type);
+  const enterSelectionMode = useCallback(() => {
     setSelectionMode(true);
   }, []);
 
@@ -505,22 +500,6 @@ export default function NotesPage() {
     } finally {
       setBulkDownloading(false);
     }
-  }, [selectedIds, clearSelection]);
-
-  const handleBulkShare = useCallback(() => {
-    if (selectedIds.size > 0) {
-      setBulkShareOpen(true);
-    }
-  }, [selectedIds]);
-
-  const handleBulkDelete = useCallback(() => {
-    if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds).filter(
-      (id): id is string => typeof id === "string",
-    );
-    ids.forEach((id) => removeNote(id));
-    clearSelection();
-    toast.success(`Deleted ${ids.length} note${ids.length > 1 ? "s" : ""}`);
   }, [selectedIds, clearSelection]);
 
   const tools: Tool[] = [
@@ -879,7 +858,7 @@ export default function NotesPage() {
                 <span className="ml-auto flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => active && enterSelectionMode('download')}
+                    onClick={() => active && enterSelectionMode()}
                     className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
                     aria-label="Download notes"
                     title="Download notes (select multiple)"
@@ -987,53 +966,21 @@ export default function NotesPage() {
           <span className="text-xs text-white/50 shrink-0">
             {selectedIds.size} note{selectedIds.size > 1 ? "s" : ""} selected
           </span>
-          {bulkActionType === 'download' && (
-            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
-              <button
-                type="button"
-                onClick={handleBulkDownload}
-                disabled={bulkDownloading}
-                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Download selected notes"
-              >
-                <Download className="size-3.5" />
-                <span>Download</span>
-              </button>
-            </div>
-          )}
-          {bulkActionType === 'share' && (
-            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
-              <button
-                type="button"
-                onClick={handleBulkShare}
-                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
-                aria-label="Share selected notes"
-              >
-                <Users className="size-3.5" />
-                <span>Share</span>
-              </button>
-            </div>
-          )}
           <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
             <button
               type="button"
-              onClick={handleBulkDelete}
-              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-red-300 transition-colors hover:border-red-400/50 hover:bg-red-500/10 hover:text-red-200"
-              aria-label="Delete selected notes"
+              onClick={handleBulkDownload}
+              disabled={bulkDownloading}
+              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Download selected notes"
             >
-              <Trash2 className="size-3.5" />
-              <span>Delete</span>
+              <Download className="size-3.5" />
+              <span>Download</span>
             </button>
           </div>
         </motion.div>
       )}
 
-      <BulkShareModal
-        open={bulkShareOpen}
-        noteIds={Array.from(selectedIds).filter((id): id is string => typeof id === "string")}
-        noteCount={selectedIds.size}
-        onClose={() => setBulkShareOpen(false)}
-      />
-    </div>
+      </div>
   );
 }
