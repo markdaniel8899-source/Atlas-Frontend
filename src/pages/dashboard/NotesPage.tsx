@@ -525,6 +525,25 @@ export default function NotesPage() {
     toast.success(`Deleted ${ids.length} note${ids.length > 1 ? "s" : ""}`);
   }, [selectedIds, clearSelection]);
 
+  const handleDownloadNote = useCallback(async (note: Note) => {
+    try {
+      const content = `--- ${note.title} ---\n${note.html}\n\n`;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${note.title || "note"}-${new Date().toISOString().split("T")[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Note downloaded");
+    } catch (error) {
+      toast.error("Failed to download note");
+      console.error(error);
+    }
+  }, []);
+
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
     { label: "Italic", icon: Italic, run: () => document.execCommand("italic") },
@@ -878,7 +897,16 @@ export default function NotesPage() {
                     <tool.icon className="size-4" />
                   </button>
                 ))}
-                <span className="ml-auto flex items-center gap-3">
+                <span className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => active && handleDownloadNote(active)}
+                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
+                    aria-label="Download note"
+                    title="Download note"
+                  >
+                    <Download className="size-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={toggleSelectionMode}
