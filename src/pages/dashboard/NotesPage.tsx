@@ -660,11 +660,10 @@ export default function NotesPage() {
               </span>
               {hasSender && (
                 <span
-                  className="flex items-center gap-1 shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-white/60"
+                  className="shrink-0 rounded-full border border-[#cf9eff]/30 bg-[#cf9eff]/10 px-2 py-0.5 text-[10px] font-medium text-[#cf9eff] transition-all duration-200"
                   title="Shared with you"
                 >
-                  <Users className="size-2.5" />
-                  Shared by {note.sharedByName || "User"}
+                  {note.sharedByName || "User"}
                 </span>
               )}
             </div>
