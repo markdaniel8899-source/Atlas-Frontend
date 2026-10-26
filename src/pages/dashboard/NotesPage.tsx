@@ -244,6 +244,7 @@ export default function NotesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkShareOpen, setBulkShareOpen] = useState(false);
   const [bulkDownloading, setBulkDownloading] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -448,16 +449,6 @@ export default function NotesPage() {
   };
 
   // Selection mode handlers
-  const toggleSelectionMode = useCallback(() => {
-    setSelectionMode((prev) => {
-      const next = !prev;
-      if (!next) {
-        setSelectedIds(new Set());
-      }
-      return next;
-    });
-  }, []);
-
   const toggleSelectAll = useCallback(() => {
     const allIds = notes.map((n) => n.id);
     const allSelected = allIds.every((id) => selectedIds.has(id));
@@ -471,6 +462,12 @@ export default function NotesPage() {
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
     setSelectionMode(false);
+    setBulkActionType(null);
+  }, []);
+
+  const enterSelectionMode = useCallback((type: 'download' | 'share') => {
+    setBulkActionType(type);
+    setSelectionMode(true);
   }, []);
 
   const handleBulkDownload = useCallback(async () => {
@@ -501,13 +498,14 @@ export default function NotesPage() {
       URL.revokeObjectURL(url);
       
       toast.success(`Downloaded ${downloadNotes.length} note${downloadNotes.length > 1 ? "s" : ""}`);
+      clearSelection();
     } catch (error) {
       toast.error("Failed to download notes");
       console.error(error);
     } finally {
       setBulkDownloading(false);
     }
-  }, [selectedIds]);
+  }, [selectedIds, clearSelection]);
 
   const handleBulkShare = useCallback(() => {
     if (selectedIds.size > 0) {
@@ -524,25 +522,6 @@ export default function NotesPage() {
     clearSelection();
     toast.success(`Deleted ${ids.length} note${ids.length > 1 ? "s" : ""}`);
   }, [selectedIds, clearSelection]);
-
-  const handleDownloadNote = useCallback(async (note: Note) => {
-    try {
-      const content = `--- ${note.title} ---\n${note.html}\n\n`;
-      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${note.title || "note"}-${new Date().toISOString().split("T")[0]}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Note downloaded");
-    } catch (error) {
-      toast.error("Failed to download note");
-      console.error(error);
-    }
-  }, []);
 
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
@@ -897,26 +876,23 @@ export default function NotesPage() {
                     <tool.icon className="size-4" />
                   </button>
                 ))}
-                <span className="ml-auto flex items-center gap-2">
+                <span className="ml-auto flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => active && handleDownloadNote(active)}
+                    onClick={() => active && enterSelectionMode('download')}
                     className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
-                    aria-label="Download note"
-                    title="Download note"
+                    aria-label="Download notes"
+                    title="Download notes (select multiple)"
                   >
                     <Download className="size-4" />
                   </button>
                   <button
                     type="button"
-                    onClick={toggleSelectionMode}
-                    className={`rounded-lg p-2 transition-colors ${
-                      selectionMode
-                        ? "bg-[#cf9eff]/15 text-[#cf9eff]"
-                        : "text-white/45 hover:bg-white/[0.07] hover:text-white"
-                    }`}
-                    aria-label={selectionMode ? "Exit selection mode" : "Select notes for bulk actions"}
-                    title={selectionMode ? "Exit selection mode" : "Select notes for bulk share/download"}
+                    onClick={() => shareableId && setShareOpen(true)}
+                    disabled={!shareableId}
+                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/45"
+                    aria-label="Share note"
+                    title={shareableId ? "Share this note" : "Wait for this note to save before sharing"}
                   >
                     <Share2 className="size-4" />
                   </button>
@@ -1011,27 +987,33 @@ export default function NotesPage() {
           <span className="text-xs text-white/50 shrink-0">
             {selectedIds.size} note{selectedIds.size > 1 ? "s" : ""} selected
           </span>
-          <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
-            <button
-              type="button"
-              onClick={handleBulkDownload}
-              disabled={bulkDownloading}
-              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Download selected notes"
-            >
-              <Download className="size-3.5" />
-              <span>Download</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleBulkShare}
-              className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
-              aria-label="Share selected notes"
-            >
-              <Users className="size-3.5" />
-              <span>Share</span>
-            </button>
-          </div>
+          {bulkActionType === 'download' && (
+            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+              <button
+                type="button"
+                onClick={handleBulkDownload}
+                disabled={bulkDownloading}
+                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Download selected notes"
+              >
+                <Download className="size-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          )}
+          {bulkActionType === 'share' && (
+            <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
+              <button
+                type="button"
+                onClick={handleBulkShare}
+                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06]"
+                aria-label="Share selected notes"
+              >
+                <Users className="size-3.5" />
+                <span>Share</span>
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-2 ml-2 border-l border-white/10 pl-3">
             <button
               type="button"
