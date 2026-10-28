@@ -49,7 +49,10 @@ export interface TimerContextValue {
   /** Commit: flush counters + log the session + reset to idle. */
   stop: (message?: string) => void;
   setTarget: (minutes: number) => void;
-  /** Pre-select a course while idle or paused (locked during a run). */
+  /**
+   * Change the course the session is credited to. While running, the time
+   * already spent is flushed to the previous course first.
+   */
   selectCourse: (courseId: number | null) => void;
   /** Set a target and start immediately. */
   startQuick: (minutes: number) => void;
@@ -81,6 +84,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   const flashTimerRef = useRef<number | null>(null);
   const completionCardTimerRef = useRef<number | null>(null);
+  // A mid-run course switch reloads the bases after flushing the old course,
+  // so the automatic courseId effect must not race it with a stale read.
+  const skipBaseReloadRef = useRef(false);
 
   const applyState = useCallback((next: TimerState) => {
     stateRef.current = next;
@@ -118,6 +124,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   // course changes (fresh bases for the count-up display).
   const courseId = state.courseId;
   useEffect(() => {
+    if (skipBaseReloadRef.current) {
+      skipBaseReloadRef.current = false;
+      return;
+    }
     void reloadBases(courseId);
   }, [courseId, reloadBases]);
 
@@ -216,10 +226,33 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const selectCourse = useCallback(
     (nextCourseId: number | null) => {
       const current = stateRef.current;
-      if (current.mode === "running" || current.courseId === nextCourseId) return;
+      if (current.courseId === nextCourseId) return;
+
+      if (current.mode === "running") {
+        // Credit the time already spent to the old course, then let the rest
+        // of the session continue on the new one.
+        const elapsed = elapsedMs(current);
+        const delta = Math.floor((elapsed - current.flushedMs) / 1000);
+        if (delta > 0) setGlobalBase((value) => value + delta);
+
+        skipBaseReloadRef.current = true;
+        applyState({ ...current, courseId: nextCourseId, flushedMs: elapsed });
+        void getFocusSeconds(nextCourseId).then(setCourseBase);
+
+        void flushFocus(current)
+          .then(() => {
+            notifyFocusChanged();
+            return reloadBases(nextCourseId);
+          })
+          .catch((err) => {
+            console.error("Focus save failed", err);
+          });
+        return;
+      }
+
       applyState({ ...current, courseId: nextCourseId });
     },
-    [applyState],
+    [applyState, reloadBases],
   );
 
   const startQuick = useCallback(

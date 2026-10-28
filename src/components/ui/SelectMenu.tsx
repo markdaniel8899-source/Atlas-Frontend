@@ -55,7 +55,7 @@ export function SelectMenu<T extends string>({
       const target = buttons.find(
         (button) => button.getAttribute("aria-selected") === "true",
       );
-      (target ?? buttons[0])?.focus();
+      (target ?? buttons[0])?.focus({ preventScroll: true });
     };
     focusSelected();
 
@@ -65,7 +65,7 @@ export function SelectMenu<T extends string>({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
-        triggerRef.current?.focus();
+        triggerRef.current?.focus({ preventScroll: true });
         return;
       }
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -99,7 +99,7 @@ export function SelectMenu<T extends string>({
 
   const close = () => {
     setOpen(false);
-    triggerRef.current?.focus();
+    triggerRef.current?.focus({ preventScroll: true });
   };
 
   return (
@@ -168,7 +168,7 @@ export function SelectMenu<T extends string>({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: EASE }}
-            className="absolute top-[calc(100%+8px)] right-0 left-0 z-30 rounded-2xl border border-white/10 bg-[#0a0a12]/95 p-1.5 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl card-sheen"
+            className="absolute top-[calc(100%+8px)] right-0 left-0 z-30 max-h-72 overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#0a0a12]/95 p-1.5 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl card-sheen"
           >
             {options.map((option) => {
               const Icon = option.icon;

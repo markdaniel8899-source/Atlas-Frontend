@@ -108,7 +108,6 @@ export default function TimerPage() {
             labelIcon={BookOpen}
             value={String(state.courseId ?? "")}
             options={courseOptions}
-            disabled={state.mode !== "idle"}
             onChange={(next) =>
               timer.selectCourse(next ? Number(next) : null)
             }
@@ -206,7 +205,7 @@ export default function TimerPage() {
                 key={min}
                 type="button"
                 onClick={() => timer.setTarget(min)}
-            disabled={state.mode === "running"}
+                disabled={state.mode !== "idle"}
                 className={`rounded-full border px-3.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   state.targetMin === min
                     ? "border-star/50 bg-star/10 text-star"
