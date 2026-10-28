@@ -49,7 +49,7 @@ export interface TimerContextValue {
   /** Commit: flush counters + log the session + reset to idle. */
   stop: (message?: string) => void;
   setTarget: (minutes: number) => void;
-  /** Pre-select a course (only while idle). */
+  /** Pre-select a course while idle or paused (locked during a run). */
   selectCourse: (courseId: number | null) => void;
   /** Set a target and start immediately. */
   startQuick: (minutes: number) => void;
@@ -216,7 +216,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const selectCourse = useCallback(
     (nextCourseId: number | null) => {
       const current = stateRef.current;
-      if (current.mode !== "idle" || current.courseId === nextCourseId) return;
+      if (current.mode === "running" || current.courseId === nextCourseId) return;
       applyState({ ...current, courseId: nextCourseId });
     },
     [applyState],

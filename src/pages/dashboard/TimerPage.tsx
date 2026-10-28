@@ -206,7 +206,7 @@ export default function TimerPage() {
                 key={min}
                 type="button"
                 onClick={() => timer.setTarget(min)}
-                disabled={state.mode !== "idle"}
+            disabled={state.mode === "running"}
                 className={`rounded-full border px-3.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   state.targetMin === min
                     ? "border-star/50 bg-star/10 text-star"

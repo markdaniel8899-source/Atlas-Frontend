@@ -531,7 +531,7 @@ export default function DashboardLayout() {
       </AnimatePresence>
 
       <main
-        className={`relative z-10 flex flex-col pt-16 transition-[padding-left] duration-300 md:pt-0 ${
+        className={`relative z-10 flex flex-col pt-16 transition-[padding-left] duration-300 ${
           activePath === "/app/assistant"
             ? "h-dvh"
             : "min-h-dvh"
