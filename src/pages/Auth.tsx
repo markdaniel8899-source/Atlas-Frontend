@@ -48,6 +48,22 @@ interface Notice {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Big monitors render a lot more shader pixels, so the pillar gets a calmer,
+ * cheaper configuration there (dimmed, slower, lower quality). Small screens
+ * keep the original look.
+ */
+type PillarTier = "default" | "large" | "xl";
+
+function readPillarTier(): PillarTier {
+  if (typeof window === "undefined") return "default";
+  const width = window.innerWidth;
+  const dpr = window.devicePixelRatio || 1;
+  if (width >= 2560 || width * dpr >= 4000) return "xl";
+  if (width >= 1920 || width * dpr >= 2600) return "large";
+  return "default";
+}
+
 export default function Auth({ mode }: { mode: "login" | "signup" }) {
   const isSignup = mode === "signup";
   const navigate = useNavigate();
@@ -70,6 +86,16 @@ export default function Auth({ mode }: { mode: "login" | "signup" }) {
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const prevMode = useRef(mode);
+  const [pillarTier, setPillarTier] = useState<PillarTier>(() =>
+    readPillarTier(),
+  );
+
+  useEffect(() => {
+    const update = () => setPillarTier(readPillarTier());
+    update();
+    window.addEventListener("resize", update, { passive: true });
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   const normalizedEmail = normalizeEmail(email);
 
@@ -185,17 +211,36 @@ export default function Auth({ mode }: { mode: "login" | "signup" }) {
         <LightPillar
           topColor="#5227FF"
           bottomColor="#FF9FFC"
-          intensity={1}
-          rotationSpeed={0.3}
-          glowAmount={0.002}
+          intensity={
+            pillarTier === "xl" ? 0.45 : pillarTier === "large" ? 0.55 : 1
+          }
+          rotationSpeed={
+            pillarTier === "xl" ? 0.12 : pillarTier === "large" ? 0.16 : 0.3
+          }
+          glowAmount={
+            pillarTier === "xl"
+              ? 0.001
+              : pillarTier === "large"
+                ? 0.0012
+                : 0.002
+          }
           pillarWidth={3}
           pillarHeight={0.4}
-          noiseIntensity={0.5}
+          noiseIntensity={
+            pillarTier === "xl" ? 0.35 : pillarTier === "large" ? 0.4 : 0.5
+          }
           pillarRotation={25}
           interactive={false}
           mixBlendMode="screen"
-          quality="high"
+          quality={pillarTier === "default" ? "high" : "medium"}
         />
+        {pillarTier !== "default" && (
+          <div
+            className={`pointer-events-none absolute inset-0 ${
+              pillarTier === "xl" ? "bg-void/35" : "bg-void/25"
+            }`}
+          />
+        )}
       </div>
 
       <motion.div
