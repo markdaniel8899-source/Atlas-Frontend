@@ -12,6 +12,8 @@ interface BulkShareModalProps {
   noteIds: string[];
   noteCount: number;
   onClose: () => void;
+  /** Called after a successful share so the page can leave selection mode. */
+  onShared?: () => void;
 }
 
 export function BulkShareModal({
@@ -19,6 +21,7 @@ export function BulkShareModal({
   noteIds,
   noteCount,
   onClose,
+  onShared,
 }: BulkShareModalProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const [friends, setFriends] = useState<SquadMember[]>([]);
@@ -99,6 +102,7 @@ export function BulkShareModal({
         recipientIds.length > 1 ? "s" : ""
       }`,
     );
+    onShared?.();
     onClose();
   };
 

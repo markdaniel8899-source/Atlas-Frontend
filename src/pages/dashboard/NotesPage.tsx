@@ -222,7 +222,6 @@ function CourseSwitcher({
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
   const [saved, setSaved] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -238,6 +237,9 @@ export default function NotesPage() {
   const savedRef = useRef<number | null>(null);
   const networkRef = useRef<number | null>(null);
   const pendingRef = useRef<Map<string, Partial<Omit<Note, "id">>>>(new Map());
+  /** Bumped on every local write: in-flight refetches that started before a
+   *  write can be stale, so their responses are discarded. */
+  const dataVersionRef = useRef(0);
   const activeRef = useRef<string | null>(activeId);
 
   // Multi-select state
@@ -276,6 +278,16 @@ export default function NotesPage() {
     }
   }, [coursesLoading, selectedCourseId, selectedCourse, setSearchParams]);
 
+  /** Keep optimistic edits that have not reached the database yet on top of
+   *  a refetched snapshot, so the list never flashes back to an old value. */
+  const mergePending = useCallback((rows: Note[]): Note[] => {
+    if (pendingRef.current.size === 0) return rows;
+    return rows.map((note) => {
+      const patch = pendingRef.current.get(note.id);
+      return patch ? { ...note, ...patch } : note;
+    });
+  }, []);
+
   const flush = useCallback(async () => {
     if (networkRef.current) {
       window.clearTimeout(networkRef.current);
@@ -287,6 +299,7 @@ export default function NotesPage() {
     for (const [id, patch] of entries) {
       await updateNote(id, patch);
     }
+    dataVersionRef.current += 1;
   }, []);
 
   // Close course menu on outside click
@@ -323,7 +336,7 @@ export default function NotesPage() {
     void fetchNotes(scope)
       .then((rows) => {
         if (!alive) return;
-        const ordered = applyStoredOrder(rows);
+        const ordered = applyStoredOrder(mergePending(rows));
         setNotes(ordered);
         setActiveId((current) =>
           current && ordered.some((note) => note.id === current)
@@ -350,13 +363,15 @@ export default function NotesPage() {
             filter: `user_id=eq.${me.id}`,
           },
           () => {
-            if (alive) {
-              void fetchNotes(scope).then((rows) => {
-                if (!alive) return;
-                const ordered = applyStoredOrder(rows);
-                setNotes(ordered);
-              });
-            }
+            if (!alive) return;
+            const version = dataVersionRef.current;
+            void fetchNotes(scope).then((rows) => {
+              // A local edit landed while this request was in flight - the
+              // snapshot may already be outdated, so ignore it.
+              if (!alive || dataVersionRef.current !== version) return;
+              const ordered = applyStoredOrder(mergePending(rows));
+              setNotes(ordered);
+            });
           },
         )
         .subscribe();
@@ -369,7 +384,7 @@ export default function NotesPage() {
     return () => {
       alive = false;
     };
-  }, [coursesLoading, selectedCourseId, activeCourseId]);
+  }, [coursesLoading, selectedCourseId, activeCourseId, mergePending]);
 
   const groupedNotes = useMemo<NoteGroup[]>(() => {
     const groups = new Map<string, NoteGroup>();
@@ -399,9 +414,10 @@ export default function NotesPage() {
     const note = notes.find((n) => n.id === activeId);
     if (editorRef.current && note) {
       editorRef.current.innerHTML = sanitizeHtml(note.html);
-      setTitle(note.title);
     }
-  }, [activeId]);
+    // selectionMode is a dep so leaving multi-select repopulates the editor
+    // (the contentEditable is remounted after being hidden).
+  }, [activeId, selectionMode]);
 
   useEffect(() => {
     return () => {
@@ -418,6 +434,7 @@ export default function NotesPage() {
   };
 
   const persist = (id: string, patch: Partial<Omit<Note, "id">>) => {
+    dataVersionRef.current += 1;
     pendingRef.current.set(id, {
       ...(pendingRef.current.get(id) ?? {}),
       ...patch,
@@ -457,6 +474,7 @@ export default function NotesPage() {
 
   const reorderNotes = (sourceId: string, targetId: string) => {
     if (sourceId === targetId) return;
+    dataVersionRef.current += 1;
     setNotes((prev) => {
       const from = prev.findIndex((note) => note.id === sourceId);
       const to = prev.findIndex((note) => note.id === targetId);
@@ -477,6 +495,7 @@ export default function NotesPage() {
     const topicId = selectedCourse?.topics[0]?.id ?? null;
     const note = await createNote({ courseId, topicId });
     if (!note) return;
+    dataVersionRef.current += 1;
     setNotes((prev) => {
       const ordered = [note, ...prev].map((item, index) => ({
         ...item,
@@ -490,6 +509,7 @@ export default function NotesPage() {
 
   const removeNote = (id: string) => {
     pendingRef.current.delete(id);
+    dataVersionRef.current += 1;
     const next = notes
       .filter((note) => note.id !== id)
       .map((note, index) => ({ ...note, sortOrder: index }));
@@ -501,6 +521,7 @@ export default function NotesPage() {
 
   const updateNoteCourse = useCallback(async (noteId: string, courseId: number | null) => {
     if (!active) return;
+    dataVersionRef.current += 1;
     try {
       await updateNote(noteId, { courseId });
       setNotes((prev) =>
@@ -1008,7 +1029,8 @@ export default function NotesPage() {
           </aside>
         )}
 
-        <section className="glass card-sheen flex min-h-[65vh] flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+        {!selectionMode && (
+          <section className="glass card-sheen flex min-h-[65vh] flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
           {active ? (
             <>
               <div className="flex flex-wrap items-center gap-1 border-b border-white/[0.07] px-4 py-3">
@@ -1189,9 +1211,8 @@ export default function NotesPage() {
               <div className="border-b border-white/[0.07] px-6 pt-5">
                 <input
                   type="text"
-                  value={title}
+                  value={active.title}
                   onChange={(e) => {
-                    setTitle(e.target.value);
                     persist(active.id, { title: e.target.value });
                   }}
                   placeholder="Untitled note"
@@ -1233,7 +1254,8 @@ export default function NotesPage() {
               </button>
             </div>
           )}
-        </section>
+          </section>
+        )}
       </div>
 
       <motion.p
@@ -1301,6 +1323,7 @@ export default function NotesPage() {
         noteIds={Array.from(selectedIds).filter((id): id is string => typeof id === "string")}
         noteCount={selectedIds.size}
         onClose={() => setBulkShareOpen(false)}
+        onShared={clearSelection}
       />
 
       {deleteConfirmId && (

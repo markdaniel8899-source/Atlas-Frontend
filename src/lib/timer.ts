@@ -32,6 +32,36 @@ export function defaultTimerState(targetMin = 25): TimerState {
   };
 }
 
+/**
+ * Ask for the browser notification permission. Only call this from a user
+ * gesture (starting the timer); browsers ignore other requests.
+ */
+export function requestTimerNotificationPermission(): void {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (window.Notification.permission === "default") {
+    void window.Notification.requestPermission().catch(() => undefined);
+  }
+}
+
+/** Native browser notification shown when the focus target is reached. */
+export function showTimerNotification(minutes: number): void {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (window.Notification.permission !== "granted") return;
+  try {
+    const notification = new window.Notification("Focus session complete", {
+      body: `Your ${minutes}-minute focus session has ended. Great job!`,
+      icon: "/formicon.png",
+      tag: "atlas-focus-timer",
+    });
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch {
+    // Constructor unsupported (e.g. iOS Safari) - the in-app card still shows.
+  }
+}
+
 export function elapsedMs(state: TimerState, now = Date.now()): number {
   const running =
     state.mode === "running" && state.startedAt !== null

@@ -13,9 +13,11 @@ import {
   elapsedMs,
   loadTimerState,
   pauseTimer,
+  requestTimerNotificationPermission,
   resetTimer,
   saveTimerState,
   setTargetMinutes,
+  showTimerNotification,
   startTimer,
   subscribeTimer,
 } from "../lib/timer";
@@ -165,7 +167,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         });
       return;
     }
-    if (current.mode === "idle") void reloadBases(current.courseId);
+    if (current.mode === "idle") {
+      requestTimerNotificationPermission();
+      void reloadBases(current.courseId);
+    }
     applyState(startTimer(current));
   }, [applyState, reloadBases]);
 
@@ -221,6 +226,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     (minutes: number) => {
       const current = stateRef.current;
       if (current.mode !== "idle") return;
+      requestTimerNotificationPermission();
       applyState(startTimer(setTargetMinutes(current, minutes)));
       void reloadBases(current.courseId);
     },
@@ -251,7 +257,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (elapsedMs(state) >= state.targetMin * 60_000) {
       if (!completionNotifiedRef.current) {
         completionNotifiedRef.current = true;
-        // In-app bottom-right card: no browser permission required.
+        // Native browser notification (permission requested on start) and
+        // the in-app bottom-right card as a fallback.
+        showTimerNotification(state.targetMin);
         setShowCompletionCard(true);
         if (completionCardTimerRef.current)
           window.clearTimeout(completionCardTimerRef.current);
