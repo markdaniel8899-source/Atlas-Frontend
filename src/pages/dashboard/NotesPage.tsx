@@ -557,6 +557,9 @@ export default function NotesPage() {
     // Ensure range is within the editor
     if (!editorRef.current?.contains(range.commonAncestorContainer)) return;
     
+    // Collapse range to insert point
+    range.collapse(true);
+    
     handleInput();
     // Store the range to know where to insert the code block
     setCodeBlockEditing({ range, initialCode: "", initialLanguage: "javascript" });
@@ -1376,15 +1379,13 @@ export default function NotesPage() {
                       aria-label="Note content"
                     />
                     {codeBlockEditing && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                        <div className="pointer-events-auto w-full max-w-3xl max-h-[80vh]">
-                          <InlineCodeBlock
-                            initialCode={codeBlockEditing.initialCode}
-                            initialLanguage={codeBlockEditing.initialLanguage}
-                            onExit={handleCodeBlockExit}
-                            onSave={handleCodeBlockSave}
-                          />
-                        </div>
+                      <div className="relative my-4">
+                        <InlineCodeBlock
+                          initialCode={codeBlockEditing.initialCode}
+                          initialLanguage={codeBlockEditing.initialLanguage}
+                          onExit={handleCodeBlockExit}
+                          onSave={handleCodeBlockSave}
+                        />
                       </div>
                     )}
                   </div>
