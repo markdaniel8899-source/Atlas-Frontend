@@ -36,11 +36,16 @@ export function CourseEditorModal({
     if (!course) return;
     setTitle(course.title);
     setDescription(course.description);
-    setTopics(course.topics);
     setTopicTitle("");
     setError(null);
     setBusy(false);
   }, [course]);
+
+  // Initialize topics from course when modal opens
+  useEffect(() => {
+    if (!course) return;
+    setTopics(course.topics);
+  }, [course?.id]);
 
   useEffect(() => {
     if (!course) return;
