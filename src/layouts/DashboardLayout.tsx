@@ -395,12 +395,8 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        <div ref={profileRef} className="relative flex shrink-0 items-center gap-3">
-          <div className="hidden text-right leading-tight sm:block">
-            <p className="truncate text-sm text-white">{name}</p>
-            <p className="truncate text-xs text-white/40">{user?.email}</p>
-          </div>
-          <NotificationBell />
+        <NotificationBell />
+          <div ref={profileRef} className="relative flex shrink-0 items-center gap-3">
           <button
             type="button"
             onClick={() => setProfileMenuOpen((open) => !open)}
