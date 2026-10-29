@@ -8,6 +8,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Code,
   Download,
   GripVertical,
   Heading2,
@@ -25,6 +26,7 @@ import {
 import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
+import { InlineCodeBlock } from "../../components/notes/InlineCodeBlock";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import { supabase } from "../../lib/supabase";
@@ -541,6 +543,41 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
+  const [codeBlockEditing, setCodeBlockEditing] = useState<{ element: HTMLElement; initialCode: string; initialLanguage: string } | null>(null);
+
+  const insertCodeBlock = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const id = `code-block-${Date.now()}`;
+    const html = `<pre class="inline-code-block" data-code-block-id="${id}" contenteditable="false"><code class="language-javascript"> </code></pre><p><br></p>`;
+    document.execCommand("insertHTML", false, html);
+    handleInput();
+    // Find the inserted element and open editor
+    setTimeout(() => {
+      const inserted = editor.querySelector(`[data-code-block-id="${id}"]`);
+      if (inserted) {
+        setCodeBlockEditing({ element: inserted as HTMLElement, initialCode: "", initialLanguage: "javascript" });
+      }
+    }, 0);
+  }, [handleInput]);
+
+  const handleCodeBlockSave = useCallback((code: string, language: string) => {
+    if (!codeBlockEditing) return;
+    const { element } = codeBlockEditing;
+    const codeEl = element.querySelector("code");
+    if (codeEl) {
+      codeEl.textContent = code;
+      codeEl.className = `language-${language}`;
+    }
+    setCodeBlockEditing(null);
+    handleInput();
+  }, [codeBlockEditing, handleInput]);
+
+  const handleCodeBlockExit = useCallback(() => {
+    setCodeBlockEditing(null);
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!active || selectionMode) return;
@@ -781,6 +818,12 @@ export default function NotesPage() {
       icon: ListOrdered,
       run: () => document.execCommand("insertOrderedList"),
       shortcut: `${ALT} + ${SHIFT} + N`,
+    },
+    {
+      label: "Code block",
+      icon: Code,
+      run: insertCodeBlock,
+      shortcut: `${ALT} + ${SHIFT} + E`,
     },
   ];
 
@@ -1301,15 +1344,28 @@ export default function NotesPage() {
 
 {!selectionMode ? (
                 <>
-                  <div
-                    ref={editorRef}
-                    contentEditable
-                    suppressContentEditableWarning
-                    onInput={handleInput}
-                    spellCheck={false}
-                    className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                    aria-label="Note content"
-                  />
+                  <div className="relative min-h-[38vh] flex-1">
+                    <div
+                      ref={editorRef}
+                      contentEditable
+                      suppressContentEditableWarning
+                      onInput={handleInput}
+                      spellCheck={false}
+                      className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      aria-label="Note content"
+                    />
+                    {codeBlockEditing && (
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div className="pointer-events-auto w-full max-w-3xl">
+                          <InlineCodeBlock
+                            initialCode={codeBlockEditing.initialCode}
+                            onExit={handleCodeBlockExit}
+                            onSave={handleCodeBlockSave}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div className="min-h-[38vh] flex-1 px-6 py-5 flex items-center justify-center">
