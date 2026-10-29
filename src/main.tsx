@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";
 import "@fontsource-variable/syne";
 import App from "./App";
 import "./index.css";
+import { initCache } from "./lib/cache";
+
+// Initialize cache system before rendering to prevent stale/corrupted localStorage issues
+initCache();
 
 // SEO: never serve the app over plain HTTP on a real host. Local dev hosts
 // are exempt. This runs before React mounts, so no component/state logic is

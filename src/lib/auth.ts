@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "./supabase";
+import { safeGetItem, safeSetItem, safeRemoveItem, CACHE_PREFIX } from "./cache";
 
 export interface AuthUser {
   id: string;
@@ -14,7 +15,7 @@ export interface AuthResult {
 export const CONFIG_ERROR =
   "Supabase isn't configured yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.";
 
-const CACHE_KEY = "atlas.user";
+const CACHE_KEY = `${CACHE_PREFIX}user`;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -22,24 +23,16 @@ export function normalizeEmail(email: string): string {
 
 /** Synchronous read of the cached user, safe for render-time use. */
 export function getUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser;
-    if (!parsed?.email) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  return safeGetItem<AuthUser>(CACHE_KEY);
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(CACHE_KEY);
+  safeRemoveItem(CACHE_KEY);
 }
 
 function writeCache(user: AuthUser | null): void {
-  if (user) localStorage.setItem(CACHE_KEY, JSON.stringify(user));
-  else localStorage.removeItem(CACHE_KEY);
+  if (user) safeSetItem(CACHE_KEY, user);
+  else safeRemoveItem(CACHE_KEY);
 }
 
 export function toAuthUser(user: User): AuthUser {

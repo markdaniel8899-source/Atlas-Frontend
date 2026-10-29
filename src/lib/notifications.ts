@@ -8,6 +8,7 @@
  */
 import { useSyncExternalStore } from "react";
 import { toast } from "./toast";
+import { safeGetItem, safeSetItem, CACHE_PREFIX } from "./cache";
 
 export type NotificationKind =
   | "friend_request"
@@ -31,7 +32,7 @@ interface NotificationState {
 }
 
 const MAX_ITEMS = 30;
-const STORAGE_PREFIX = "atlas:notifications:";
+const STORAGE_PREFIX = `${CACHE_PREFIX}notifications:`;
 
 let owner: string | null = null;
 let state: NotificationState = { items: [], friendRequests: 0 };
@@ -59,25 +60,13 @@ function isNotification(value: unknown): value is AppNotification {
 function loadItems(): AppNotification[] {
   const key = storageKey();
   if (!key) return [];
-  try {
-    const raw = window.localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : null;
-    return Array.isArray(parsed)
-      ? parsed.filter(isNotification).slice(0, MAX_ITEMS)
-      : [];
-  } catch {
-    return [];
-  }
+  return safeGetItem<AppNotification[]>(key, []).filter(isNotification).slice(0, MAX_ITEMS);
 }
 
 function persist(): void {
   const key = storageKey();
   if (!key) return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(state.items));
-  } catch {
-    // Storage may be full or blocked - notifications still work in-session.
-  }
+  safeSetItem(key, state.items);
 }
 
 function emit(): void {
