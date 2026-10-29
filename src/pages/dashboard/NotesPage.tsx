@@ -543,20 +543,29 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
-  const [codeBlockEditing, setCodeBlockEditing] = useState<{ initialCode: string; initialLanguage: string } | null>(null);
+  const [codeBlockEditing, setCodeBlockEditing] = useState<{ range: Range; initialCode: string; initialLanguage: string } | null>(null);
 
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
+    
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    
+    const range = sel.getRangeAt(0).cloneRange();
+    // Ensure range is within the editor
+    if (!editorRef.current?.contains(range.commonAncestorContainer)) return;
+    
     handleInput();
-    // Open inline code editor - will be rendered inline in the note
-    setCodeBlockEditing({ initialCode: "", initialLanguage: "javascript" });
+    // Store the range to know where to insert the code block
+    setCodeBlockEditing({ range, initialCode: "", initialLanguage: "javascript" });
   }, [handleInput]);
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
     if (!codeBlockEditing) return;
-    // Insert the code block as HTML into the editor at cursor position
+    // Insert the code block as HTML into the editor at the stored cursor position
+    const { range } = codeBlockEditing;
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -566,15 +575,21 @@ export default function NotesPage() {
       .replace(/>/g, ">")
       .replace(/"/g, "\"")
       .replace(/'/g, "&#039;")}</code></pre><p><br></p>`;
+    
+    // Restore the selection and insert at the stored range
     const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      const frag = document.createRange().createContextualFragment(html);
-      range.insertNode(frag);
-      range.collapse(false);
+    if (sel && range) {
       sel.removeAllRanges();
       sel.addRange(range);
+      const frag = document.createRange().createContextualFragment(html);
+      range.deleteContents();
+      range.insertNode(frag);
+      range.collapse(false);
+      const sel2 = window.getSelection();
+      if (sel2) {
+        sel2.removeAllRanges();
+        sel2.addRange(range);
+      }
     }
     setCodeBlockEditing(null);
     handleInput();
@@ -1361,13 +1376,15 @@ export default function NotesPage() {
                       aria-label="Note content"
                     />
                     {codeBlockEditing && (
-                      <div className="relative my-4">
-                        <InlineCodeBlock
-                          initialCode={codeBlockEditing.initialCode}
-                          initialLanguage={codeBlockEditing.initialLanguage}
-                          onExit={handleCodeBlockExit}
-                          onSave={handleCodeBlockSave}
-                        />
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                        <div className="pointer-events-auto w-full max-w-3xl max-h-[80vh]">
+                          <InlineCodeBlock
+                            initialCode={codeBlockEditing.initialCode}
+                            initialLanguage={codeBlockEditing.initialLanguage}
+                            onExit={handleCodeBlockExit}
+                            onSave={handleCodeBlockSave}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
