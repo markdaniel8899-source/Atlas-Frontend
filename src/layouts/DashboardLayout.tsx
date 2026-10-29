@@ -30,6 +30,7 @@ import type { Profile } from "../lib/db/types";
 import { EASE } from "../lib/motion";
 import { CurtainLink, curtainNavigate } from "../components/PageCurtain";
 import { TimerProvider } from "../context/TimerContext";
+import { NotificationBell } from "../components/notifications/NotificationBell";
 import DashboardHome from "../pages/dashboard/DashboardHome";
 import RoadmapPage from "../pages/dashboard/RoadmapPage";
 import CoursesPage from "../pages/dashboard/CoursesPage";
@@ -399,6 +400,7 @@ export default function DashboardLayout() {
             <p className="truncate text-sm text-white">{name}</p>
             <p className="truncate text-xs text-white/40">{user?.email}</p>
           </div>
+          <NotificationBell />
           <button
             type="button"
             onClick={() => setProfileMenuOpen((open) => !open)}
