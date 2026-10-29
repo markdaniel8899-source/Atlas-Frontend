@@ -598,37 +598,36 @@ export default function NotesPage() {
     });
   }, []);
 
-  const escapeHtml = (str: string) => str
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, '"')
-    .replace(/'/g, "'");
-
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
     if (!codeBlockEditing?.placeholderRef) return;
     
     const placeholder = codeBlockEditing.placeholderRef;
-    const escaped = escapeHtml(code);
-    const finalHtml = `<pre class="inline-code-block" data-language="${language}"><code class="language-${language}">${escaped}</code></pre>`;
+    
+    // Create elements programmatically to avoid contentEditable normalization
+    const pre = document.createElement('pre');
+    pre.className = 'inline-code-block';
+    pre.dataset.language = language;
+    pre.contentEditable = 'false'; // Prevent browser from editing internals
+    
+    const codeEl = document.createElement('code');
+    codeEl.className = `language-${language}`;
+    codeEl.textContent = code; // textContent preserves literal code, no HTML escaping needed
+    
+    pre.appendChild(codeEl);
     
     // Replace placeholder with final block
     const range = document.createRange();
     range.setStartBefore(placeholder);
     range.setEndAfter(placeholder);
-    const frag = document.createRange().createContextualFragment(finalHtml);
     range.deleteContents();
-    range.insertNode(frag);
+    range.insertNode(pre);
     
     // Ensure there's a trailing <p><br></p> for continued typing
-    const insertedPre = range.startContainer.previousSibling;
-    if (insertedPre && insertedPre.nodeType === Node.ELEMENT_NODE) {
-      const nextSibling = insertedPre.nextSibling;
-      if (!nextSibling || nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent?.trim() === '') {
-        const afterPara = document.createElement('p');
-        afterPara.innerHTML = '<br>';
-        insertedPre.parentNode?.insertBefore(afterPara, insertedPre.nextSibling);
-      }
+    const nextSibling = pre.nextSibling;
+    if (!nextSibling || (nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent?.trim() === '')) {
+      const afterPara = document.createElement('p');
+      afterPara.innerHTML = '<br>';
+      pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
     }
     
     setCodeBlockEditing(null);
