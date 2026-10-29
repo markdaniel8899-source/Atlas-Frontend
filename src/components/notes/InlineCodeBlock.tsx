@@ -117,7 +117,8 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
     const lineHeight = 22;
     const headerHeight = 44;
     const padding = 24;
-    const newHeight = Math.min(Math.max(code.split("\n").length, 3), 30) * lineHeight + padding + headerHeight;
+    // Minimum 8 lines, max 30 lines for a decent editor size
+    const newHeight = Math.min(Math.max(code.split("\n").length, 8), 30) * lineHeight + padding + headerHeight;
     setHeight(newHeight);
   }, [code]);
 
@@ -128,6 +129,9 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
   if (!markerRef || !editorRect) return null;
 
   // Render as fixed-position overlay at marker position
+  // Use a reasonable default width since marker is tiny (2px)
+  const overlayWidth = editorRect.width > 50 ? editorRect.width : 600;
+
   return createPortal(
     <div
       ref={overlayRef}
@@ -135,7 +139,7 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
       style={{
         left: editorRect.left + window.scrollX,
         top: editorRect.top + window.scrollY,
-        width: editorRect.width || 600,
+        width: overlayWidth,
         minWidth: 320,
         maxWidth: Math.min(800, window.innerWidth - 40),
       }}
