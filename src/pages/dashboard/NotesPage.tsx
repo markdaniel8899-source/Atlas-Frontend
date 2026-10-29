@@ -721,6 +721,34 @@ export default function NotesPage() {
   const SHIFT = isMac ? "⇧" : "Shift";
   const ALT = isMac ? "⌥" : "Alt";
 
+  const toggleHeading = () => {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const container = range.startContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as Element);
+    const heading = element?.closest("h2");
+    if (heading) {
+      document.execCommand("formatBlock", false, "p");
+    } else {
+      document.execCommand("formatBlock", false, "h2");
+    }
+  };
+
+  const toggleQuote = () => {
+    const sel = window.getSelection();
+    if (!sel?.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const container = range.startContainer;
+    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as Element);
+    const quote = element?.closest("blockquote");
+    if (quote) {
+      document.execCommand("formatBlock", false, "p");
+    } else {
+      document.execCommand("formatBlock", false, "blockquote");
+    }
+  };
+
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold"), shortcut: `${MOD} + B` },
     { label: "Italic", icon: Italic, run: () => document.execCommand("italic"), shortcut: `${MOD} + I` },
@@ -733,13 +761,13 @@ export default function NotesPage() {
     {
       label: "Heading",
       icon: Heading2,
-      run: () => document.execCommand("formatBlock", false, "h2"),
+      run: toggleHeading,
       shortcut: `${ALT} + ${SHIFT} + H`,
     },
     {
       label: "Quote",
       icon: Quote,
-      run: () => document.execCommand("formatBlock", false, "blockquote"),
+      run: toggleQuote,
       shortcut: `${MOD} + Q`,
     },
     {
