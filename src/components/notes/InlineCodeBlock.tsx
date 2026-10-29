@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Copy, ChevronDown, Check } from "lucide-react";
+import { Copy, ChevronDown, Check, FileCode } from "lucide-react";
 import { CodeEditor } from "../ui/CodeEditor";
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -149,41 +149,66 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
 
   return (
     <div
-      className="relative w-full"
+      className="w-full my-2"
       style={{ minHeight: height, maxHeight: 600 }}
     >
-      {/* Header bar */}
-      <div className="absolute left-0 top-0 z-10 flex items-center gap-1.5 px-2 py-1 bg-[#0a0a12] border border-white/10 rounded-tl-xl">
-        <div className="relative" ref={languageRef}>
-          <button
-            type="button"
-            onClick={() => setLanguageOpen(!languageOpen)}
-            className="flex items-center gap-1 rounded border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
-            aria-haspopup="listbox"
-            aria-expanded={languageOpen}
-          >
-            <span className="truncate max-w-[140px] font-mono">{LANGUAGES.find((l) => l.id === language)?.label ?? language}</span>
-            <ChevronDown className={`size-3 shrink-0 transition-transform ${languageOpen ? "rotate-180 text-[#cf9eff]" : "text-white/35"}`} />
-          </button>
-          {languageOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 min-w-[160px] max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-[#111] py-1 shadow-xl backdrop-blur-2xl">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang.id}
-                  type="button"
-                  onClick={() => { setLanguage(lang.id); setLanguageOpen(false); }}
-                  className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${
-                    language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"
-                  }`}
-                >
-                  {language === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
-                  <span className="truncate font-mono">{lang.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
+      {/* Header bar - inline in flow, not absolute */}
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-[#0a0a12] border border-white/10 rounded-tl-none rounded-t-xl">
+        {/* Language indicator with file extension input */}
+        <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
+          <FileCode className="size-3.5 text-white/40 shrink-0" />
+          
+          {/* Language selector dropdown */}
+          <div className="relative flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => setLanguageOpen(!languageOpen)}
+              className="flex items-center gap-1 w-full rounded border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
+              aria-haspopup="listbox"
+              aria-expanded={languageOpen}
+            >
+              <span className="truncate font-mono flex-1">{LANGUAGES.find((l) => l.id === language)?.label ?? language}</span>
+              <ChevronDown className={`size-3 shrink-0 transition-transform ${languageOpen ? "rotate-180 text-[#cf9eff]" : "text-white/35"}`} />
+            </button>
+            {languageOpen && (
+              <div className="absolute left-0 top-full mt-1 z-10 min-w-[160px] max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-[#111] py-1 shadow-md">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.id}
+                    type="button"
+                    onClick={() => { setLanguage(lang.id); setLanguageOpen(false); }}
+                    className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${
+                      language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"
+                    }`}
+                  >
+                    {language === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
+                    <span className="truncate font-mono">{lang.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* File extension input for quick language switch */}
+          <input
+            type="text"
+            placeholder="Type .sql, .js, .py..."
+            className="w-[100px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
+            onChange={(e) => {
+              const val = e.target.value.trim();
+              if (val.startsWith(".")) {
+                const ext = val.slice(1).toLowerCase();
+                if (LANGUAGE_MAP[ext]) setLanguage(LANGUAGE_MAP[ext]);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
+            aria-label="File extension for language"
+          />
         </div>
-        <div className="ml-auto flex items-center gap-1">
+
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={async () => {
@@ -218,13 +243,13 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
         </div>
       </div>
 
-      {/* Monaco Editor */}
-      <div className="relative bg-[#0d0d14] border border-white/10 rounded-b-xl rounded-tl-xl overflow-hidden" style={{ height: `${height}px`, paddingTop: 36 }}>
+      {/* Monaco Editor - no absolute positioning, no z-index, no paddingTop hack */}
+      <div className="bg-[#0d0d14] border border-white/10 rounded-b-xl rounded-t-none overflow-hidden">
         <CodeEditor
           value={code}
           onChange={handleCodeChange}
           language={language}
-          height={`${height - 36}px`}
+          height={`${height}px`}
         />
       </div>
     </div>

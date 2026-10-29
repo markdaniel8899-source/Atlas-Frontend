@@ -543,39 +543,35 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
-  const [codeBlockEditing, setCodeBlockEditing] = useState<{ element: HTMLElement; initialCode: string; initialLanguage: string } | null>(null);
+  const [codeBlockEditing, setCodeBlockEditing] = useState<{ initialCode: string; initialLanguage: string } | null>(null);
 
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-    const id = `code-block-${Date.now()}`;
-    const html = `<pre class="inline-code-block" data-code-block-id="${id}" contenteditable="false"><code class="language-javascript"> </code></pre><p><br></p>`;
-    document.execCommand("insertHTML", false, html);
     handleInput();
-    // Find the inserted element and open editor
-    requestAnimationFrame(() => {
-      const inserted = editor.querySelector(`[data-code-block-id="${id}"]`);
-      if (inserted) {
-        setCodeBlockEditing({ element: inserted as HTMLElement, initialCode: "", initialLanguage: "javascript" });
-      }
-    });
+    // Open inline code editor - will be rendered inline in the note
+    setCodeBlockEditing({ initialCode: "", initialLanguage: "javascript" });
   }, [handleInput]);
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
     if (!codeBlockEditing) return;
-    const { element } = codeBlockEditing;
-    const codeEl = element.querySelector("code");
-    if (codeEl) {
-      codeEl.textContent = code;
-      codeEl.className = `language-${language}`;
-    }
+    // Insert the code block as HTML into the editor
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const html = `<pre class="inline-code-block"><code class="language-${language}">${code
+      .replace(/&/g, "&")
+      .replace(/</g, "<")
+      .replace(/>/g, ">")
+      .replace(/"/g, "\"")
+      .replace(/'/g, "&#039;")}</code></pre><p><br></p>`;
+    document.execCommand("insertHTML", false, html);
     setCodeBlockEditing(null);
     handleInput();
-  }, [codeBlockEditing, handleInput]);
+  }, [handleInput]);
 
   const handleCodeBlockExit = useCallback(() => {
-    // InlineCodeBlock already calls onSave before onExit, so just close
     setCodeBlockEditing(null);
   }, []);
 
@@ -1356,10 +1352,11 @@ export default function NotesPage() {
                       aria-label="Note content"
                     />
                     {codeBlockEditing && (
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="pointer-events-auto w-full max-w-3xl">
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+                        <div className="pointer-events-auto w-full max-w-3xl max-h-[80vh]">
                           <InlineCodeBlock
                             initialCode={codeBlockEditing.initialCode}
+                            initialLanguage={codeBlockEditing.initialLanguage}
                             onExit={handleCodeBlockExit}
                             onSave={handleCodeBlockSave}
                           />
