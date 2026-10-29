@@ -28,3 +28,30 @@ export function notifyCoursesChanged(): void {
     window.dispatchEvent(new Event(COURSES_CHANGED_EVENT));
   }
 }
+
+export const SQUAD_CHANGED_EVENT = "atlas:squad-changed";
+
+/** Tell listening views (Friends page, request badge) to re-read the squad. */
+export function notifySquadChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SQUAD_CHANGED_EVENT));
+  }
+}
+
+export const NOTES_CHANGED_EVENT = "atlas:notes-changed";
+
+/** Tell listening views (Notes page) to re-read notes. */
+export function notifyNotesChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(NOTES_CHANGED_EVENT));
+  }
+}
+
+export const LEADERBOARD_CHANGED_EVENT = "atlas:leaderboard-changed";
+
+/** Tell listening views (Leaderboard) to re-read weekly standings. */
+export function notifyLeaderboardChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(LEADERBOARD_CHANGED_EVENT));
+  }
+}

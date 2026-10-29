@@ -46,6 +46,7 @@ interface Tool {
   label: string;
   icon: typeof Bold;
   run: () => void;
+  shortcut?: string;
 }
 
 interface NoteGroup {
@@ -540,6 +541,32 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!active || selectionMode) return;
+      if (!(e.metaKey || e.ctrlKey)) return;
+
+      const key = e.key.toUpperCase();
+      const tool = tools.find((t) => t.shortcut?.toUpperCase() === `⌘${key}`);
+      if (tool) {
+        e.preventDefault();
+        e.stopPropagation();
+        focusEditor();
+        tool.run();
+        handleInput();
+      }
+    },
+    [active, selectionMode, handleInput],
+  );
+
+  useEffect(() => {
+    if (!active) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.addEventListener("keydown", handleKeyDown, true);
+    return () => editor.removeEventListener("keydown", handleKeyDown, true);
+  }, [active, handleKeyDown]);
+
   // Selection mode handlers
   const toggleSelectAll = useCallback(() => {
     const allIds = notes.map((n) => n.id);
@@ -680,33 +707,42 @@ export default function NotesPage() {
   
   const [bulkShareOpen, setBulkShareOpen] = useState(false);
 
+  const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().includes("MAC");
+  const MOD = isMac ? "⌘" : "Ctrl";
+  const SHIFT = isMac ? "⇧" : "Shift";
+
   const tools: Tool[] = [
-    { label: "Bold", icon: Bold, run: () => document.execCommand("bold") },
-    { label: "Italic", icon: Italic, run: () => document.execCommand("italic") },
+    { label: "Bold", icon: Bold, run: () => document.execCommand("bold"), shortcut: `${MOD} + B` },
+    { label: "Italic", icon: Italic, run: () => document.execCommand("italic"), shortcut: `${MOD} + I` },
     {
       label: "Underline",
       icon: Underline,
       run: () => document.execCommand("underline"),
+      shortcut: `${MOD} + U`,
     },
     {
       label: "Heading",
       icon: Heading2,
       run: () => document.execCommand("formatBlock", false, "h2"),
+      shortcut: `${MOD} + ${SHIFT} + H`,
     },
     {
       label: "Quote",
       icon: Quote,
       run: () => document.execCommand("formatBlock", false, "blockquote"),
+      shortcut: `${MOD} + Q`,
     },
     {
       label: "Bullet list",
       icon: List,
       run: () => document.execCommand("insertUnorderedList"),
+      shortcut: `${MOD} + ${SHIFT} + L`,
     },
     {
       label: "Numbered list",
       icon: ListOrdered,
       run: () => document.execCommand("insertOrderedList"),
+      shortcut: `${MOD} + ${SHIFT} + N`,
     },
   ];
 
@@ -1046,9 +1082,14 @@ export default function NotesPage() {
                       tool.run();
                       handleInput();
                     }}
-                    className="rounded-lg p-2 text-white/45 transition-colors hover:bg-white/[0.07] hover:text-white"
+                    className="relative group rounded-lg p-2 text-white/45 transition-colors hover:bg-[#cf9eff]/15 hover:text-[#cf9eff]"
                   >
                     <tool.icon className="size-4" />
+                    {tool.shortcut && (
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                        {tool.shortcut}
+                      </span>
+                    )}
                   </button>
                 ))}
                 <span className="ml-auto flex items-center gap-1.5">
