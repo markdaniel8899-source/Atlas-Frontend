@@ -544,7 +544,7 @@ export default function NotesPage() {
   };
 
   const [codeBlockEditing, setCodeBlockEditing] = useState<{ 
-    markerRef: HTMLElement; 
+    placeholderRef: HTMLElement; 
     initialCode: string; 
     initialLanguage: string 
   } | null>(null);
@@ -564,36 +564,43 @@ export default function NotesPage() {
     // Collapse range to insert point
     range.collapse(true);
     
-    // Create a marker element with minimal visible size for positioning
-    const marker = document.createElement('span');
-    marker.className = 'inline-code-block-marker';
-    marker.dataset.language = 'javascript';
-    // Use a small inline-block with minimal size so getBoundingClientRect() works
-    marker.style.cssText = 'display: inline-block; width: 2px; height: 1.2em; vertical-align: text-bottom; background: transparent;';
-    marker.textContent = ''; 
+    // Create a placeholder element INSIDE contentEditable at cursor position
+    const placeholder = document.createElement('div');
+    placeholder.className = 'inline-code-block-placeholder';
+    placeholder.dataset.language = 'javascript';
+    placeholder.contentEditable = 'false';
+    // Minimal height so it's visible in the flow
+    placeholder.style.cssText = 'min-height: 120px; width: 100%;';
     
     // Insert at cursor
     range.deleteContents();
-    range.insertNode(marker);
+    range.insertNode(placeholder);
     
-    // Move cursor after the marker
-    range.setStartAfter(marker);
+    // Add trailing <p><br></p> for continued typing after the block
+    const afterPara = document.createElement('p');
+    afterPara.innerHTML = '<br>';
+    range.setStartAfter(placeholder);
+    range.setEndAfter(placeholder);
+    range.insertNode(afterPara);
+    
+    // Move cursor after the block (user continues typing after)
+    range.setStartAfter(afterPara);
     range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
     
-    // Track for InlineCodeBlock to position overlay at this marker
+    // Track for InlineCodeBlock to mount inline at this placeholder
     setCodeBlockEditing({ 
-      markerRef: marker, 
+      placeholderRef: placeholder, 
       initialCode: "", 
       initialLanguage: "javascript" 
     });
   }, []);
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
-    if (!codeBlockEditing?.markerRef) return;
+    if (!codeBlockEditing?.placeholderRef) return;
     
-    const marker = codeBlockEditing.markerRef;
+    const placeholder = codeBlockEditing.placeholderRef;
     
     // Create final code block elements
     const pre = document.createElement('pre');
@@ -607,21 +614,29 @@ export default function NotesPage() {
     
     pre.appendChild(codeEl);
     
-    // Replace marker with final code block
+    // Replace placeholder with final code block
     const range = document.createRange();
-    range.setStartBefore(marker);
-    range.setEndAfter(marker);
+    range.setStartBefore(placeholder);
+    range.setEndAfter(placeholder);
     range.deleteContents();
     range.insertNode(pre);
     
-    // Add trailing <p><br></p> for continued typing
-    const afterPara = document.createElement('p');
-    afterPara.innerHTML = '<br>';
-    pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
+    // Ensure trailing <p><br></p> exists for continued typing
+    const nextSibling = pre.nextSibling;
+    if (!nextSibling || (nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent?.trim() === '')) {
+      const afterPara = document.createElement('p');
+      afterPara.innerHTML = '<br>';
+      pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
+    }
     
-    // Move cursor after the new paragraph
+    // Move cursor after the block
     const newRange = document.createRange();
-    newRange.setStartAfter(afterPara);
+    newRange.setStartAfter(pre);
+    const afterP = pre.nextElementSibling;
+    if (afterP?.tagName === 'P') {
+      newRange.setStartAfter(afterP);
+    }
+    newRange.collapse(true);
     newRange.collapse(true);
     const sel = window.getSelection();
     if (sel) {
@@ -634,11 +649,15 @@ export default function NotesPage() {
   }, [handleInput]);
 
   const handleCodeBlockCancel = useCallback(() => {
-    if (!codeBlockEditing?.markerRef) return;
+    if (!codeBlockEditing?.placeholderRef) return;
     
-    const marker = codeBlockEditing.markerRef;
-    // Simply remove the marker
-    marker.remove();
+    const placeholder = codeBlockEditing.placeholderRef;
+    // Remove placeholder and its trailing <p><br></p>
+    const next = placeholder.nextElementSibling;
+    placeholder.remove();
+    if (next?.tagName === 'P' && next.innerHTML === '<br>') {
+      next.remove();
+    }
     setCodeBlockEditing(null);
   }, []);
 
@@ -1418,9 +1437,9 @@ export default function NotesPage() {
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
-                    {codeBlockEditing && codeBlockEditing.markerRef && (
+                    {codeBlockEditing && codeBlockEditing.placeholderRef && (
                       <InlineCodeBlock
-                        markerRef={codeBlockEditing.markerRef}
+                        placeholderRef={codeBlockEditing.placeholderRef}
                         onSave={handleCodeBlockSave}
                         onCancel={handleCodeBlockCancel}
                       />

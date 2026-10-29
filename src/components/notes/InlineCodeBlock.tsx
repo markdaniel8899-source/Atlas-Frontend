@@ -39,52 +39,24 @@ const LANGUAGES = [
 ];
 
 interface InlineCodeBlockProps {
-  /** Marker element in the contentEditable to position the editor */
-  markerRef: HTMLElement;
+  /** Placeholder element inside contentEditable where Monaco mounts */
+  placeholderRef: HTMLElement & { appendChild: (node: Node) => Node };
   /** Called when user saves (Escape or Ctrl+Enter) */
   onSave?: (code: string, language: string) => void;
   /** Called when user cancels (clicks X button) */
   onCancel?: () => void;
 }
 
-export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlockProps) {
+export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCodeBlockProps) {
   const [code, setCode] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(200);
-  const [editorRect, setEditorRect] = useState<DOMRect | null>(null);
   const languageRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const hasUserSetLanguage = useRef(false);
-
-  // Update editor position when marker position changes - track continuously
-  useEffect(() => {
-    if (!markerRef) return;
-    
-    const updatePosition = () => {
-      const rect = markerRef.getBoundingClientRect();
-      // Only update if we have valid dimensions
-      if (rect.width > 0 && rect.height > 0) {
-        setEditorRect(rect);
-      }
-    };
-    
-    // Initial position
-    updatePosition();
-    
-    // Track position changes (scroll, layout, etc.)
-    const ro = new ResizeObserver(updatePosition);
-    ro.observe(markerRef);
-    
-    // Also update on scroll
-    window.addEventListener('scroll', updatePosition, true);
-    
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [markerRef]);
+  const monacoMountedRef = useRef(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -117,36 +89,49 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
     const lineHeight = 22;
     const headerHeight = 44;
     const padding = 24;
-    // Minimum 8 lines, max 30 lines for a decent editor size
     const newHeight = Math.min(Math.max(code.split("\n").length, 8), 30) * lineHeight + padding + headerHeight;
     setHeight(newHeight);
   }, [code]);
+
+  // Mount Monaco inside the placeholder's container
+  useEffect(() => {
+    if (!placeholderRef || monacoMountedRef.current) return;
+    
+    // Find or create the container div inside placeholder
+    let container = placeholderRef.querySelector('[data-monaco-container]') as HTMLElement;
+    if (!container) {
+      container = document.createElement('div');
+      container.dataset.monacoContainer = 'true';
+      container.style.width = '100%';
+      container.style.minHeight = '120px';
+      placeholderRef.appendChild(container);
+    }
+    containerRef.current = container;
+    monacoMountedRef.current = true;
+  }, [placeholderRef]);
 
   const handleCodeChange = useCallback((value: string) => {
     setCode(value);
   }, []);
 
-  if (!markerRef || !editorRect) return null;
+  const monacoPortal = containerRef.current
+    ? createPortal(
+        <CodeEditor
+          value={code}
+          onChange={handleCodeChange}
+          language={language}
+          height={`${height}px`}
+        />,
+        containerRef.current
+      )
+    : null;
 
-  // Render as fixed-position overlay at marker position
-  // Use a reasonable default width since marker is tiny (2px)
-  const overlayWidth = editorRect.width > 50 ? editorRect.width : 600;
-
-  return createPortal(
-    <div
-      ref={overlayRef}
-      className="fixed z-50 pointer-events-none"
-      style={{
-        left: editorRect.left + window.scrollX,
-        top: editorRect.top + window.scrollY,
-        width: overlayWidth,
-        minWidth: 320,
-        maxWidth: Math.min(800, window.innerWidth - 40),
-      }}
-    >
-      <div className="pointer-events-auto w-full bg-[#0a0a12] border border-white/10 rounded-xl shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl overflow-hidden">
-        {/* Header bar */}
-        <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border-b border-white/10">
+  // Render header inline at the placeholder position
+  return (
+    <>
+      <div className="w-full" style={{ minHeight: height }}>
+        {/* Header bar - part of the inline flow */}
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl">
           <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
             <FileCode className="size-4 text-white/40 shrink-0" />
             
@@ -240,17 +225,9 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
           </div>
         </div>
 
-        {/* Monaco Editor */}
-        <div style={{ height: `${height}px`, minHeight: "120px", maxHeight: "500px" }}>
-          <CodeEditor
-            value={code}
-            onChange={handleCodeChange}
-            language={language}
-            height={`${height}px`}
-          />
-        </div>
+        {/* Monaco Editor - portaled into the placeholder's container */}
       </div>
-    </div>,
-    document.body
+      {monacoPortal}
+    </>
   );
 }
