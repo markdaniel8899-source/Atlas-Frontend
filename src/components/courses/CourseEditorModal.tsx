@@ -92,7 +92,8 @@ export function CourseEditorModal({
     }
     setTopics((prev) => [...prev, created]);
     setTopicTitle("");
-    onSaved();
+    // Do NOT call onSaved() here - modal manages its own topics state
+    // Parent will auto-reload via COURSES_CHANGED_EVENT from createTopic
   };
 
   const deleteTopic = async (topic: CourseTopic) => {
@@ -108,7 +109,8 @@ export function CourseEditorModal({
       return;
     }
     setTopics((prev) => prev.filter((item) => item.id !== topic.id));
-    onSaved();
+    // Do NOT call onSaved() - modal manages its own topics state
+    // Parent will auto-reload via COURSES_CHANGED_EVENT from removeTopic
   };
 
   return (
