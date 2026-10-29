@@ -544,10 +544,19 @@ export default function NotesPage() {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!active || selectionMode) return;
-      if (!(e.metaKey || e.ctrlKey)) return;
 
       const key = e.key.toUpperCase();
-      const tool = tools.find((t) => t.shortcut?.toUpperCase() === `⌘${key}`);
+      const mods: string[] = [];
+      if (e.metaKey || e.ctrlKey) mods.push(MOD);
+      if (e.altKey) mods.push(ALT);
+      if (e.shiftKey) mods.push(SHIFT);
+      const modPart = mods.join(" + ");
+
+      const tool = tools.find((t) => {
+        const shortcut = t.shortcut?.toUpperCase().replace(/\s+/g, " ");
+        const expected = `${modPart.toUpperCase()} + ${key}`;
+        return shortcut === expected;
+      });
       if (tool) {
         e.preventDefault();
         e.stopPropagation();
@@ -710,6 +719,7 @@ export default function NotesPage() {
   const isMac = typeof navigator !== "undefined" && navigator.platform.toUpperCase().includes("MAC");
   const MOD = isMac ? "⌘" : "Ctrl";
   const SHIFT = isMac ? "⇧" : "Shift";
+  const ALT = isMac ? "⌥" : "Alt";
 
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold"), shortcut: `${MOD} + B` },
@@ -724,7 +734,7 @@ export default function NotesPage() {
       label: "Heading",
       icon: Heading2,
       run: () => document.execCommand("formatBlock", false, "h2"),
-      shortcut: `${MOD} + ${SHIFT} + H`,
+      shortcut: `${ALT} + ${SHIFT} + H`,
     },
     {
       label: "Quote",
@@ -736,13 +746,13 @@ export default function NotesPage() {
       label: "Bullet list",
       icon: List,
       run: () => document.execCommand("insertUnorderedList"),
-      shortcut: `${MOD} + ${SHIFT} + L`,
+      shortcut: `${ALT} + ${SHIFT} + L`,
     },
     {
       label: "Numbered list",
       icon: ListOrdered,
       run: () => document.execCommand("insertOrderedList"),
-      shortcut: `${MOD} + ${SHIFT} + N`,
+      shortcut: `${ALT} + ${SHIFT} + N`,
     },
   ];
 
