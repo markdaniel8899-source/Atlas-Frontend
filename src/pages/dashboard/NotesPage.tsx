@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
-import { createPortal } from "react-dom";
 import {
   Bold,
   BookOpen,
@@ -545,7 +544,7 @@ export default function NotesPage() {
   };
 
   const [codeBlockEditing, setCodeBlockEditing] = useState<{ 
-    placeholderRef: HTMLElement; 
+    markerRef: HTMLElement; 
     initialCode: string; 
     initialLanguage: string 
   } | null>(null);
@@ -565,69 +564,68 @@ export default function NotesPage() {
     // Collapse range to insert point
     range.collapse(true);
     
-    // Create placeholder element INSIDE contentEditable
-    const placeholder = document.createElement('pre');
-    placeholder.className = 'inline-code-block-placeholder';
-    placeholder.dataset.language = 'javascript';
-    placeholder.contentEditable = 'false';
-    placeholder.innerHTML = '<code class="language-javascript"></code>';
-    placeholder.style.cssText = 'min-height: 60px;';
+    // Create a simple marker element (zero-width, inline)
+    const marker = document.createElement('span');
+    marker.className = 'inline-code-block-marker';
+    marker.dataset.language = 'javascript';
+    // Zero-width space to ensure it has a position
+    marker.textContent = '\u200B'; 
     
     // Insert at cursor
     range.deleteContents();
-    range.insertNode(placeholder);
+    range.insertNode(marker);
     
-    // Add a <p><br></p> after for continued typing
-    const afterPara = document.createElement('p');
-    afterPara.innerHTML = '<br>';
-    range.setStartAfter(placeholder);
-    range.setEndAfter(placeholder);
-    range.insertNode(afterPara);
-    
-    // Move cursor after the block
-    range.setStartAfter(afterPara);
+    // Move cursor after the marker
+    range.setStartAfter(marker);
     range.collapse(true);
     sel.removeAllRanges();
     sel.addRange(range);
     
-    // Track for InlineCodeBlock to mount ON this placeholder
+    // Track for InlineCodeBlock to position overlay at this marker
     setCodeBlockEditing({ 
-      placeholderRef: placeholder, 
+      markerRef: marker, 
       initialCode: "", 
       initialLanguage: "javascript" 
     });
   }, []);
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
-    if (!codeBlockEditing?.placeholderRef) return;
+    if (!codeBlockEditing?.markerRef) return;
     
-    const placeholder = codeBlockEditing.placeholderRef;
+    const marker = codeBlockEditing.markerRef;
     
-    // Create elements programmatically to avoid contentEditable normalization
+    // Create final code block elements
     const pre = document.createElement('pre');
     pre.className = 'inline-code-block';
     pre.dataset.language = language;
-    pre.contentEditable = 'false'; // Prevent browser from editing internals
+    pre.contentEditable = 'false';
     
     const codeEl = document.createElement('code');
     codeEl.className = `language-${language}`;
-    codeEl.textContent = code; // textContent preserves literal code, no HTML escaping needed
+    codeEl.textContent = code;
     
     pre.appendChild(codeEl);
     
-    // Replace placeholder with final block
+    // Replace marker with final code block
     const range = document.createRange();
-    range.setStartBefore(placeholder);
-    range.setEndAfter(placeholder);
+    range.setStartBefore(marker);
+    range.setEndAfter(marker);
     range.deleteContents();
     range.insertNode(pre);
     
-    // Ensure there's a trailing <p><br></p> for continued typing
-    const nextSibling = pre.nextSibling;
-    if (!nextSibling || (nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent?.trim() === '')) {
-      const afterPara = document.createElement('p');
-      afterPara.innerHTML = '<br>';
-      pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
+    // Add trailing <p><br></p> for continued typing
+    const afterPara = document.createElement('p');
+    afterPara.innerHTML = '<br>';
+    pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
+    
+    // Move cursor after the new paragraph
+    const newRange = document.createRange();
+    newRange.setStartAfter(afterPara);
+    newRange.collapse(true);
+    const sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(newRange);
     }
     
     setCodeBlockEditing(null);
@@ -635,15 +633,11 @@ export default function NotesPage() {
   }, [handleInput]);
 
   const handleCodeBlockCancel = useCallback(() => {
-    if (!codeBlockEditing?.placeholderRef) return;
+    if (!codeBlockEditing?.markerRef) return;
     
-    const placeholder = codeBlockEditing.placeholderRef;
-    // Remove placeholder and its trailing <p><br></p>
-    const next = placeholder.nextElementSibling;
-    placeholder.remove();
-    if (next?.tagName === 'P' && next.innerHTML === '<br>') {
-      next.remove();
-    }
+    const marker = codeBlockEditing.markerRef;
+    // Simply remove the marker
+    marker.remove();
     setCodeBlockEditing(null);
   }, []);
 
@@ -1423,17 +1417,12 @@ export default function NotesPage() {
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
-                    {codeBlockEditing && codeBlockEditing.placeholderRef && (
-                      createPortal(
-                        <InlineCodeBlock
-                          placeholderRef={codeBlockEditing.placeholderRef}
-                          initialCode={codeBlockEditing.initialCode}
-                          initialLanguage={codeBlockEditing.initialLanguage}
-                          onSave={handleCodeBlockSave}
-                          onCancel={handleCodeBlockCancel}
-                        />,
-                        codeBlockEditing.placeholderRef
-                      )
+                    {codeBlockEditing && codeBlockEditing.markerRef && (
+                      <InlineCodeBlock
+                        markerRef={codeBlockEditing.markerRef}
+                        onSave={handleCodeBlockSave}
+                        onCancel={handleCodeBlockCancel}
+                      />
                     )}
                   </div>
                 </>
