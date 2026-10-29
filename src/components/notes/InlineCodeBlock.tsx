@@ -52,7 +52,7 @@ export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCode
   const [language, setLanguage] = useState("javascript");
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [height, setHeight] = useState(200);
+  const [height, setHeight] = useState(2 * 22 + 44 + 24); // 2 lines + header + padding = 112px
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
   const hasUserSetLanguage = useRef(false);
@@ -89,7 +89,9 @@ export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCode
     const lineHeight = 22;
     const headerHeight = 44;
     const padding = 24;
-    const newHeight = Math.min(Math.max(code.split("\n").length, 8), 30) * lineHeight + padding + headerHeight;
+    // Start at 2 lines, expand up to 30 lines as user types
+    const lineCount = code.split("\n").length;
+    const newHeight = Math.min(Math.max(lineCount, 2), 30) * lineHeight + padding + headerHeight;
     setHeight(newHeight);
   }, [code]);
 
@@ -103,7 +105,7 @@ export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCode
       container = document.createElement('div');
       container.dataset.monacoContainer = 'true';
       container.style.width = '100%';
-      container.style.minHeight = '120px';
+      container.style.minHeight = '112px';
       placeholderRef.appendChild(container);
     }
     containerRef.current = container;
