@@ -118,7 +118,7 @@ export function InlineCodeBlock({
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onCancel?.();
+        onSave?.(code, language);
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -127,7 +127,7 @@ export function InlineCodeBlock({
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onCancel, onSave, code, language]);
+  }, [onSave, code, language]);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -271,14 +271,14 @@ export function InlineCodeBlock({
               type="button"
               onClick={onCancel}
               className="rounded p-1 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-              aria-label="Cancel"
+              aria-label="Discard changes"
             >
               <X className="size-3.5 text-red-400" />
               <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                Cancel (Esc)
+                Discard (click only)
               </span>
             </button>
-            <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc to cancel</kbd>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc / Ctrl+Enter to save</kbd>
           </div>
         </div>
       </div>
