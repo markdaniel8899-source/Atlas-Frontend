@@ -58,11 +58,32 @@ export function InlineCodeBlock({ markerRef, onSave, onCancel }: InlineCodeBlock
   const overlayRef = useRef<HTMLDivElement>(null);
   const hasUserSetLanguage = useRef(false);
 
-  // Update editor position when marker position changes
+  // Update editor position when marker position changes - track continuously
   useEffect(() => {
     if (!markerRef) return;
-    const rect = markerRef.getBoundingClientRect();
-    setEditorRect(rect);
+    
+    const updatePosition = () => {
+      const rect = markerRef.getBoundingClientRect();
+      // Only update if we have valid dimensions
+      if (rect.width > 0 && rect.height > 0) {
+        setEditorRect(rect);
+      }
+    };
+    
+    // Initial position
+    updatePosition();
+    
+    // Track position changes (scroll, layout, etc.)
+    const ro = new ResizeObserver(updatePosition);
+    ro.observe(markerRef);
+    
+    // Also update on scroll
+    window.addEventListener('scroll', updatePosition, true);
+    
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [markerRef]);
 
   useEffect(() => {

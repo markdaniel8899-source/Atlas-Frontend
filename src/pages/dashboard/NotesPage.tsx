@@ -564,12 +564,13 @@ export default function NotesPage() {
     // Collapse range to insert point
     range.collapse(true);
     
-    // Create a simple marker element (zero-width, inline)
+    // Create a marker element with minimal visible size for positioning
     const marker = document.createElement('span');
     marker.className = 'inline-code-block-marker';
     marker.dataset.language = 'javascript';
-    // Zero-width space to ensure it has a position
-    marker.textContent = '\u200B'; 
+    // Use a small inline-block with minimal size so getBoundingClientRect() works
+    marker.style.cssText = 'display: inline-block; width: 2px; height: 1.2em; vertical-align: text-bottom; background: transparent;';
+    marker.textContent = ''; 
     
     // Insert at cursor
     range.deleteContents();
