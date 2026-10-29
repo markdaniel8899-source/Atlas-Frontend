@@ -303,7 +303,6 @@ export async function createTopic(
     .maybeSingle();
 
   if (error || !data) return null;
-  notifyCoursesChanged();
   return normaliseTopic(data as unknown as TopicRow);
 }
 
