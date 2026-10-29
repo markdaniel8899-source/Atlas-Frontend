@@ -556,7 +556,7 @@ export default function NotesPage() {
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
     if (!codeBlockEditing) return;
-    // Insert the code block as HTML into the editor
+    // Insert the code block as HTML into the editor at cursor position
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -566,7 +566,16 @@ export default function NotesPage() {
       .replace(/>/g, ">")
       .replace(/"/g, "\"")
       .replace(/'/g, "&#039;")}</code></pre><p><br></p>`;
-    document.execCommand("insertHTML", false, html);
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const frag = document.createRange().createContextualFragment(html);
+      range.insertNode(frag);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     setCodeBlockEditing(null);
     handleInput();
   }, [handleInput]);
@@ -1352,15 +1361,13 @@ export default function NotesPage() {
                       aria-label="Note content"
                     />
                     {codeBlockEditing && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-                        <div className="pointer-events-auto w-full max-w-3xl max-h-[80vh]">
-                          <InlineCodeBlock
-                            initialCode={codeBlockEditing.initialCode}
-                            initialLanguage={codeBlockEditing.initialLanguage}
-                            onExit={handleCodeBlockExit}
-                            onSave={handleCodeBlockSave}
-                          />
-                        </div>
+                      <div className="relative my-4">
+                        <InlineCodeBlock
+                          initialCode={codeBlockEditing.initialCode}
+                          initialLanguage={codeBlockEditing.initialLanguage}
+                          onExit={handleCodeBlockExit}
+                          onSave={handleCodeBlockSave}
+                        />
                       </div>
                     )}
                   </div>

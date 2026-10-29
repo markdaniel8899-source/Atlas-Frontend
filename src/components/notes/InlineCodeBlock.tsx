@@ -71,13 +71,6 @@ function detectLanguage(code: string, filename?: string): string {
     const ext = firstLine.slice(1).toLowerCase();
     if (LANGUAGE_MAP[ext]) return LANGUAGE_MAP[ext];
   }
-  // Simple keyword-based detection as fallback
-  const lower = code.toLowerCase();
-  for (const lang of LANGUAGES) {
-    for (const pattern of lang.patterns) {
-      if (lower.includes(pattern.toLowerCase())) return lang.id;
-    }
-  }
   return "plaintext";
 }
 
@@ -93,16 +86,23 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
   const [language, setLanguage] = useState(initialLanguage);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [height, setHeight] = useState(60); // Start at ~2 lines
+  const [height, setHeight] = useState(60);
   const languageRef = useRef<HTMLDivElement>(null);
+  const hasUserSetLanguage = useRef(false);
 
   useEffect(() => {
-    setLanguage(detectLanguage(initialCode) || initialLanguage);
+    const detected = detectLanguage(initialCode);
+    setLanguage(detected || initialLanguage);
+    hasUserSetLanguage.current = false;
   }, [initialCode, initialLanguage]);
 
+  // Only auto-detect if user hasn't explicitly set a language
   useEffect(() => {
+    if (hasUserSetLanguage.current) return;
     const newLang = detectLanguage(code);
-    if (newLang !== language && newLang !== "plaintext") setLanguage(newLang);
+    if (newLang !== language && newLang !== "plaintext") {
+      setLanguage(newLang);
+    }
   }, [code, language]);
 
   useEffect(() => {
@@ -137,7 +137,7 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
   // Auto-expand height based on line count
   useEffect(() => {
     const lineHeight = 22;
-    const headerHeight = 36; // Header bar height
+    const headerHeight = 36;
     const padding = 24;
     const newHeight = Math.min(Math.max(code.split("\n").length, 2), 30) * lineHeight + padding + headerHeight;
     setHeight(newHeight);
@@ -148,13 +148,9 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
   }, []);
 
   return (
-    <div
-      className="w-full my-2"
-      style={{ minHeight: height, maxHeight: 600 }}
-    >
+    <div className="w-full my-2" style={{ minHeight: height, maxHeight: 600 }}>
       {/* Header bar - inline in flow, not absolute */}
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-[#0a0a12] border border-white/10 rounded-tl-none rounded-t-xl">
-        {/* Language indicator with file extension input */}
+      <div className="flex items-center gap-1.5 px-2 py-1 bg-[#0a0a12] border border-white/10 rounded-t-xl">
         <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
           <FileCode className="size-3.5 text-white/40 shrink-0" />
           
@@ -176,7 +172,7 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
                   <button
                     key={lang.id}
                     type="button"
-                    onClick={() => { setLanguage(lang.id); setLanguageOpen(false); }}
+                    onClick={() => { setLanguage(lang.id); hasUserSetLanguage.current = true; setLanguageOpen(false); }}
                     className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${
                       language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"
                     }`}
@@ -198,7 +194,10 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
               const val = e.target.value.trim();
               if (val.startsWith(".")) {
                 const ext = val.slice(1).toLowerCase();
-                if (LANGUAGE_MAP[ext]) setLanguage(LANGUAGE_MAP[ext]);
+                if (LANGUAGE_MAP[ext]) {
+                  setLanguage(LANGUAGE_MAP[ext]);
+                  hasUserSetLanguage.current = true;
+                }
               }
             }}
             onKeyDown={(e) => {
@@ -243,7 +242,7 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
         </div>
       </div>
 
-      {/* Monaco Editor - no absolute positioning, no z-index, no paddingTop hack */}
+      {/* Monaco Editor */}
       <div className="bg-[#0d0d14] border border-white/10 rounded-b-xl rounded-t-none overflow-hidden">
         <CodeEditor
           value={code}
