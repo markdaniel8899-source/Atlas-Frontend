@@ -554,12 +554,12 @@ export default function NotesPage() {
     document.execCommand("insertHTML", false, html);
     handleInput();
     // Find the inserted element and open editor
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       const inserted = editor.querySelector(`[data-code-block-id="${id}"]`);
       if (inserted) {
         setCodeBlockEditing({ element: inserted as HTMLElement, initialCode: "", initialLanguage: "javascript" });
       }
-    }, 0);
+    });
   }, [handleInput]);
 
   const handleCodeBlockSave = useCallback((code: string, language: string) => {
@@ -575,6 +575,7 @@ export default function NotesPage() {
   }, [codeBlockEditing, handleInput]);
 
   const handleCodeBlockExit = useCallback(() => {
+    // InlineCodeBlock already calls onSave before onExit, so just close
     setCodeBlockEditing(null);
   }, []);
 

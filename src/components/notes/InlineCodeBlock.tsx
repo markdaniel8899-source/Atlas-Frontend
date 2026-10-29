@@ -65,6 +65,12 @@ function detectLanguage(code: string, filename?: string): string {
     const ext = filename.split(".").pop()?.toLowerCase();
     if (ext && LANGUAGE_MAP[ext]) return LANGUAGE_MAP[ext];
   }
+  // Check for file extension pattern at start of code (e.g., ".sql", ".js", ".py")
+  const firstLine = code.trim().split("\n")[0]?.trim();
+  if (firstLine && firstLine.startsWith(".")) {
+    const ext = firstLine.slice(1).toLowerCase();
+    if (LANGUAGE_MAP[ext]) return LANGUAGE_MAP[ext];
+  }
   // Simple keyword-based detection as fallback
   const lower = code.toLowerCase();
   for (const lang of LANGUAGES) {
@@ -131,8 +137,9 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
   // Auto-expand height based on line count
   useEffect(() => {
     const lineHeight = 22;
+    const headerHeight = 36; // Header bar height
     const padding = 24;
-    const newHeight = Math.min(Math.max(code.split("\n").length, 2), 30) * lineHeight + padding;
+    const newHeight = Math.min(Math.max(code.split("\n").length, 2), 30) * lineHeight + padding + headerHeight;
     setHeight(newHeight);
   }, [code]);
 
@@ -212,12 +219,12 @@ export function InlineCodeBlock({ onExit, initialCode = "", initialLanguage = "j
       </div>
 
       {/* Monaco Editor */}
-      <div className="relative bg-[#0d0d14] border border-white/10 rounded-b-xl rounded-tl-xl overflow-hidden" style={{ height: `${height}px` }}>
+      <div className="relative bg-[#0d0d14] border border-white/10 rounded-b-xl rounded-tl-xl overflow-hidden" style={{ height: `${height}px`, paddingTop: 36 }}>
         <CodeEditor
           value={code}
           onChange={handleCodeChange}
           language={language}
-          height={`${height}px`}
+          height={`${height - 36}px`}
         />
       </div>
     </div>
