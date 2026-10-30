@@ -245,6 +245,7 @@ export default function NotesPage() {
   const dataVersionRef = useRef(0);
   const activeRef = useRef<string | null>(activeId);
   const codeBlocksRef = useRef<Array<{ id: string; code: string; language: string }>>([]);
+  const savedRangeRef = useRef<Range | null>(null);
 
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -598,15 +599,33 @@ useEffect(() => {
     editorRef.current?.focus();
   };
 
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editorRef.current?.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange();
+      }
+    }
+  }, []);
+
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
     
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+    // Use saved range if available, otherwise current selection
+    let range: Range | null = null;
+    if (savedRangeRef.current) {
+      range = savedRangeRef.current.cloneRange();
+    } else {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        range = sel.getRangeAt(0).cloneRange();
+      }
+    }
     
-    const range = sel.getRangeAt(0).cloneRange();
+    if (!range) return;
     // Ensure range is within the editor
     if (!editorRef.current?.contains(range.commonAncestorContainer)) return;
     
@@ -640,8 +659,11 @@ useEffect(() => {
     // Move cursor after the block (user continues typing after)
     range.setStartAfter(afterPara);
     range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    const sel = window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
     
     // Add to codeBlocks state for React rendering
     setCodeBlocks((prev) => {
@@ -1491,6 +1513,9 @@ useEffect(() => {
                       contentEditable
                       suppressContentEditableWarning
                       onInput={handleInput}
+                      onBlur={saveSelection}
+                      onKeyUp={saveSelection}
+                      onMouseUp={saveSelection}
                       spellCheck={false}
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
