@@ -153,8 +153,6 @@ const editorPortal = containerRef.current
         <div 
           style={{ minHeight: height }} 
           className="inline-code-block-editor"
-          onMouseEnter={() => setIsFocused(true)}
-          onMouseLeave={() => { blurTimeoutRef.current = setTimeout(() => setIsFocused(false), 100); }}
         >
           {isFocused && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl" ref={languageRef}>

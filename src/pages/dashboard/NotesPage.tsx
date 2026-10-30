@@ -729,11 +729,18 @@ export default function NotesPage() {
           const code = el.dataset.code || '';
           const language = el.dataset.language || 'plaintext';
           const pre = doc.createElement('pre');
-          pre.style.cssText = 'background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:8px;overflow:auto;font-family:monospace;font-size:14px;line-height:1.5;';
+          pre.className = 'line-numbers';
+          pre.style.cssText = 'background:#1e1e1e;color:#d4d4d4;padding:16px 16px 16px 60px;border-radius:8px;overflow:auto;font-family:monospace;font-size:14px;line-height:1.5;';
           const codeEl = doc.createElement('code');
           codeEl.className = `language-${language}`;
           codeEl.textContent = code;
           pre.appendChild(codeEl);
+          // Add line numbers rows
+          const lines = code.split('\\n');
+          const rows = doc.createElement('span');
+          rows.className = 'line-numbers-rows';
+          rows.innerHTML = lines.map(() => '<span></span>').join('');
+          pre.insertBefore(rows, codeEl);
           ph.replaceWith(pre);
         });
         return doc.body.innerHTML;
@@ -749,6 +756,7 @@ export default function NotesPage() {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${note.title}</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -780,16 +788,51 @@ export default function NotesPage() {
     pre {
       background: #1e1e1e;
       color: #d4d4d4;
-      padding: 16px;
       border-radius: 8px;
       overflow-x: auto;
       margin: 16px 0;
+      position: relative;
+      padding: 16px 16px 16px 60px;
     }
     pre code {
       background: none;
       padding: 0;
       color: inherit;
       font-size: 0.9rem;
+      display: block;
+    }
+    /* Line numbers */
+    pre.line-numbers {
+      position: relative;
+      padding-left: 48px;
+      counter-reset: linenumber;
+    }
+    pre.line-numbers > code {
+      position: relative;
+    }
+    .line-numbers .line-numbers-rows {
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-size: 100%;
+      height: 100%;
+      border-right: 1px solid #444;
+      padding: 16px 0;
+      width: 40px;
+      text-align: right;
+      color: #858585;
+      user-select: none;
+      pointer-events: none;
+    }
+    .line-numbers .line-numbers-rows > span {
+      display: block;
+      counter-increment: linenumber;
+      height: 1.5rem;
+      line-height: 1.5rem;
+    }
+    .line-numbers .line-numbers-rows > span:before {
+      content: counter(linenumber);
+      padding-right: 12px;
     }
     blockquote {
       border-left: 4px solid #cf9eff;
@@ -814,6 +857,22 @@ export default function NotesPage() {
 <body>
   <h1>${note.title}</h1>
   <div>${transformCodeBlocks(note.html)}</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <script>
+    // Add line numbers to all pre blocks
+    document.querySelectorAll('pre code[class*="language-"]').forEach((code) => {
+      const pre = code.parentElement;
+      if (pre && pre.tagName === 'PRE') {
+        pre.classList.add('line-numbers');
+        const lines = code.textContent.split('\\n');
+        const rows = document.createElement('span');
+        rows.className = 'line-numbers-rows';
+        rows.innerHTML = lines.map(() => '<span></span>').join('');
+        pre.insertBefore(rows, code);
+      }
+    });
+  </script>
 </body>
 </html>
 `,
