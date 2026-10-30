@@ -8,6 +8,8 @@ interface CodeEditorProps {
   language?: string;
   height?: string;
   disabled?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function CodeEditor({
@@ -16,12 +18,22 @@ export function CodeEditor({
   language = "plaintext",
   height = "200px",
   disabled = false,
+  onFocus,
+  onBlur,
 }: CodeEditorProps) {
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     editor.focus();
+
+    // Add focus/blur listeners - use correct Monaco events for editor text focus
+    editor.onDidFocusEditorText(() => {
+      onFocus?.();
+    });
+    editor.onDidBlurEditorText(() => {
+      onBlur?.();
+    });
 
     // Ensure HTML auto-closing tags work via the language service
     if (language === "html") {

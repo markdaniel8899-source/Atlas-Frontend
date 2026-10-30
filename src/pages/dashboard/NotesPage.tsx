@@ -719,6 +719,26 @@ export default function NotesPage() {
       );
       const downloadNotes = await bulkDownloadNotes(ids);
       
+      // Transform placeholders to styled code blocks for download
+      const transformCodeBlocks = (html: string): string => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const placeholders = doc.querySelectorAll('.inline-code-block-placeholder');
+        placeholders.forEach((ph: Element) => {
+          const el = ph as HTMLElement;
+          const code = el.dataset.code || '';
+          const language = el.dataset.language || 'plaintext';
+          const pre = doc.createElement('pre');
+          pre.style.cssText = 'background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:8px;overflow:auto;font-family:monospace;font-size:14px;line-height:1.5;';
+          const codeEl = doc.createElement('code');
+          codeEl.className = `language-${language}`;
+          codeEl.textContent = code;
+          pre.appendChild(codeEl);
+          ph.replaceWith(pre);
+        });
+        return doc.body.innerHTML;
+      };
+      
       // Create HTML file with all notes content (preserves rich text formatting)
       const content = downloadNotes
         .map(
@@ -793,7 +813,7 @@ export default function NotesPage() {
 </head>
 <body>
   <h1>${note.title}</h1>
-  <div>${note.html}</div>
+  <div>${transformCodeBlocks(note.html)}</div>
 </body>
 </html>
 `,
