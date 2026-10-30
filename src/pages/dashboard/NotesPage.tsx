@@ -244,6 +244,7 @@ export default function NotesPage() {
    *  write can be stale, so their responses are discarded. */
   const dataVersionRef = useRef(0);
   const activeRef = useRef<string | null>(activeId);
+  const lastRestoredNoteRef = useRef<string | null>(null);
 
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -416,16 +417,21 @@ export default function NotesPage() {
     activeRef.current = activeId;
     const note = notes.find((n) => n.id === activeId);
     if (editorRef.current && note) {
+      // Prevent duplicate restoration on same note (e.g., selectionMode change)
+      if (lastRestoredNoteRef.current === activeId) return;
+      lastRestoredNoteRef.current = activeId;
+      
       editorRef.current.innerHTML = sanitizeHtml(note.html);
       
       // Restore code block editors from placeholders in the loaded HTML
       const placeholders = editorRef.current.querySelectorAll('.inline-code-block-placeholder') as NodeListOf<HTMLElement>;
       if (placeholders.length > 0) {
         const restored = new Map<string, { placeholderRef: HTMLElement; initialCode: string; initialLanguage: string }>();
-        placeholders.forEach((placeholder) => {
+        placeholders.forEach((placeholder, index) => {
           const code = placeholder.dataset.code ?? '';
           const language = placeholder.dataset.language ?? 'javascript';
-          const id = Math.random().toString(36).slice(2);
+          // Stable ID based on index to prevent duplicate keys on re-render
+          const id = `editor-${index}`;
           restored.set(id, {
             placeholderRef: placeholder,
             initialCode: code,
