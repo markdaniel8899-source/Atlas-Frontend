@@ -11,7 +11,22 @@ import {
 } from "../../components/site/BlogCard";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Reveal } from "../../components/site/Reveal";
+import { Seo } from "../../seo/Seo";
+import { SITE_NAME, SITE_URL } from "../../seo/site";
 import { fetchPosts, type BlogPost } from "../../lib/blog";
+
+const BLOG_DESCRIPTION =
+  "Notes on learning, focus and craft from the ATLAS team, plus fresh takes on the AI tools reshaping how students study.";
+
+const BLOG_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "@id": `${SITE_URL}/blog#page`,
+  name: `${SITE_NAME} Blog`,
+  description: BLOG_DESCRIPTION,
+  url: `${SITE_URL}/blog`,
+  isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+};
 
 const BLOG_GRID =
   "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-[240px] md:auto-rows-[260px] [grid-template-rows:280px] md:[grid-template-rows:320px] grid-flow-row-dense";
@@ -48,15 +63,18 @@ export default function BlogPage() {
 
   return (
     <SecondaryPage maxWidthClass="max-w-6xl">
+      <Seo
+        path="/blog"
+        title={`Blog | ${SITE_NAME} Learning OS`}
+        description={BLOG_DESCRIPTION}
+        schema={BLOG_SCHEMA}
+      />
       <Reveal>
         <p className="text-[11px] font-medium tracking-[0.4em] text-star/70 uppercase">
           Blog
         </p>
         <h1 className={`${PAGE_H1} mt-4`}>Latest Articles</h1>
-        <p className={PAGE_LEAD}>
-          Notes on learning, focus and craft from the ATLAS team, plus fresh
-          takes on the AI tools reshaping how students study.
-        </p>
+        <p className={PAGE_LEAD}>{BLOG_DESCRIPTION}</p>
       </Reveal>
 
       <div className="mt-12 sm:mt-14">

@@ -15,11 +15,15 @@ export interface BlogPost {
   tags: string[];
   keywords: string[];
   published_at: string;
+  updated_at: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  word_count: number | null;
   content_images: ContentImage[];
 }
 
 const SELECT_COLUMNS =
-  "id, title, slug, excerpt, content, cover_image_url, tags, keywords, published_at, content_images";
+  "id, title, slug, excerpt, content, cover_image_url, tags, keywords, published_at, updated_at, meta_title, meta_description, word_count, content_images";
 
 export function tidyDashes(text: string): string {
   return text.replace(/\s*—\s*/g, ", ").replace(/,\s*,/g, ",");
@@ -45,6 +49,12 @@ function normalize(row: Record<string, unknown>): BlogPost {
     tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
     keywords: Array.isArray(row.keywords) ? row.keywords.map(String) : [],
     published_at: String(row.published_at ?? ""),
+    updated_at: row.updated_at ? String(row.updated_at) : null,
+    meta_title: row.meta_title ? String(row.meta_title) : null,
+    meta_description: row.meta_description
+      ? String(row.meta_description)
+      : null,
+    word_count: Number(row.word_count) || null,
     content_images: Array.isArray(row.content_images)
       ? (row.content_images as ContentImage[]).flatMap((img) => {
           const url = normalizeImageUrl(img?.url);

@@ -34,6 +34,7 @@ const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
 const AdminOverview = lazy(() => import("./pages/admin/Overview"));
 const AdminUsers = lazy(() => import("./pages/admin/Users"));
 const AdminPosts = lazy(() => import("./pages/admin/Posts"));
+const AdminPipeline = lazy(() => import("./pages/admin/Pipeline"));
 const AdminSettings = lazy(() => import("./pages/admin/Settings"));
 const AdminMessages = lazy(() => import("./pages/admin/Messages"));
 const AdminUsage = lazy(() => import("./pages/admin/Usage"));
@@ -198,7 +199,7 @@ function AnimatedRoutes() {
             path="/blog"
             element={
               <GroupTransition variant="landing">
-                <Seo {...PAGES.blog} />
+                {/* BlogPage owns its title, description and CollectionPage schema. */}
                 <BlogPage />
               </GroupTransition>
             }
@@ -321,6 +322,7 @@ function AnimatedRoutes() {
               <Route index element={<AdminOverview />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="posts" element={<AdminPosts />} />
+              <Route path="pipeline" element={<AdminPipeline />} />
               <Route path="messages" element={<AdminMessages />} />
               <Route path="usage" element={<AdminUsage />} />
               <Route path="settings" element={<AdminSettings />} />
@@ -376,6 +378,8 @@ export default function App() {
         import("./components/ProtectedRoute"),
         import("./components/admin/AdminRoute"),
         import("./pages/admin/AdminLayout"),
+        import("./pages/admin/Posts"),
+        import("./pages/admin/Pipeline"),
       ]);
     });
   }, []);

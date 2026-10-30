@@ -26,7 +26,12 @@ export interface AdminPost {
   slug: string;
   tags: string[];
   createdAt: string;
+  updatedAt: string | null;
   publishedAt: string | null;
+  metaTitle: string | null;
+  seoScore: number | null;
+  wordCount: number | null;
+  pipelineRunId: string | null;
 }
 
 export interface AdminStats {
@@ -92,7 +97,9 @@ export async function deleteAdminUser(userId: string): Promise<void> {
 export async function fetchAdminPosts(): Promise<AdminPost[]> {
   const { data, error } = await supabase
     .from("blog_posts")
-    .select("id, title, slug, tags, created_at, published_at")
+    .select(
+      "id, title, slug, tags, created_at, updated_at, published_at, meta_title, seo_score, word_count, pipeline_run_id",
+    )
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<Record<string, unknown>>;
@@ -102,7 +109,12 @@ export async function fetchAdminPosts(): Promise<AdminPost[]> {
     slug: String(r.slug ?? ""),
     tags: Array.isArray(r.tags) ? r.tags.map(String) : [],
     createdAt: String(r.created_at ?? ""),
+    updatedAt: r.updated_at ? String(r.updated_at) : null,
     publishedAt: r.published_at ? String(r.published_at) : null,
+    metaTitle: r.meta_title ? String(r.meta_title) : null,
+    seoScore: r.seo_score == null ? null : Number(r.seo_score),
+    wordCount: r.word_count == null ? null : Number(r.word_count),
+    pipelineRunId: r.pipeline_run_id ? String(r.pipeline_run_id) : null,
   }));
 }
 

@@ -104,7 +104,7 @@ export function EmptyState({ message }: { message: string }) {
 }
 
 /** Formats an ISO timestamp as a short date; empty string when unparseable. */
-export function formatDate(iso: string): string {
+export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
@@ -113,4 +113,41 @@ export function formatDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   }).format(d);
+}
+
+/** Date + time for pipeline telemetry. */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(d);
+}
+
+/** Human-readable elapsed time for step durations. */
+export function formatDuration(ms: number | null | undefined): string {
+  if (ms == null || Number.isNaN(ms)) return "—";
+  if (ms < 1000) return `${Math.max(0, Math.round(ms))}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = Math.round(seconds % 60);
+  return `${minutes}m ${rest}s`;
+}
+
+/** Relative age for the run list (fallback: absolute date/time). */
+export function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "—";
+  const delta = Date.now() - then;
+  if (delta < 60_000) return "just now";
+  if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
+  if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;
+  return formatDateTime(iso);
 }

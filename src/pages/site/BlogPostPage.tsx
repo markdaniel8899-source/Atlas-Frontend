@@ -13,7 +13,11 @@ import { BlogCard } from "../../components/site/BlogCard";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Reveal } from "../../components/site/Reveal";
 import { Seo } from "../../seo/Seo";
-import { SITE_URL } from "../../seo/site";
+import { SITE_NAME, SITE_URL } from "../../seo/site";
+import {
+  buildBlogPostSchema,
+  type StaticBlogPost,
+} from "../../seo/blogStatic";
 import { sanitizeHtml } from "../../lib/notes";
 import {
   fetchPostBySlug,
@@ -24,101 +28,21 @@ import {
   type BlogPost,
 } from "../../lib/blog";
 
-interface FaqEntry {
-  question: string;
-  answer: string;
-}
-
-const elementText = (node: Element | null): string =>
-  (node?.textContent ?? "").replace(/\s+/g, " ").trim();
-
-/**
- * Pull the Q&A pairs out of the article's final `<h2>FAQ</h2>` block so the
- * FAQPage schema always matches content a reader can actually see.
- */
-function extractFaqEntries(contentHtml: string): FaqEntry[] {
-  if (!contentHtml.trim() || typeof DOMParser === "undefined") return [];
-
-  const doc = new DOMParser().parseFromString(
-    `<div>${contentHtml}</div>`,
-    "text/html",
-  );
-  const root = doc.body.firstElementChild;
-  if (!root) return [];
-
-  const faqHeading = Array.from(root.querySelectorAll("h2")).find((heading) =>
-    /^(faq|frequently asked questions)\b/i.test(elementText(heading)),
-  );
-  if (!faqHeading) return [];
-
-  const entries: FaqEntry[] = [];
-  const isQuestion = (node: Element) => node.tagName.toLowerCase() === "h3";
-  const isSectionBreak = (node: Element) =>
-    ["h2", "h3"].includes(node.tagName.toLowerCase());
-
-  let node = faqHeading.nextElementSibling;
-  while (node && node.tagName.toLowerCase() !== "h2") {
-    if (isQuestion(node)) {
-      const question = elementText(node);
-      const answerParts: string[] = [];
-      let answerNode = node.nextElementSibling;
-      while (answerNode && !isSectionBreak(answerNode)) {
-        const text = elementText(answerNode);
-        if (text) answerParts.push(text);
-        answerNode = answerNode.nextElementSibling;
-      }
-      const answer = answerParts.join(" ").trim();
-      if (question && answer) entries.push({ question, answer });
-      node = answerNode;
-      continue;
-    }
-    node = node.nextElementSibling;
-  }
-
-  return entries.slice(0, 10);
-}
-
-function buildBlogJsonLd(post: BlogPost, faqs: FaqEntry[]) {
-  const fallbackFaq: FaqEntry = {
-    question: `What is ${post.title} about?`,
-    answer: post.excerpt || post.title,
-  };
-  const faqEntries = faqs.length > 0 ? faqs : [fallbackFaq];
-
+function toStaticPost(post: BlogPost): StaticBlogPost {
   return {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        headline: post.title,
-        ...(post.cover_image_url ? { image: post.cover_image_url } : {}),
-        datePublished: post.published_at,
-        dateModified: post.published_at,
-        author: {
-          "@type": "Organization",
-          name: "ATLAS Learning OS",
-        },
-        publisher: {
-          "@type": "Organization",
-          name: "ATLAS Learning OS",
-          logo: {
-            "@type": "ImageObject",
-            url: `${SITE_URL}/formicon.png`,
-          },
-        },
-      },
-      {
-        "@type": "FAQPage",
-        mainEntity: faqEntries.map((entry) => ({
-          "@type": "Question",
-          name: entry.question,
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: entry.answer,
-          },
-        })),
-      },
-    ],
+    id: post.id,
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt,
+    content: post.content,
+    coverImageUrl: post.cover_image_url,
+    tags: post.tags,
+    keywords: post.keywords,
+    publishedAt: post.published_at,
+    updatedAt: post.updated_at,
+    metaTitle: post.meta_title,
+    metaDescription: post.meta_description,
+    wordCount: post.word_count ?? 0,
   };
 }
 
@@ -201,30 +125,16 @@ export default function BlogPostPage() {
     [post],
   );
 
-  const faqs = useMemo(() => extractFaqEntries(html), [html]);
   const jsonLd = useMemo(
-    () => (post ? buildBlogJsonLd(post, faqs) : null),
-    [post, faqs],
+    () =>
+      post
+        ? buildBlogPostSchema(toStaticPost(post), {
+            origin: SITE_URL,
+            siteName: SITE_NAME,
+          })
+        : null,
+    [post],
   );
-
-  // Vite SPA: inject the JSON-LD into <head> and replace it when the post
-  // changes, so crawlers and AI answer engines read the current article only.
-  useEffect(() => {
-    if (!jsonLd) return;
-
-    let script = document.head.querySelector<HTMLScriptElement>("#blog-schema");
-    if (!script) {
-      script = document.createElement("script");
-      script.id = "blog-schema";
-      script.type = "application/ld+json";
-      document.head.appendChild(script);
-    }
-    script.textContent = JSON.stringify(jsonLd);
-
-    return () => {
-      script?.remove();
-    };
-  }, [jsonLd]);
 
   // In-article images render through dangerouslySetInnerHTML, so their
   // onError has to be wired manually: swap dead URLs for the fallback
@@ -294,8 +204,14 @@ export default function BlogPostPage() {
     <SecondaryPage maxWidthClass="max-w-4xl">
       <Seo
         path={`/blog/${post.slug}`}
-        title={`${post.title} | ATLAS Blog`}
-        description={post.excerpt}
+        title={post.meta_title || `${post.title} | ATLAS Blog`}
+        description={post.meta_description || post.excerpt}
+        image={post.cover_image_url}
+        type="article"
+        publishedAt={post.published_at}
+        updatedAt={post.updated_at}
+        tags={post.tags}
+        schema={jsonLd}
       />
 
       <Reveal>

@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
 import type { ComponentType } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   ChartColumn,
   FileText,
+  GitBranch,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -27,6 +33,7 @@ const NAV: NavItem[] = [
   { to: "/wp-admin", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/wp-admin/users", label: "Users", icon: Users },
   { to: "/wp-admin/posts", label: "Posts", icon: FileText },
+  { to: "/wp-admin/pipeline", label: "Pipeline", icon: GitBranch },
   { to: "/wp-admin/messages", label: "Messages", icon: Mail },
   { to: "/wp-admin/usage", label: "Usage & Analytics", icon: ChartColumn },
   { to: "/wp-admin/settings", label: "Settings", icon: Settings },
@@ -74,6 +81,7 @@ function NavLinks({
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [unread, setUnread] = useState(0);
