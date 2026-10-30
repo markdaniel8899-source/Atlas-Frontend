@@ -43,8 +43,8 @@ interface InlineCodeBlockProps {
   placeholderRef: HTMLElement & { appendChild: (node: Node) => Node };
   /** Called when user explicitly saves (Save button or Ctrl+Enter) */
   onSave?: (code: string, language: string) => void;
-  /** Called when user exits editor without saving (Escape) - keeps block editable */
-  onExit?: (code: string, language: string) => void;
+  /** Called when user exits editor (Escape) - removes editor like Cancel */
+  onExit?: () => void;
   /** Called when user cancels (clicks X button) */
   onCancel?: () => void;
 }
@@ -65,7 +65,7 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onExit?.(code, language);
+        onExit?.();
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -75,7 +75,7 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onSave, onExit, code, language]);
+  }, [onSave, onExit]);
 
   useEffect(() => {
     if (!languageOpen) return;

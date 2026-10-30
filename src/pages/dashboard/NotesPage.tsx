@@ -661,27 +661,17 @@ export default function NotesPage() {
     setCodeBlockEditing(null);
   }, []);
 
-  const handleCodeBlockExit = useCallback((_code: string, _language: string) => {
+  const handleCodeBlockExit = useCallback(() => {
     if (!codeBlockEditing?.placeholderRef) return;
     
     const placeholder = codeBlockEditing.placeholderRef;
-    
-    // Move cursor after the placeholder (which contains the editor portal)
-    // but keep codeBlockEditing mounted so editor persists
-    const newRange = document.createRange();
-    newRange.setStartAfter(placeholder);
-    const afterP = placeholder.nextElementSibling;
-    if (afterP?.tagName === 'P') {
-      newRange.setStartAfter(afterP);
+    // Remove placeholder and its trailing <p><br></p> (same as Cancel)
+    const next = placeholder.nextElementSibling;
+    placeholder.remove();
+    if (next?.tagName === 'P' && next.innerHTML === '<br>') {
+      next.remove();
     }
-    newRange.collapse(true);
-    const sel = window.getSelection();
-    if (sel) {
-      sel.removeAllRanges();
-      sel.addRange(newRange);
-    }
-    // Note: do NOT call setCodeBlockEditing(null) - keep editor mounted
-    // The editor will update its code via onChange from Monaco
+    setCodeBlockEditing(null);
   }, []);
 
   const handleKeyDown = useCallback(
