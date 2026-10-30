@@ -88,12 +88,12 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   }, []);
 
   const handleEditorBlur = useCallback(() => {
-    // Don't hide if toolbar is being interacted with
-    if (!toolbarHovered) {
+    // Don't hide if toolbar is being interacted with or language dropdown is open
+    if (!toolbarHovered && !languageOpen) {
       setIsFocused(false);
       setLanguageOpen(false);
     }
-  }, [toolbarHovered]);
+  }, [toolbarHovered, languageOpen]);
 
   // Persist language to placeholder for note serialization
   useEffect(() => {
