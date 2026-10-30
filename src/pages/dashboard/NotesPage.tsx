@@ -597,58 +597,7 @@ export default function NotesPage() {
     });
   }, []);
 
-  const handleCodeBlockSave = useCallback((code: string, language: string) => {
-    if (!codeBlockEditing?.placeholderRef) return;
-    
-    const placeholder = codeBlockEditing.placeholderRef;
-    
-    // Create final code block elements
-    const pre = document.createElement('pre');
-    pre.className = 'inline-code-block';
-    pre.dataset.language = language;
-    pre.contentEditable = 'false';
-    
-    const codeEl = document.createElement('code');
-    codeEl.className = `language-${language}`;
-    codeEl.textContent = code;
-    
-    pre.appendChild(codeEl);
-    
-    // Replace placeholder with final code block
-    const range = document.createRange();
-    range.setStartBefore(placeholder);
-    range.setEndAfter(placeholder);
-    range.deleteContents();
-    range.insertNode(pre);
-    
-    // Ensure trailing <p><br></p> exists for continued typing
-    const nextSibling = pre.nextSibling;
-    if (!nextSibling || (nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent?.trim() === '')) {
-      const afterPara = document.createElement('p');
-      afterPara.innerHTML = '<br>';
-      pre.parentNode?.insertBefore(afterPara, pre.nextSibling);
-    }
-    
-    // Move cursor after the block
-    const newRange = document.createRange();
-    newRange.setStartAfter(pre);
-    const afterP = pre.nextElementSibling;
-    if (afterP?.tagName === 'P') {
-      newRange.setStartAfter(afterP);
-    }
-    newRange.collapse(true);
-    newRange.collapse(true);
-    const sel = window.getSelection();
-    if (sel) {
-      sel.removeAllRanges();
-      sel.addRange(newRange);
-    }
-    
-    setCodeBlockEditing(null);
-    handleInput();
-  }, [handleInput]);
-
-  const handleCodeBlockCancel = useCallback(() => {
+  const handleCodeBlockRemove = useCallback(() => {
     if (!codeBlockEditing?.placeholderRef) return;
     
     const placeholder = codeBlockEditing.placeholderRef;
@@ -659,20 +608,8 @@ export default function NotesPage() {
       next.remove();
     }
     setCodeBlockEditing(null);
-  }, []);
-
-  const handleCodeBlockExit = useCallback(() => {
-    if (!codeBlockEditing?.placeholderRef) return;
-    
-    const placeholder = codeBlockEditing.placeholderRef;
-    // Remove placeholder and its trailing <p><br></p> (same as Cancel)
-    const next = placeholder.nextElementSibling;
-    placeholder.remove();
-    if (next?.tagName === 'P' && next.innerHTML === '<br>') {
-      next.remove();
-    }
-    setCodeBlockEditing(null);
-  }, []);
+    handleInput();
+  }, [handleInput]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -1453,9 +1390,9 @@ export default function NotesPage() {
                     {codeBlockEditing && codeBlockEditing.placeholderRef && (
                       <InlineCodeBlock
                         placeholderRef={codeBlockEditing.placeholderRef}
-                        onSave={handleCodeBlockSave}
-                        onExit={handleCodeBlockExit}
-                        onCancel={handleCodeBlockCancel}
+                        initialCode={codeBlockEditing.initialCode}
+                        initialLanguage={codeBlockEditing.initialLanguage}
+                        onRemove={handleCodeBlockRemove}
                       />
                     )}
                   </div>

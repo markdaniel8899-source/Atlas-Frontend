@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, ChevronDown, Check, FileCode, X } from "lucide-react";
+import { Copy, ChevronDown, Check, FileCode } from "lucide-react";
 import { CodeEditor } from "../ui/CodeEditor";
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -27,7 +27,7 @@ const LANGUAGES = [
   { id: "swift", label: "Swift", ext: ["swift"], patterns: ["func ", "var ", "let ", "print(", "import "] },
   { id: "kotlin", label: "Kotlin", ext: ["kt"], patterns: ["fun main", "val ", "var ", "println(", "package "] },
   { id: "html", label: "HTML", ext: ["html", "htm"], patterns: ["<div", "<html", "<body", "<script", "<style", "class="] },
-  { id: "css", label: "CSS", ext: ["css"], patterns: ["{", "}:", "color:", "margin:", "padding:", "@media"] },
+  { id: "css", label: "CSS", ext: ["css", "scss"], patterns: ["{", "}:", "color:", "margin:", "padding:", "@media"] },
   { id: "scss", label: "SCSS", ext: ["scss"], patterns: ["@", "$", "mixin", "include"] },
   { id: "json", label: "JSON", ext: ["json"], patterns: ['{"', '":', "[]", "true", "false", "null"] },
   { id: "sql", label: "SQL", ext: ["sql"], patterns: ["SELECT ", "FROM ", "WHERE ", "JOIN ", "INSERT ", "CREATE TABLE"] },
@@ -39,19 +39,15 @@ const LANGUAGES = [
 ];
 
 interface InlineCodeBlockProps {
-  /** Placeholder element inside contentEditable where the editor mounts */
   placeholderRef: HTMLElement & { appendChild: (node: Node) => Node };
-  /** Called when user explicitly saves (Save button or Ctrl+Enter) */
-  onSave?: (code: string, language: string) => void;
-  /** Called when user exits editor (Escape) - removes editor like Cancel */
-  onExit?: () => void;
-  /** Called when user cancels (clicks X button) */
-  onCancel?: () => void;
+  initialCode?: string;
+  initialLanguage?: string;
+  onRemove?: () => void;
 }
 
-export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: InlineCodeBlockProps) {
-  const [code, setCode] = useState("");
-  const [language, setLanguage] = useState("javascript");
+export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLanguage = "javascript", onRemove }: InlineCodeBlockProps) {
+  const [code, setCode] = useState(initialCode);
+  const [language, setLanguage] = useState(initialLanguage);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(2 * 22 + 44 + 24);
@@ -65,17 +61,14 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onExit?.();
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        onSave?.(code, language);
+        // Blur the editor - cursor leaves but editor stays
+        const editor = containerRef.current?.querySelector(".monaco-editor");
+        (editor as HTMLElement)?.blur();
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onSave, onExit]);
+  }, []);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -97,7 +90,6 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
     setHeight(newHeight);
   }, [code]);
 
-  // Create container inside placeholder for the entire editor (header + Monaco)
   useEffect(() => {
     if (!placeholderRef || monacoMountedRef.current) return;
     
@@ -116,11 +108,9 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
     setCode(value);
   }, []);
 
-  // Render entire editor (header + Monaco) as single portal into placeholder
   const editorPortal = containerRef.current
     ? createPortal(
-        <div style={{ minHeight: height }}>
-          {/* Header bar */}
+        <div style={{ minHeight: height }} className="inline-code-block-editor">
           <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl">
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
               <FileCode className="size-4 text-white/40 shrink-0" />
@@ -189,33 +179,23 @@ export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: In
                   {copied ? "Copied!" : "Copy"}
                 </span>
               </button>
-              <button
-                type="button"
-                onClick={() => onSave?.(code, language)}
-                className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-                aria-label="Save (Esc / Ctrl+Enter)"
-              >
-                <Check className="size-4 text-green-400" />
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                  Save (Esc / Ctrl+Enter)
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={onCancel}
-                className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-                aria-label="Discard"
-              >
-                <X className="size-4 text-red-400" />
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                  Discard
-                </span>
-              </button>
-              <kbd className="px-2 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc to save</kbd>
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
+                  aria-label="Remove code block"
+                >
+                  <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+              <kbd className="px-2 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc to exit</kbd>
             </div>
           </div>
 
-          {/* Monaco Editor - directly below header, no gap */}
           <div style={{ height: `${height}px`, minHeight: '68px' }}>
             <CodeEditor
               value={code}
