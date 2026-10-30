@@ -51,10 +51,8 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(2 * 22 + 44);
-  const [showHeader, setShowHeader] = useState(false);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
-  const editorWrapperRef = useRef<HTMLElement>(null);
   const hasUserSetLanguage = useRef(false);
   const monacoMountedRef = useRef(false);
 
@@ -124,18 +122,10 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
 const editorPortal = containerRef.current
     ? createPortal(
         <div 
-          ref={editorWrapperRef}
           style={{ minHeight: height }} 
           className="inline-code-block-editor"
-          onMouseEnter={() => setShowHeader(true)}
-          onMouseLeave={() => setShowHeader(false)}
-          onFocus={() => setShowHeader(true)}
-          onBlur={() => setShowHeader(false)}
         >
-          <div 
-            className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl transition-opacity duration-150"
-            style={{ opacity: showHeader ? 1 : 0, pointerEvents: showHeader ? 'auto' : 'none' }}
-          >
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl">
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
               <FileCode className="size-4 text-white/40 shrink-0" />
               
