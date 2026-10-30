@@ -50,7 +50,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   const [language, setLanguage] = useState(initialLanguage);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [height, setHeight] = useState(2 * 22 + 44 + 24);
+  const [height, setHeight] = useState(2 * 22 + 44);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
   const hasUserSetLanguage = useRef(false);
@@ -84,9 +84,8 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   useEffect(() => {
     const lineHeight = 22;
     const headerHeight = 44;
-    const padding = 24;
     const lineCount = code.split("\n").length;
-    const newHeight = Math.min(Math.max(lineCount, 2), 30) * lineHeight + padding + headerHeight;
+    const newHeight = Math.min(Math.max(lineCount, 2), 30) * lineHeight + headerHeight;
     setHeight(newHeight);
   }, [code]);
 
