@@ -427,11 +427,67 @@ useEffect(() => {
         if (blockElements.length > 0) {
           const restored = blockElements
             .filter((el) => el.dataset.codeBlockId)
-            .map((el) => ({
-              id: el.dataset.codeBlockId!,
-              code: el.dataset.code ?? '',
-              language: el.dataset.language ?? 'javascript',
-            }));
+            .map((el) => {
+              // Ensure each block has the view mode HTML (toolbar + pre/code)
+              if (!el.querySelector('.atomic-code-block-toolbar')) {
+                // Add toolbar
+                const toolbar = document.createElement('div');
+                toolbar.className = 'atomic-code-block-toolbar';
+                toolbar.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; height: 44px; background: rgba(10, 10, 18, 0.8); backdrop-filter: blur(4px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; padding: 0 12px; opacity: 0; transition: opacity 0.15s; pointer-events: none;';
+                const langLabel = el.dataset.language ?? 'javascript';
+                toolbar.innerHTML = `
+                  <span class="file-code-icon" style="color: rgba(255,255,255,0.4);">📄</span>
+                  <span style="font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.6); flex: 1;">${langLabel}</span>
+                  <button class="copy-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Copy">📋</button>
+                  <button class="edit-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Edit">✏️</button>
+                `;
+                el.insertBefore(toolbar, el.firstChild);
+                
+                // Add hover effect
+                el.addEventListener('mouseenter', () => {
+                  toolbar.style.opacity = '1';
+                  toolbar.style.pointerEvents = 'auto';
+                });
+                el.addEventListener('mouseleave', () => {
+                  toolbar.style.opacity = '0';
+                  toolbar.style.pointerEvents = 'none';
+                });
+                
+                // Add click handler
+                el.addEventListener('click', (e: MouseEvent) => {
+                  if (!(e.target as Element).closest('.copy-btn')) {
+                    const event = new CustomEvent('code-block-edit', { detail: { id: el.dataset.codeBlockId } });
+                    document.dispatchEvent(event);
+                  }
+                });
+                
+                // Add copy handler
+                toolbar.querySelector('.copy-btn')?.addEventListener('click', ((e: MouseEvent) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(el.dataset.code ?? '');
+                  const btn = e.currentTarget as HTMLButtonElement;
+                  const original = btn.textContent;
+                  btn.textContent = '✓';
+                  setTimeout(() => { btn.textContent = original; }, 1500);
+                }) as EventListener);
+              }
+              // Ensure pre/code exists
+              if (!el.querySelector('pre')) {
+                const pre = document.createElement('pre');
+                pre.style.cssText = 'background-color: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 0 0 8px 8px; font-family: "Fira Code", "Consolas", monospace; font-size: 14px; line-height: 1.5; overflow-x: auto; margin: 0; min-height: 24px;';
+                const codeEl = document.createElement('code');
+                codeEl.className = `language-${el.dataset.language ?? 'javascript'}`;
+                codeEl.textContent = el.dataset.code ?? '';
+                pre.appendChild(codeEl);
+                el.appendChild(pre);
+              }
+              
+              return {
+                id: el.dataset.codeBlockId!,
+                code: el.dataset.code ?? '',
+                language: el.dataset.language ?? 'javascript',
+              };
+            });
           setCodeBlocks(restored);
         } else {
           setCodeBlocks([]);
@@ -470,17 +526,14 @@ useEffect(() => {
       ...(pendingRef.current.get(id) ?? {}),
       ...patch,
     });
-    setNotes((prev) =>
-      prev.map((note) =>
-        note.id === id ? { ...note, ...patch, updatedAt: Date.now() } : note,
-      ),
-    );
+    // DO NOT call setNotes here - it causes re-render and cursor jump
+    // Only update the pending ref for eventual server sync
     markSaved();
     if (networkRef.current) window.clearTimeout(networkRef.current);
     networkRef.current = window.setTimeout(() => void flush(), 700);
   };
 
-  const handleInput = () => {
+  const saveNoteContent = useCallback(() => {
     const id = activeRef.current;
     if (!id || !editorRef.current) return;
     
@@ -497,6 +550,47 @@ useEffect(() => {
       const block = wrapper.querySelector('.atomic-code-block') as HTMLElement | null;
       if (block) {
         // Ensure data attributes are up to date from React state
+        const blockId = block.getAttribute('data-code-block-id');
+        if (blockId) {
+          const blockData = codeBlocksRef.current.find((b) => b.id === blockId);
+          if (blockData) {
+            block.dataset.code = blockData.code;
+            block.dataset.language = blockData.language;
+          }
+        }
+        wrapper.replaceWith(block);
+      } else {
+        wrapper.remove();
+      }
+    });
+    
+    const html = clone.innerHTML;
+    persist(id, { html });
+    // Also update local notes state for UI consistency (sidebar, etc)
+    setNotes((prev) =>
+      prev.map((note) =>
+        note.id === id ? { ...note, html, updatedAt: Date.now() } : note,
+      ),
+    );
+  }, []);
+
+  const handleInput = () => {
+    // Only update pending ref for debounced server save - NO setNotes
+    const id = activeRef.current;
+    if (!id || !editorRef.current) return;
+    
+    // Clone editor content and strip editor containers (Monaco DOM) before saving
+    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    
+    // Remove React-mounted Monaco editor containers from atomic code blocks
+    const editorContainers = clone.querySelectorAll('[data-editor-container]');
+    editorContainers.forEach((container) => container.remove());
+    
+    // Remove the atomic-code-block-wrapper divs but keep the atomic-code-block elements
+    const wrappers = clone.querySelectorAll('.atomic-code-block-wrapper');
+    wrappers.forEach((wrapper) => {
+      const block = wrapper.querySelector('.atomic-code-block') as HTMLElement | null;
+      if (block) {
         const blockId = block.getAttribute('data-code-block-id');
         if (blockId) {
           const blockData = codeBlocksRef.current.find((b) => b.id === blockId);
@@ -599,6 +693,11 @@ useEffect(() => {
     editorRef.current?.focus();
   };
 
+  const handleEditorBlur = useCallback(() => {
+    // Save note content when editor loses focus
+    saveNoteContent();
+  }, [saveNoteContent]);
+
   const saveSelection = useCallback(() => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -636,14 +735,65 @@ useEffect(() => {
     const id = Math.random().toString(36).slice(2);
     const newBlock = { id, code: '// Write code here...', language: 'javascript' };
     
-    // Create atomic code block container
+    // Create atomic code block container - insert DIRECTLY into contentEditable
     const blockContainer = document.createElement('div');
     blockContainer.className = 'atomic-code-block';
     blockContainer.contentEditable = "false";
     blockContainer.dataset.language = 'javascript';
     blockContainer.dataset.code = '// Write code here...';
     blockContainer.dataset.codeBlockId = id;
-    blockContainer.style.cssText = 'width: 100%;';
+    blockContainer.style.cssText = 'width: 100%; margin: 8px 0;';
+    
+    // Add view mode HTML (pre/code) inside the block
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'background-color: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 0 0 8px 8px; font-family: "Fira Code", "Consolas", monospace; font-size: 14px; line-height: 1.5; overflow-x: auto; margin: 0; min-height: 24px;';
+    const codeEl = document.createElement('code');
+    codeEl.className = 'language-javascript';
+    codeEl.textContent = '// Write code here...';
+    pre.appendChild(codeEl);
+    blockContainer.appendChild(pre);
+    
+    // Add toolbar header (hidden by default, shown on hover)
+    const toolbar = document.createElement('div');
+    toolbar.className = 'atomic-code-block-toolbar';
+    toolbar.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; height: 44px; background: rgba(10, 10, 18, 0.8); backdrop-filter: blur(4px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; padding: 0 12px; opacity: 0; transition: opacity 0.15s; pointer-events: none;';
+    toolbar.innerHTML = `
+      <span class="file-code-icon" style="color: rgba(255,255,255,0.4);">📄</span>
+      <span style="font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.6); flex: 1;">JavaScript</span>
+      <button class="copy-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Copy">📋</button>
+      <button class="edit-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Edit">✏️</button>
+    `;
+    blockContainer.insertBefore(toolbar, pre);
+    
+    // Add hover effect to show toolbar
+    blockContainer.addEventListener('mouseenter', () => {
+      toolbar.style.opacity = '1';
+      toolbar.style.pointerEvents = 'auto';
+    });
+    blockContainer.addEventListener('mouseleave', () => {
+      toolbar.style.opacity = '0';
+      toolbar.style.pointerEvents = 'none';
+    });
+    
+    // Add click handler to enter edit mode
+    blockContainer.addEventListener('click', (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.copy-btn')) {
+        // Trigger edit mode via the React component
+        const event = new CustomEvent('code-block-edit', { detail: { id } });
+        document.dispatchEvent(event);
+      }
+    });
+    
+    // Add copy handler
+    toolbar.querySelector('.copy-btn')?.addEventListener('click', ((e: MouseEvent) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText('// Write code here...');
+      // Show copied feedback
+      const btn = e.currentTarget as HTMLButtonElement;
+      const original = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }) as EventListener);
     
     // Insert at cursor
     range.deleteContents();
@@ -665,7 +815,7 @@ useEffect(() => {
       sel.addRange(range);
     }
     
-    // Add to codeBlocks state for React rendering
+    // Add to codeBlocks state for React to mount Monaco editor overlay
     setCodeBlocks((prev) => {
       const next = [...prev, newBlock];
       codeBlocksRef.current = next;
@@ -1513,23 +1663,23 @@ useEffect(() => {
                       contentEditable
                       suppressContentEditableWarning
                       onInput={handleInput}
-                      onBlur={saveSelection}
+                      onBlur={handleEditorBlur}
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
+                    {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}
                     {codeBlocks.map((block) => (
-                      <div key={block.id} className="atomic-code-block-wrapper" style={{ width: "100%" }}>
-                        <InlineCodeBlock
-                          id={block.id}
-                          code={block.code}
-                          language={block.language}
-                          onChange={(code, language) => handleCodeBlockChange(block.id, code, language)}
-                          onRemove={() => handleCodeBlockRemove(block.id)}
-                        />
-                      </div>
+                      <InlineCodeBlock
+                        key={block.id}
+                        id={block.id}
+                        code={block.code}
+                        language={block.language}
+                        onChange={(code, language) => handleCodeBlockChange(block.id, code, language)}
+                        onRemove={() => handleCodeBlockRemove(block.id)}
+                      />
                     ))}
                   </div>
                 </>
