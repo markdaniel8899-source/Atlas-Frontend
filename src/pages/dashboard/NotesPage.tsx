@@ -244,12 +244,14 @@ export default function NotesPage() {
    *  write can be stale, so their responses are discarded. */
   const dataVersionRef = useRef(0);
   const activeRef = useRef<string | null>(activeId);
+  const codeBlocksRef = useRef<Array<{ id: string; code: string; language: string }>>([]);
 
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
+  const [codeBlocks, setCodeBlocks] = useState<Array<{ id: string; code: string; language: string }>>([]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [courseMenuOpen, setCourseMenuOpen] = useState(false);
   const courseMenuRef = useRef<HTMLDivElement>(null);
@@ -412,40 +414,40 @@ export default function NotesPage() {
     });
   }, [notes, courses]);
 
-  useEffect(() => {
+useEffect(() => {
     activeRef.current = activeId;
     const note = notes.find((n) => n.id === activeId);
     if (editorRef.current && note) {
       try {
         editorRef.current.innerHTML = sanitizeHtml(note.html);
         
-        // Restore code block editors from placeholders in the loaded HTML
-        const placeholders = editorRef.current.querySelectorAll('.inline-code-block-placeholder') as NodeListOf<HTMLElement>;
-        if (placeholders.length > 0) {
-          const restored = new Map<string, { placeholderRef: HTMLElement; initialCode: string; initialLanguage: string }>();
-          placeholders.forEach((placeholder, index) => {
-            const code = placeholder.dataset.code ?? '';
-            const language = placeholder.dataset.language ?? 'javascript';
-            // Stable ID based on index to prevent duplicate keys on re-render
-            const id = `editor-${index}`;
-            restored.set(id, {
-              placeholderRef: placeholder,
-              initialCode: code,
-              initialLanguage: language,
-            });
-          });
-          setCodeBlockEditing(restored);
+        // Restore code blocks from atomic-code-block elements in the loaded HTML
+        const blockElements = Array.from(editorRef.current.querySelectorAll('.atomic-code-block')) as HTMLElement[];
+        if (blockElements.length > 0) {
+          const restored = blockElements
+            .filter((el) => el.dataset.codeBlockId)
+            .map((el) => ({
+              id: el.dataset.codeBlockId!,
+              code: el.dataset.code ?? '',
+              language: el.dataset.language ?? 'javascript',
+            }));
+          setCodeBlocks(restored);
         } else {
-          setCodeBlockEditing(new Map());
+          setCodeBlocks([]);
         }
       } catch (err) {
         console.error('Failed to load note:', err);
-        setCodeBlockEditing(new Map());
+        setCodeBlocks([]);
       }
     }
     // selectionMode is a dep so leaving multi-select repopulates the editor
     // (the contentEditable is remounted after being hidden).
   }, [activeId, selectionMode]);
+
+  // Keep codeBlocksRef in sync with codeBlocks state
+  useEffect(() => {
+    codeBlocksRef.current = codeBlocks;
+  }, [codeBlocks]);
 
   useEffect(() => {
     return () => {
@@ -483,8 +485,30 @@ export default function NotesPage() {
     
     // Clone editor content and strip editor containers (Monaco DOM) before saving
     const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    
+    // Remove React-mounted Monaco editor containers from atomic code blocks
     const editorContainers = clone.querySelectorAll('[data-editor-container]');
     editorContainers.forEach((container) => container.remove());
+    
+    // Remove the atomic-code-block-wrapper divs but keep the atomic-code-block elements
+    const wrappers = clone.querySelectorAll('.atomic-code-block-wrapper');
+    wrappers.forEach((wrapper) => {
+      const block = wrapper.querySelector('.atomic-code-block') as HTMLElement | null;
+      if (block) {
+        // Ensure data attributes are up to date from React state
+        const blockId = block.getAttribute('data-code-block-id');
+        if (blockId) {
+          const blockData = codeBlocksRef.current.find((b) => b.id === blockId);
+          if (blockData) {
+            block.dataset.code = blockData.code;
+            block.dataset.language = blockData.language;
+          }
+        }
+        wrapper.replaceWith(block);
+      } else {
+        wrapper.remove();
+      }
+    });
     
     const html = clone.innerHTML;
     if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -574,12 +598,6 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
-  const [codeBlockEditing, setCodeBlockEditing] = useState<Map<string, { 
-    placeholderRef: HTMLElement; 
-    initialCode: string; 
-    initialLanguage: string 
-  }>>(new Map());
-
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -595,23 +613,28 @@ export default function NotesPage() {
     // Collapse range to insert point
     range.collapse(true);
     
-    // Create a placeholder element INSIDE contentEditable at cursor position
-    const placeholder = document.createElement('div');
-    placeholder.className = 'inline-code-block-placeholder';
-    placeholder.dataset.language = 'javascript';
-    placeholder.contentEditable = 'false';
-    // Minimal height so it's visible in the flow
-    placeholder.style.cssText = 'min-height: 120px; width: 100%;';
+    // Generate ID for the new block
+    const id = Math.random().toString(36).slice(2);
+    const newBlock = { id, code: '// Write code here...', language: 'javascript' };
+    
+    // Create atomic code block container
+    const blockContainer = document.createElement('div');
+    blockContainer.className = 'atomic-code-block';
+    blockContainer.contentEditable = "false";
+    blockContainer.dataset.language = 'javascript';
+    blockContainer.dataset.code = '// Write code here...';
+    blockContainer.dataset.codeBlockId = id;
+    blockContainer.style.cssText = 'width: 100%;';
     
     // Insert at cursor
     range.deleteContents();
-    range.insertNode(placeholder);
+    range.insertNode(blockContainer);
     
     // Add trailing <p><br></p> for continued typing after the block
     const afterPara = document.createElement('p');
     afterPara.innerHTML = '<br>';
-    range.setStartAfter(placeholder);
-    range.setEndAfter(placeholder);
+    range.setStartAfter(blockContainer);
+    range.setEndAfter(blockContainer);
     range.insertNode(afterPara);
     
     // Move cursor after the block (user continues typing after)
@@ -620,38 +643,56 @@ export default function NotesPage() {
     sel.removeAllRanges();
     sel.addRange(range);
     
-    // Track for InlineCodeBlock to mount inline at this placeholder
-    const id = Math.random().toString(36).slice(2);
-    setCodeBlockEditing((prev) => {
-      const next = new Map(prev);
-      next.set(id, { 
-        placeholderRef: placeholder, 
-        initialCode: "", 
-        initialLanguage: "javascript" 
-      });
+    // Add to codeBlocks state for React rendering
+    setCodeBlocks((prev) => {
+      const next = [...prev, newBlock];
+      codeBlocksRef.current = next;
       return next;
     });
   }, []);
 
   const handleCodeBlockRemove = useCallback((id: string) => {
-    setCodeBlockEditing((prev) => {
-      const entry = prev.get(id);
-      if (!entry) return prev;
+    setCodeBlocks((prev) => {
+      const block = prev.find((b) => b.id === id);
+      if (!block) return prev;
       
-      const placeholder = entry.placeholderRef;
-      // Remove placeholder and its trailing <p><br></p>
-      const next = placeholder.nextElementSibling;
-      placeholder.remove();
-      if (next?.tagName === 'P' && next.innerHTML === '<br>') {
-        next.remove();
+      // Remove from DOM
+      const editor = editorRef.current;
+      if (editor) {
+        const blockElement = editor.querySelector(`[data-code-block-id="${id}"]`);
+        if (blockElement) {
+          const next = blockElement.nextElementSibling;
+          blockElement.remove();
+          if (next?.tagName === 'P' && next.innerHTML === '<br>') {
+            next.remove();
+          }
+        }
       }
       
-      const nextMap = new Map(prev);
-      nextMap.delete(id);
       handleInput();
-      return nextMap;
+      const next = prev.filter((b) => b.id !== id);
+      codeBlocksRef.current = next;
+      return next;
     });
   }, [handleInput]);
+
+  const handleCodeBlockChange = useCallback((id: string, code: string, language: string) => {
+    setCodeBlocks((prev) => {
+      const next = prev.map((b) => (b.id === id ? { ...b, code, language } : b));
+      codeBlocksRef.current = next;
+      return next;
+    });
+    
+    // Update DOM attributes for persistence
+    const editor = editorRef.current;
+    if (editor) {
+      const blockElement = editor.querySelector(`[data-code-block-id="${id}"]`) as HTMLElement | null;
+      if (blockElement) {
+        blockElement.dataset.code = code;
+        blockElement.dataset.language = language;
+      }
+    }
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -719,12 +760,12 @@ export default function NotesPage() {
       );
       const downloadNotes = await bulkDownloadNotes(ids);
       
-      // Transform placeholders to styled code blocks for download
+      // Transform atomic code blocks to styled code blocks for download
       const transformCodeBlocks = (html: string): string => {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = html;
-        const placeholders = tempDiv.querySelectorAll('.inline-code-block-placeholder');
-        placeholders.forEach((ph: Element) => {
+        const blocks = tempDiv.querySelectorAll('.atomic-code-block');
+        blocks.forEach((ph: Element) => {
           const el = ph as HTMLElement;
           const lang = el.getAttribute('data-language') || 'plaintext';
           const codeContent = el.getAttribute('data-code') || '';
@@ -1454,14 +1495,16 @@ export default function NotesPage() {
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
-                    {Array.from(codeBlockEditing.entries()).map(([id, entry]) => (
-                      <InlineCodeBlock
-                        key={id}
-                        placeholderRef={entry.placeholderRef}
-                        initialCode={entry.initialCode}
-                        initialLanguage={entry.initialLanguage}
-                        onRemove={() => handleCodeBlockRemove(id)}
-                      />
+                    {codeBlocks.map((block) => (
+                      <div key={block.id} className="atomic-code-block-wrapper" style={{ width: "100%" }}>
+                        <InlineCodeBlock
+                          id={block.id}
+                          code={block.code}
+                          language={block.language}
+                          onChange={(code, language) => handleCodeBlockChange(block.id, code, language)}
+                          onRemove={() => handleCodeBlockRemove(block.id)}
+                        />
+                      </div>
                     ))}
                   </div>
                 </>
