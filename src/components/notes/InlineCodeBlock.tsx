@@ -52,6 +52,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(2 * 22 + 44);
   const [isFocused, setIsFocused] = useState(false);
+  const [toolbarHovered, setToolbarHovered] = useState(false);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -87,9 +88,12 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   }, []);
 
   const handleEditorBlur = useCallback(() => {
-    setIsFocused(false);
-    setLanguageOpen(false);
-  }, []);
+    // Don't hide if toolbar is being interacted with
+    if (!toolbarHovered) {
+      setIsFocused(false);
+      setLanguageOpen(false);
+    }
+  }, [toolbarHovered]);
 
   // Persist language to placeholder for note serialization
   useEffect(() => {
@@ -149,6 +153,8 @@ const editorPortal = containerRef.current
             className={`absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12]/80 backdrop-blur-sm border-b border-white/10 transition-opacity duration-150 z-10 ${
               isFocused ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
+            onMouseEnter={() => setToolbarHovered(true)}
+            onMouseLeave={() => setToolbarHovered(false)}
           >
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
               <FileCode className="size-4 text-white/40 shrink-0" />
@@ -234,14 +240,16 @@ const editorPortal = containerRef.current
           </div>
 
           {/* Editor area - fills container */}
-          <CodeEditor
-            value={code}
-            onChange={handleCodeChange}
-            language={language}
-            height={height + "px"}
-            onFocus={handleEditorFocus}
-            onBlur={handleEditorBlur}
-          />
+          <div style={{ height: height + "px", paddingTop: isFocused ? 44 : 0 }}>
+            <CodeEditor
+              value={code}
+              onChange={handleCodeChange}
+              language={language}
+              height={height + "px"}
+              onFocus={handleEditorFocus}
+              onBlur={handleEditorBlur}
+            />
+          </div>
         </div>,
         containerRef.current
       )
