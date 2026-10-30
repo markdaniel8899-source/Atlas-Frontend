@@ -261,6 +261,16 @@ const editorPortal = containerRef.current
               onChange={handleCodeChange}
               language={language}
               height={height + "px"}
+              onFocus={() => {
+                if (blurTimeoutRef.current) {
+                  clearTimeout(blurTimeoutRef.current);
+                  blurTimeoutRef.current = null;
+                }
+                setIsFocused(true);
+              }}
+              onBlur={() => {
+                blurTimeoutRef.current = setTimeout(() => setIsFocused(false), 50);
+              }}
             />
           </div>
         </div>,
