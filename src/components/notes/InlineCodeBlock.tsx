@@ -144,13 +144,6 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     highlightCode();
   }, [code, language, isEditing]);
 
-  const syncToPlaceholder = useCallback(() => {
-    if (placeholderRef) {
-      placeholderRef.dataset.code = code;
-      placeholderRef.dataset.language = language;
-    }
-  }, [code, language, placeholderRef]);
-
   const handleCodeChange = useCallback((value: string) => {
     setCode(value);
     if (placeholderRef) {
@@ -187,6 +180,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   }, []);
 
   const hasUserSetLanguage = useRef(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const editorPortal = containerRef.current && isEditing
     ? createPortal(
@@ -288,8 +282,6 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
         containerRef.current
       )
     : null;
-
-  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const viewMode = !isEditing && (
     <div
