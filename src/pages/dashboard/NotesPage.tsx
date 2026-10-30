@@ -543,11 +543,11 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
-  const [codeBlockEditing, setCodeBlockEditing] = useState<{ 
+  const [codeBlockEditing, setCodeBlockEditing] = useState<Map<string, { 
     placeholderRef: HTMLElement; 
     initialCode: string; 
     initialLanguage: string 
-  } | null>(null);
+  }>>(new Map());
 
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
@@ -590,25 +590,36 @@ export default function NotesPage() {
     sel.addRange(range);
     
     // Track for InlineCodeBlock to mount inline at this placeholder
-    setCodeBlockEditing({ 
-      placeholderRef: placeholder, 
-      initialCode: "", 
-      initialLanguage: "javascript" 
+    const id = Math.random().toString(36).slice(2);
+    setCodeBlockEditing((prev) => {
+      const next = new Map(prev);
+      next.set(id, { 
+        placeholderRef: placeholder, 
+        initialCode: "", 
+        initialLanguage: "javascript" 
+      });
+      return next;
     });
   }, []);
 
-  const handleCodeBlockRemove = useCallback(() => {
-    if (!codeBlockEditing?.placeholderRef) return;
-    
-    const placeholder = codeBlockEditing.placeholderRef;
-    // Remove placeholder and its trailing <p><br></p>
-    const next = placeholder.nextElementSibling;
-    placeholder.remove();
-    if (next?.tagName === 'P' && next.innerHTML === '<br>') {
-      next.remove();
-    }
-    setCodeBlockEditing(null);
-    handleInput();
+  const handleCodeBlockRemove = useCallback((id: string) => {
+    setCodeBlockEditing((prev) => {
+      const entry = prev.get(id);
+      if (!entry) return prev;
+      
+      const placeholder = entry.placeholderRef;
+      // Remove placeholder and its trailing <p><br></p>
+      const next = placeholder.nextElementSibling;
+      placeholder.remove();
+      if (next?.tagName === 'P' && next.innerHTML === '<br>') {
+        next.remove();
+      }
+      
+      const nextMap = new Map(prev);
+      nextMap.delete(id);
+      handleInput();
+      return nextMap;
+    });
   }, [handleInput]);
 
   const handleKeyDown = useCallback(
@@ -1387,14 +1398,15 @@ export default function NotesPage() {
                       className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
-                    {codeBlockEditing && codeBlockEditing.placeholderRef && (
+                    {Array.from(codeBlockEditing.entries()).map(([id, entry]) => (
                       <InlineCodeBlock
-                        placeholderRef={codeBlockEditing.placeholderRef}
-                        initialCode={codeBlockEditing.initialCode}
-                        initialLanguage={codeBlockEditing.initialLanguage}
-                        onRemove={handleCodeBlockRemove}
+                        key={id}
+                        placeholderRef={entry.placeholderRef}
+                        initialCode={entry.initialCode}
+                        initialLanguage={entry.initialLanguage}
+                        onRemove={() => handleCodeBlockRemove(id)}
                       />
-                    )}
+                    ))}
                   </div>
                 </>
               ) : (
