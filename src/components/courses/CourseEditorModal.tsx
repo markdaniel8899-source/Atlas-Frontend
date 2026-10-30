@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent, KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, Loader2, Plus, Save, X } from "lucide-react";
 import { addTopic, removeTopic, updateCourse } from "../../lib/db/courses";
@@ -49,7 +49,7 @@ export function CourseEditorModal({
 
   useEffect(() => {
     if (!course) return;
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
@@ -77,7 +77,7 @@ export function CourseEditorModal({
     onClose();
   };
 
-  const submitTopic = async (event: FormEvent) => {
+  const submitTopic = async (event: FormEvent | MouseEvent | KeyboardEvent) => {
     event.preventDefault();
     if (!course || busy || !topicTitle.trim()) return;
 
@@ -221,10 +221,7 @@ export function CourseEditorModal({
                     )}
                   </div>
 
-                  <form
-                    onSubmit={submitTopic}
-                    className="mt-3 flex items-center gap-2"
-                  >
+                  <div className="mt-3 flex items-center gap-2">
                     <input
                       type="text"
                       value={topicTitle}
@@ -233,16 +230,23 @@ export function CourseEditorModal({
                       maxLength={160}
                       disabled={busy}
                       className={`${FIELD} min-w-0 flex-1 text-xs`}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !busy && topicTitle.trim()) {
+                          event.preventDefault();
+                          submitTopic(event as unknown as FormEvent);
+                        }
+                      }}
                     />
                     <button
-                      type="submit"
+                      type="button"
                       disabled={busy || !topicTitle.trim()}
+                      onClick={submitTopic}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white transition-colors hover:bg-white/[0.1] disabled:opacity-50"
                     >
                       <Plus className="size-3.5" />
                       Add
                     </button>
-                  </form>
+                  </div>
                 </div>
 
                 {error && (
