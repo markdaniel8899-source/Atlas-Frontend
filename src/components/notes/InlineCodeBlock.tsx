@@ -150,130 +150,130 @@ const editorPortal = containerRef.current
           className="inline-code-block-editor"
           tabIndex={-1}
         >
-          {/* Toolbar handle/tab - always visible on left */}
-          <div
-            className="absolute left-0 top-0 bottom-0 w-8 flex items-center justify-center bg-[#0a0a12] border-r border-white/10 rounded-l-xl cursor-pointer hover:bg-white/[0.05] transition-colors z-10"
-            onClick={(e) => {
-              e.stopPropagation();
-              setToolbarOpen(!toolbarOpen);
-            }}
-            aria-label={toolbarOpen ? "Hide toolbar" : "Show toolbar"}
-            title={toolbarOpen ? "Hide toolbar" : "Show toolbar"}
-          >
-            <Menu className="size-4 text-white/40 hover:text-white transition-colors" />
-          </div>
-
-          {/* Toolbar - slides down from top */}
-          <div
-            ref={toolbarRef}
-            className={`absolute left-8 right-0 top-0 bg-[#0a0a12] border border-white/10 border-l-0 rounded-tr-xl transform transition-all duration-200 ease-out ${
-              toolbarOpen
-                ? "opacity-100 translate-y-0 pointer-events-auto"
-                : "opacity-0 -translate-y-full pointer-events-none"
-            }`}
-          >
-            <div className="flex items-center gap-1.5 px-3 py-2">
-              <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
-                <FileCode className="size-4 text-white/40 shrink-0" />
-
-                <div className="relative flex-1 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setLanguageOpen(!languageOpen)}
-                    className="flex items-center gap-1 w-full rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
-                    aria-haspopup="listbox"
-                    aria-expanded={languageOpen}
-                  >
-                    <span className="truncate font-mono flex-1">{LANGUAGES.find((l) => l.id === language)?.label ?? language}</span>
-                    <ChevronDown className={`size-3.5 shrink-0 transition-transform ${languageOpen ? "rotate-180 text-[#cf9eff]" : "text-white/35"}`} />
-                  </button>
-                  {languageOpen && (
-                    <div className="absolute left-0 top-full mt-1 z-10 min-w-[180px] max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-[#111] py-1 shadow-md">
-                      {LANGUAGES.map((lang) => (
-                        <button
-                          key={lang.id}
-                          type="button"
-                          onClick={() => { setLanguage(lang.id); hasUserSetLanguage.current = true; setLanguageOpen(false); }}
-                          className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"}`}
-                        >
-                          {language === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
-                          <span className="truncate font-mono">{lang.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Type .sql, .js, .py..."
-                  className="w-[110px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
-                  onChange={(e) => {
-                    const val = e.target.value.trim();
-                    if (val.startsWith(".")) {
-                      const ext = val.slice(1).toLowerCase();
-                      if (LANGUAGE_MAP[ext]) {
-                        setLanguage(LANGUAGE_MAP[ext]);
-                        hasUserSetLanguage.current = true;
-                      }
-                    }
-                  }}
-                  onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-                  aria-label="File extension for language"
-                />
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(code);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
-                  }}
-                  disabled={!code.trim()}
-                  className="relative rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-30 group"
-                  aria-label="Copy code"
-                >
-                  {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                    {copied ? "Copied!" : "Copy"}
-                  </span>
-                </button>
-                {onRemove && (
-                  <button
-                    type="button"
-                    onClick={onRemove}
-                    className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-                    aria-label="Remove code block"
-                  >
-                    <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setToolbarOpen(false)}
-                  className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-                  aria-label="Close toolbar"
-                >
-                  <X className="size-4" />
-                </button>
-                <kbd className="px-2 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc to close</kbd>
-              </div>
-            </div>
-          </div>
-
-          {/* Editor area - with top padding when toolbar is open */}
+          {/* Editor area - with toolbar handle inside */}
           <div
             style={{ 
               height: height + "px", 
               minHeight: '68px',
-              paddingTop: toolbarOpen ? 52 : 0 // toolbar height approx
+              position: 'relative'
             }}
           >
+            {/* Toolbar handle - floating button at top-right of editor */}
+            <div
+              className="absolute top-2 right-2 z-10 flex items-center justify-center w-7 h-7 rounded-lg bg-[#0a0a12]/90 border border-white/10 backdrop-blur-sm cursor-pointer hover:bg-white/[0.08] transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setToolbarOpen(!toolbarOpen);
+              }}
+              aria-label={toolbarOpen ? "Hide toolbar" : "Show toolbar"}
+              title={toolbarOpen ? "Hide toolbar" : "Show toolbar"}
+            >
+              <Menu className="size-3.5 text-white/50 hover:text-white transition-colors" />
+            </div>
+
+            {/* Toolbar - drops down from handle */}
+            <div
+              ref={toolbarRef}
+              className={`absolute right-2 top-9 w-[280px] bg-[#0a0a12]/95 border border-white/10 rounded-xl shadow-xl backdrop-blur-sm transform transition-all duration-150 ease-out z-10 ${
+                toolbarOpen
+                  ? "opacity-100 scale-100 pointer-events-auto"
+                  : "opacity-0 scale-95 pointer-events-none"
+              }`}
+              style={{ transformOrigin: 'top right' }}
+            >
+              <div className="flex items-center gap-1.5 px-3 py-2">
+                <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
+                  <FileCode className="size-4 text-white/40 shrink-0" />
+
+                  <div className="relative flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setLanguageOpen(!languageOpen)}
+                      className="flex items-center gap-1 w-full rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
+                      aria-haspopup="listbox"
+                      aria-expanded={languageOpen}
+                    >
+                      <span className="truncate font-mono flex-1">{LANGUAGES.find((l) => l.id === language)?.label ?? language}</span>
+                      <ChevronDown className={`size-3.5 shrink-0 transition-transform ${languageOpen ? "rotate-180 text-[#cf9eff]" : "text-white/35"}`} />
+                    </button>
+                    {languageOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-10 min-w-[180px] max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-[#111] py-1 shadow-md">
+                        {LANGUAGES.map((lang) => (
+                          <button
+                            key={lang.id}
+                            type="button"
+                            onClick={() => { setLanguage(lang.id); hasUserSetLanguage.current = true; setLanguageOpen(false); }}
+                            className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"}`}
+                          >
+                            {language === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
+                            <span className="truncate font-mono">{lang.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Type .sql, .js, .py..."
+                    className="w-[110px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
+                    onChange={(e) => {
+                      const val = e.target.value.trim();
+                      if (val.startsWith(".")) {
+                        const ext = val.slice(1).toLowerCase();
+                        if (LANGUAGE_MAP[ext]) {
+                          setLanguage(LANGUAGE_MAP[ext]);
+                          hasUserSetLanguage.current = true;
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+                    aria-label="File extension for language"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(code);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                    disabled={!code.trim()}
+                    className="relative rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-30 group"
+                    aria-label="Copy code"
+                  >
+                    {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+                      {copied ? "Copied!" : "Copy"}
+                    </span>
+                  </button>
+                  {onRemove && (
+                    <button
+                      type="button"
+                      onClick={onRemove}
+                      className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
+                      aria-label="Remove code block"
+                    >
+                      <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setToolbarOpen(false)}
+                    className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
+                    aria-label="Close toolbar"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <CodeEditor
               value={code}
               onChange={handleCodeChange}
