@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, ChevronDown, Check, FileCode } from "lucide-react";
+import { Copy, ChevronDown, Check, FileCode, Pencil, X } from "lucide-react";
 import { CodeEditor } from "../ui/CodeEditor";
 
 const LANGUAGE_MAP: Record<string, string> = {
@@ -13,29 +13,29 @@ const LANGUAGE_MAP: Record<string, string> = {
 };
 
 const LANGUAGES = [
-  { id: "javascript", label: "JavaScript", ext: ["js", "jsx"], patterns: ["function", "const ", "let ", "=>", "console.log", "import ", "export "] },
-  { id: "typescript", label: "TypeScript", ext: ["ts", "tsx"], patterns: ["interface ", "type ", ": string", ": number", "import ", "export "] },
-  { id: "python", label: "Python", ext: ["py"], patterns: ["def ", "import ", "from ", "print(", "class ", "if __name__"] },
-  { id: "java", label: "Java", ext: ["java"], patterns: ["public class", "public static void", "System.out", "import java"] },
-  { id: "cpp", label: "C++", ext: ["cpp", "cc"], patterns: ["#include", "std::", "int main", "cout <<", "namespace "] },
-  { id: "c", label: "C", ext: ["c"], patterns: ["#include", "int main", "printf", "scanf"] },
-  { id: "csharp", label: "C#", ext: ["cs"], patterns: ["using System", "namespace ", "public class", "Console.WriteLine"] },
-  { id: "go", label: "Go", ext: ["go"], patterns: ["package main", "func main", "fmt.Println", "import "] },
-  { id: "rust", label: "Rust", ext: ["rs"], patterns: ["fn main", "let mut", "println!", "use ", "cargo "] },
-  { id: "php", label: "PHP", ext: ["php"], patterns: ["<?php", "echo ", "$_", "function "] },
-  { id: "ruby", label: "Ruby", ext: ["rb"], patterns: ["def ", "puts ", "require ", "class ", "end"] },
-  { id: "swift", label: "Swift", ext: ["swift"], patterns: ["func ", "var ", "let ", "print(", "import "] },
-  { id: "kotlin", label: "Kotlin", ext: ["kt"], patterns: ["fun main", "val ", "var ", "println(", "package "] },
-  { id: "html", label: "HTML", ext: ["html", "htm"], patterns: ["<div", "<html", "<body", "<script", "<style", "class="] },
-  { id: "css", label: "CSS", ext: ["css", "scss"], patterns: ["{", "}:", "color:", "margin:", "padding:", "@media"] },
-  { id: "scss", label: "SCSS", ext: ["scss"], patterns: ["@", "$", "mixin", "include"] },
-  { id: "json", label: "JSON", ext: ["json"], patterns: ['{"', '":', "[]", "true", "false", "null"] },
-  { id: "sql", label: "SQL", ext: ["sql"], patterns: ["SELECT ", "FROM ", "WHERE ", "JOIN ", "INSERT ", "CREATE TABLE"] },
-  { id: "bash", label: "Bash/Shell", ext: ["sh", "bash"], patterns: ["#!/bin", "echo ", "cd ", "ls ", "grep ", "npm "] },
-  { id: "markdown", label: "Markdown", ext: ["md"], patterns: ["# ", "## ", "- ", "* ", "[", "](", "```"] },
-  { id: "yaml", label: "YAML", ext: ["yaml", "yml"], patterns: [": ", "- ", "  ", "version:", "services:"] },
-  { id: "xml", label: "XML", ext: ["xml"], patterns: ["<?xml", "<", ">", "/>", "xmlns"] },
-  { id: "plaintext", label: "Plain Text", ext: ["txt"], patterns: [] },
+  { id: "javascript", label: "JavaScript", ext: ["js", "jsx"] },
+  { id: "typescript", label: "TypeScript", ext: ["ts", "tsx"] },
+  { id: "python", label: "Python", ext: ["py"] },
+  { id: "java", label: "Java", ext: ["java"] },
+  { id: "cpp", label: "C++", ext: ["cpp", "cc"] },
+  { id: "c", label: "C", ext: ["c"] },
+  { id: "csharp", label: "C#", ext: ["cs"] },
+  { id: "go", label: "Go", ext: ["go"] },
+  { id: "rust", label: "Rust", ext: ["rs"] },
+  { id: "php", label: "PHP", ext: ["php"] },
+  { id: "ruby", label: "Ruby", ext: ["rb"] },
+  { id: "swift", label: "Swift", ext: ["swift"] },
+  { id: "kotlin", label: "Kotlin", ext: ["kt"] },
+  { id: "html", label: "HTML", ext: ["html", "htm"] },
+  { id: "css", label: "CSS", ext: ["css", "scss"] },
+  { id: "scss", label: "SCSS", ext: ["scss"] },
+  { id: "json", label: "JSON", ext: ["json"] },
+  { id: "sql", label: "SQL", ext: ["sql"] },
+  { id: "bash", label: "Bash/Shell", ext: ["sh", "bash"] },
+  { id: "markdown", label: "Markdown", ext: ["md"] },
+  { id: "yaml", label: "YAML", ext: ["yaml", "yml"] },
+  { id: "xml", label: "XML", ext: ["xml"] },
+  { id: "plaintext", label: "Plain Text", ext: ["txt"] },
 ];
 
 interface InlineCodeBlockProps {
@@ -46,17 +46,16 @@ interface InlineCodeBlockProps {
 }
 
 export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLanguage = "javascript", onRemove }: InlineCodeBlockProps) {
-  const [code, setCode] = useState(initialCode);
-  const [language, setLanguage] = useState(initialLanguage);
+  const [isEditing, setIsEditing] = useState(false);
+  const [code, setCode] = useState(() => placeholderRef?.getAttribute("data-code") ?? initialCode);
+  const [language, setLanguage] = useState(() => placeholderRef?.getAttribute("data-language") ?? initialLanguage);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(2 * 22 + 44);
-  const [isFocused, setIsFocused] = useState(false);
   const [toolbarHovered, setToolbarHovered] = useState(false);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const hasUserSetLanguage = useRef(false);
+  const viewModeRef = useRef<HTMLDivElement>(null);
   const monacoMountedRef = useRef(false);
 
   useEffect(() => {
@@ -65,12 +64,12 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
         e.preventDefault();
         e.stopPropagation();
         setLanguageOpen(false);
-        wrapperRef.current?.blur();
+        if (isEditing) setIsEditing(false);
       }
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, []);
+  }, [isEditing]);
 
   useEffect(() => {
     if (!languageOpen) return;
@@ -83,24 +82,12 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [languageOpen]);
 
-  const handleEditorFocus = useCallback(() => {
-    setIsFocused(true);
-  }, []);
-
-  const handleEditorBlur = useCallback(() => {
-    // Don't hide if toolbar is being interacted with or language dropdown is open
-    if (!toolbarHovered && !languageOpen) {
-      setIsFocused(false);
-      setLanguageOpen(false);
-    }
-  }, [toolbarHovered, languageOpen]);
-
-  // Persist language to placeholder for note serialization
   useEffect(() => {
     if (placeholderRef) {
       placeholderRef.dataset.language = language;
+      placeholderRef.dataset.code = code;
     }
-  }, [language, placeholderRef]);
+  }, [language, code, placeholderRef]);
 
   useEffect(() => {
     const lineHeight = 22;
@@ -110,11 +97,9 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     setHeight(newHeight);
   }, [code]);
 
-  // Re-mount when placeholderRef changes (note switching)
   useEffect(() => {
     if (!placeholderRef) return;
     
-    // Clean up old container
     if (containerRef.current) {
       containerRef.current.remove();
       containerRef.current = null;
@@ -132,7 +117,41 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     monacoMountedRef.current = true;
   }, [placeholderRef]);
 
-const handleCodeChange = useCallback((value: string) => {
+  useEffect(() => {
+    if (!isEditing || !viewModeRef.current) return;
+    
+    const highlightCode = async () => {
+      const monaco = (window as any).monaco;
+      if (!monaco) return;
+      
+      const codeElement = viewModeRef.current?.querySelector("code");
+      if (!codeElement) return;
+      
+      codeElement.textContent = code;
+      codeElement.className = `language-${language}`;
+      
+      try {
+        await monaco.editor.colorizeElement(codeElement, {
+          theme: "vs-dark",
+          tabSize: 2,
+        });
+      } catch {
+        // Fallback: just set text content
+        codeElement.textContent = code;
+      }
+    };
+    
+    highlightCode();
+  }, [code, language, isEditing]);
+
+  const syncToPlaceholder = useCallback(() => {
+    if (placeholderRef) {
+      placeholderRef.dataset.code = code;
+      placeholderRef.dataset.language = language;
+    }
+  }, [code, language, placeholderRef]);
+
+  const handleCodeChange = useCallback((value: string) => {
     setCode(value);
     if (placeholderRef) {
       placeholderRef.dataset.code = value;
@@ -140,21 +159,47 @@ const handleCodeChange = useCallback((value: string) => {
     }
   }, [language, placeholderRef]);
 
-const editorPortal = containerRef.current
+  const handleEditorBlur = useCallback(() => {
+    if (!toolbarHovered && !languageOpen) {
+      setIsEditing(false);
+    }
+  }, [toolbarHovered, languageOpen]);
+
+  const handleViewClick = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleLanguageChange = useCallback((newLang: string) => {
+    setLanguage(newLang);
+    hasUserSetLanguage.current = true;
+    setLanguageOpen(false);
+  }, []);
+
+  const handleExtensionInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.trim();
+    if (val.startsWith(".")) {
+      const ext = val.slice(1).toLowerCase();
+      if (LANGUAGE_MAP[ext]) {
+        setLanguage(LANGUAGE_MAP[ext]);
+        hasUserSetLanguage.current = true;
+      }
+    }
+  }, []);
+
+  const hasUserSetLanguage = useRef(false);
+
+  const editorPortal = containerRef.current && isEditing
     ? createPortal(
         <div
           ref={wrapperRef}
           style={{ height: height + "px", minHeight: '68px' }}
           className="inline-code-block-editor relative"
+          onMouseEnter={() => setToolbarHovered(true)}
+          onMouseLeave={() => setToolbarHovered(false)}
         >
-          {/* Toolbar - absolutely positioned INSIDE editor, top */}
           <div
             ref={languageRef}
-            className={`absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12]/80 backdrop-blur-sm border-b border-white/10 transition-opacity duration-150 z-10 ${
-              isFocused ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-            }`}
-            onMouseEnter={() => setToolbarHovered(true)}
-            onMouseLeave={() => setToolbarHovered(false)}
+            className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12]/95 backdrop-blur-sm border-b border-white/10 z-10"
           >
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
               <FileCode className="size-4 text-white/40 shrink-0" />
@@ -176,7 +221,7 @@ const editorPortal = containerRef.current
                       <button
                         key={lang.id}
                         type="button"
-                        onClick={() => { setLanguage(lang.id); hasUserSetLanguage.current = true; setLanguageOpen(false); }}
+                        onClick={() => handleLanguageChange(lang.id)}
                         className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${language === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"}`}
                       >
                         {language === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
@@ -191,16 +236,7 @@ const editorPortal = containerRef.current
                 type="text"
                 placeholder="Type .sql, .js, .py..."
                 className="w-[110px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
-                onChange={(e) => {
-                  const val = e.target.value.trim();
-                  if (val.startsWith(".")) {
-                    const ext = val.slice(1).toLowerCase();
-                    if (LANGUAGE_MAP[ext]) {
-                      setLanguage(LANGUAGE_MAP[ext]);
-                      hasUserSetLanguage.current = true;
-                    }
-                  }
-                }}
+                onChange={handleExtensionInput}
                 onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
                 aria-label="File extension for language"
               />
@@ -239,14 +275,12 @@ const editorPortal = containerRef.current
             </div>
           </div>
 
-          {/* Editor area - fills container */}
-          <div style={{ height: height + "px", paddingTop: isFocused ? 44 : 0 }}>
+          <div style={{ height: height + "px", paddingTop: 44 }}>
             <CodeEditor
               value={code}
               onChange={handleCodeChange}
               language={language}
               height={height + "px"}
-              onFocus={handleEditorFocus}
               onBlur={handleEditorBlur}
             />
           </div>
@@ -255,5 +289,96 @@ const editorPortal = containerRef.current
       )
     : null;
 
-  return editorPortal;
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const viewMode = !isEditing && (
+    <div
+      ref={viewModeRef}
+      className="inline-code-block-view relative"
+      onClick={handleViewClick}
+      style={{ minHeight: '68px', width: '100%' }}
+    >
+      <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12]/80 backdrop-blur-sm border-b border-white/10 transition-opacity duration-150 z-10 opacity-0 hover:opacity-100 pointer-events-none hover:pointer-events-auto">
+        <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
+          <FileCode className="size-4 text-white/40 shrink-0" />
+          <span className="truncate font-mono text-[11px] text-white/60 flex-1">
+            {LANGUAGES.find((l) => l.id === language)?.label ?? language}
+          </span>
+          <input
+            type="text"
+            placeholder="Type .sql, .js, .py..."
+            className="w-[110px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
+            onChange={handleExtensionInput}
+            onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="File extension for language"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={async (e) => {
+              e.stopPropagation();
+              await navigator.clipboard.writeText(code);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            disabled={!code.trim()}
+            className="relative rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-30 group"
+            aria-label="Copy code"
+          >
+            {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+              {copied ? "Copied!" : "Copy"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+            className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white group"
+            aria-label="Edit code"
+          >
+            <Pencil className="size-4" />
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
+              Edit
+            </span>
+          </button>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
+              className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
+              aria-label="Remove code block"
+            >
+              <X className="size-4 text-red-400" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ paddingTop: 44 }}>
+        <pre style={{
+          backgroundColor: "#1e1e1e",
+          color: "#d4d4d4",
+          padding: "16px",
+          borderRadius: "0 0 8px 8px",
+          fontFamily: "'Fira Code', 'Consolas', monospace",
+          fontSize: "14px",
+          lineHeight: "1.5",
+          overflowX: "auto",
+          margin: 0,
+          minHeight: "24px",
+        }}>
+          <code className={`language-${language}`} ref={(el) => { viewModeRef.current = el?.parentElement as HTMLDivElement; }} />
+        </pre>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {viewMode}
+      {editorPortal}
+    </>
+  );
 }
