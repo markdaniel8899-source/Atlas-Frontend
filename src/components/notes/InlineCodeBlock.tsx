@@ -140,14 +140,14 @@ const editorPortal = containerRef.current
     ? createPortal(
         <div
           ref={wrapperRef}
-          style={{ minHeight: height }}
-          className="inline-code-block-editor"
+          style={{ height: height + "px", minHeight: '68px' }}
+          className="inline-code-block-editor relative"
         >
-          {/* Toolbar at top of editor - shows when focused */}
+          {/* Toolbar - absolutely positioned INSIDE editor, top */}
           <div
             ref={languageRef}
-            className={`flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl transition-all duration-150 ${
-              isFocused ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none h-0 py-0 border-0 overflow-hidden"
+            className={`absolute top-0 left-0 right-0 flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12]/80 backdrop-blur-sm border-b border-white/10 transition-opacity duration-150 z-10 ${
+              isFocused ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
             }`}
           >
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0">
@@ -233,17 +233,15 @@ const editorPortal = containerRef.current
             </div>
           </div>
 
-          {/* Editor area */}
-          <div style={{ height: height + "px", minHeight: '68px' }}>
-            <CodeEditor
-              value={code}
-              onChange={handleCodeChange}
-              language={language}
-              height={height + "px"}
-              onFocus={handleEditorFocus}
-              onBlur={handleEditorBlur}
-            />
-          </div>
+          {/* Editor area - fills container */}
+          <CodeEditor
+            value={code}
+            onChange={handleCodeChange}
+            language={language}
+            height={height + "px"}
+            onFocus={handleEditorFocus}
+            onBlur={handleEditorBlur}
+          />
         </div>,
         containerRef.current
       )
