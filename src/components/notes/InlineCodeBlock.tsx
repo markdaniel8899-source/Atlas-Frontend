@@ -54,6 +54,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   const [isFocused, setIsFocused] = useState(false);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const hasUserSetLanguage = useRef(false);
   const monacoMountedRef = useRef(false);
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -97,6 +98,36 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     setHeight(newHeight);
   }, [code]);
 
+  // Track focus on wrapper (toolbar + editor) - only hide when focus leaves entire wrapper
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const onFocusIn = () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+      setIsFocused(true);
+    };
+
+    const onFocusOut = (e: FocusEvent) => {
+      // Check if focus is moving to an element OUTSIDE the wrapper
+      const relatedTarget = e.relatedTarget as Node | null;
+      if (!wrapper.contains(relatedTarget)) {
+        blurTimeoutRef.current = setTimeout(() => setIsFocused(false), 50);
+      }
+    };
+
+    wrapper.addEventListener("focusin", onFocusIn);
+    wrapper.addEventListener("focusout", onFocusOut);
+    return () => {
+      wrapper.removeEventListener("focusin", onFocusIn);
+      wrapper.removeEventListener("focusout", onFocusOut);
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    };
+  }, []);
+
   // Re-mount when placeholderRef changes (note switching)
   useEffect(() => {
     if (!placeholderRef) return;
@@ -127,32 +158,15 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     }
   }, [language, placeholderRef]);
 
-  const handleFocus = useCallback(() => {
-    if (blurTimeoutRef.current) {
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = null;
-    }
-    setIsFocused(true);
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    // Delay to allow clicking on toolbar without hiding it
-    blurTimeoutRef.current = setTimeout(() => {
-      setIsFocused(false);
-    }, 100);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
-    };
-  }, []);
+  
 
 const editorPortal = containerRef.current
     ? createPortal(
         <div 
+          ref={wrapperRef}
           style={{ minHeight: height }} 
           className="inline-code-block-editor"
+          tabIndex={-1}
         >
           {isFocused && (
             <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl" ref={languageRef}>
@@ -247,8 +261,6 @@ const editorPortal = containerRef.current
               onChange={handleCodeChange}
               language={language}
               height={height + "px"}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
             />
           </div>
         </div>,
