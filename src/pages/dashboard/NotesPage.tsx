@@ -480,7 +480,13 @@ export default function NotesPage() {
   const handleInput = () => {
     const id = activeRef.current;
     if (!id || !editorRef.current) return;
-    const html = editorRef.current.innerHTML;
+    
+    // Clone editor content and strip editor containers (Monaco DOM) before saving
+    const clone = editorRef.current.cloneNode(true) as HTMLElement;
+    const editorContainers = clone.querySelectorAll('[data-editor-container]');
+    editorContainers.forEach((container) => container.remove());
+    
+    const html = clone.innerHTML;
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => persist(id, { html }), 600);
   };
