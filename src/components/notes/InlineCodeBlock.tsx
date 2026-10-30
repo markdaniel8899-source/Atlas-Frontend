@@ -51,6 +51,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [height, setHeight] = useState(2 * 22 + 44);
+  const [showHeader, setShowHeader] = useState(false);
   const languageRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLElement>(null);
   const hasUserSetLanguage = useRef(false);
@@ -121,8 +122,16 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
 
   const editorPortal = containerRef.current
     ? createPortal(
-        <div style={{ minHeight: height }} className="inline-code-block-editor">
-          <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl">
+        <div 
+          style={{ minHeight: height }} 
+          className="inline-code-block-editor"
+          onMouseEnter={() => setShowHeader(true)}
+          onMouseLeave={() => setShowHeader(false)}
+          onFocus={() => setShowHeader(true)}
+          onBlur={() => setShowHeader(false)}
+        >
+          {showHeader && (
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0a0a12] border border-white/10 rounded-t-xl">
             <div className="relative flex items-center gap-1.5 flex-1 min-w-0" ref={languageRef}>
               <FileCode className="size-4 text-white/40 shrink-0" />
               
@@ -206,6 +215,7 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
               <kbd className="px-2 py-0.5 text-[10px] font-mono text-white/30 bg-white/[0.03] border border-white/10 rounded">Esc to exit</kbd>
             </div>
           </div>
+          )}
 
           <div style={{ height: `${height}px`, minHeight: '68px' }}>
             <CodeEditor
