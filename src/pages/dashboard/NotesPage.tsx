@@ -419,7 +419,7 @@ export default function NotesPage() {
       editorRef.current.innerHTML = sanitizeHtml(note.html);
       
       // Restore code block editors from placeholders in the loaded HTML
-      const placeholders = editorRef.current.querySelectorAll('.inline-code-block-placeholder');
+      const placeholders = editorRef.current.querySelectorAll('.inline-code-block-placeholder') as NodeListOf<HTMLElement>;
       if (placeholders.length > 0) {
         const restored = new Map<string, { placeholderRef: HTMLElement; initialCode: string; initialLanguage: string }>();
         placeholders.forEach((placeholder) => {
@@ -427,7 +427,7 @@ export default function NotesPage() {
           const language = placeholder.dataset.language ?? 'javascript';
           const id = Math.random().toString(36).slice(2);
           restored.set(id, {
-            placeholderRef: placeholder as HTMLElement,
+            placeholderRef: placeholder,
             initialCode: code,
             initialLanguage: language,
           });
