@@ -41,13 +41,15 @@ const LANGUAGES = [
 interface InlineCodeBlockProps {
   /** Placeholder element inside contentEditable where the editor mounts */
   placeholderRef: HTMLElement & { appendChild: (node: Node) => Node };
-  /** Called when user saves (Escape or Ctrl+Enter) */
+  /** Called when user explicitly saves (Save button or Ctrl+Enter) */
   onSave?: (code: string, language: string) => void;
+  /** Called when user exits editor without saving (Escape) - keeps block editable */
+  onExit?: (code: string, language: string) => void;
   /** Called when user cancels (clicks X button) */
   onCancel?: () => void;
 }
 
-export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCodeBlockProps) {
+export function InlineCodeBlock({ placeholderRef, onSave, onExit, onCancel }: InlineCodeBlockProps) {
   const [code, setCode] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -63,7 +65,8 @@ export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCode
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onSave?.(code, language);
+        onExit?.(code, language);
+        return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -72,7 +75,7 @@ export function InlineCodeBlock({ placeholderRef, onSave, onCancel }: InlineCode
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [onSave, code, language]);
+  }, [onSave, onExit, code, language]);
 
   useEffect(() => {
     if (!languageOpen) return;
