@@ -82,25 +82,13 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [languageOpen]);
 
-  // Focus scope: show toolbar when focus enters wrapper, hide when leaves
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) return;
+  const handleEditorFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
 
-    const onFocusIn = () => setIsFocused(true);
-    const onFocusOut = (e: FocusEvent) => {
-      if (!wrapper.contains(e.relatedTarget as Node)) {
-        setIsFocused(false);
-        setLanguageOpen(false);
-      }
-    };
-
-    wrapper.addEventListener("focusin", onFocusIn);
-    wrapper.addEventListener("focusout", onFocusOut);
-    return () => {
-      wrapper.removeEventListener("focusin", onFocusIn);
-      wrapper.removeEventListener("focusout", onFocusOut);
-    };
+  const handleEditorBlur = useCallback(() => {
+    setIsFocused(false);
+    setLanguageOpen(false);
   }, []);
 
   // Persist language to placeholder for note serialization
@@ -154,7 +142,6 @@ const editorPortal = containerRef.current
           ref={wrapperRef}
           style={{ minHeight: height }}
           className="inline-code-block-editor"
-          tabIndex={-1}
         >
           {/* Toolbar at top of editor - shows when focused */}
           <div
@@ -253,6 +240,8 @@ const editorPortal = containerRef.current
               onChange={handleCodeChange}
               language={language}
               height={height + "px"}
+              onFocus={handleEditorFocus}
+              onBlur={handleEditorBlur}
             />
           </div>
         </div>,
