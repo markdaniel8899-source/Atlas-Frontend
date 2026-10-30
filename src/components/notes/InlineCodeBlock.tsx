@@ -81,6 +81,13 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [languageOpen]);
 
+  // Persist language to placeholder for note serialization
+  useEffect(() => {
+    if (placeholderRef) {
+      placeholderRef.dataset.language = language;
+    }
+  }, [language, placeholderRef]);
+
   useEffect(() => {
     const lineHeight = 22;
     const headerHeight = 44;
@@ -105,7 +112,12 @@ export function InlineCodeBlock({ placeholderRef, initialCode = "", initialLangu
 
   const handleCodeChange = useCallback((value: string) => {
     setCode(value);
-  }, []);
+    // Persist code to placeholder for note serialization
+    if (placeholderRef) {
+      placeholderRef.dataset.code = value;
+      placeholderRef.dataset.language = language;
+    }
+  }, [language, placeholderRef]);
 
   const editorPortal = containerRef.current
     ? createPortal(

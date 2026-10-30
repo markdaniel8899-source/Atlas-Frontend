@@ -417,6 +417,25 @@ export default function NotesPage() {
     const note = notes.find((n) => n.id === activeId);
     if (editorRef.current && note) {
       editorRef.current.innerHTML = sanitizeHtml(note.html);
+      
+      // Restore code block editors from placeholders in the loaded HTML
+      const placeholders = editorRef.current.querySelectorAll('.inline-code-block-placeholder');
+      if (placeholders.length > 0) {
+        const restored = new Map<string, { placeholderRef: HTMLElement; initialCode: string; initialLanguage: string }>();
+        placeholders.forEach((placeholder) => {
+          const code = placeholder.dataset.code ?? '';
+          const language = placeholder.dataset.language ?? 'javascript';
+          const id = Math.random().toString(36).slice(2);
+          restored.set(id, {
+            placeholderRef: placeholder as HTMLElement,
+            initialCode: code,
+            initialLanguage: language,
+          });
+        });
+        setCodeBlockEditing(restored);
+      } else {
+        setCodeBlockEditing(new Map());
+      }
     }
     // selectionMode is a dep so leaving multi-select repopulates the editor
     // (the contentEditable is remounted after being hidden).
