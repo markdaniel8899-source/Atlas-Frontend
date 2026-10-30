@@ -235,14 +235,14 @@ export async function resolveSession(): Promise<AuthUser | null> {
     return null;
   }
 
-  const { data, error } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (error || !data.user) {
+  if (!session?.user) {
     clearSession();
     return null;
   }
 
-  const user = toAuthUser(data.user);
+  const user = toAuthUser(session.user);
   writeCache(user);
   return user;
 }
