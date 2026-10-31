@@ -147,7 +147,10 @@ export function NotificationBell() {
               )}
             </div>
 
-            <div className="relative max-h-[min(26rem,70vh)] overflow-y-auto">
+            <div
+              data-lenis-prevent
+              className="relative max-h-[min(26rem,70vh)] overflow-y-auto overscroll-contain"
+            >
               {items.length === 0 ? (
                 <div className="px-5 py-10 text-center">
                   <Bell className="mx-auto size-6 text-white/20" />
