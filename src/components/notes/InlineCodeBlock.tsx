@@ -1,317 +1,489 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Copy, FileCode } from "lucide-react";
+import { Check, ChevronDown, Copy, FileCode, X } from "lucide-react";
 import { CodeEditor } from "../ui/CodeEditor";
-
-const LANGUAGES = [
-  { id: "javascript", label: "JavaScript", ext: ["js", "jsx"] },
-  { id: "typescript", label: "TypeScript", ext: ["ts", "tsx"] },
-  { id: "python", label: "Python", ext: ["py"] },
-  { id: "java", label: "Java", ext: ["java"] },
-  { id: "cpp", label: "C++", ext: ["cpp", "cc"] },
-  { id: "c", label: "C", ext: ["c"] },
-  { id: "csharp", label: "C#", ext: ["cs"] },
-  { id: "go", label: "Go", ext: ["go"] },
-  { id: "rust", label: "Rust", ext: ["rs"] },
-  { id: "php", label: "PHP", ext: ["php"] },
-  { id: "ruby", label: "Ruby", ext: ["rb"] },
-  { id: "swift", label: "Swift", ext: ["swift"] },
-  { id: "kotlin", label: "Kotlin", ext: ["kt"] },
-  { id: "html", label: "HTML", ext: ["html", "htm"] },
-  { id: "css", label: "CSS", ext: ["css", "scss"] },
-  { id: "json", label: "JSON", ext: ["json"] },
-  { id: "sql", label: "SQL", ext: ["sql"] },
-  { id: "bash", label: "Bash/Shell", ext: ["sh", "bash"] },
-  { id: "markdown", label: "Markdown", ext: ["md"] },
-  { id: "yaml", label: "YAML", ext: ["yaml", "yml"] },
-  { id: "xml", label: "XML", ext: ["xml"] },
-  { id: "plaintext", label: "Plain Text", ext: ["txt"] },
-];
-
-const LANGUAGE_MAP: Record<string, string> = {};
-LANGUAGES.forEach((lang) => {
-  lang.ext.forEach((ext) => {
-    LANGUAGE_MAP[ext] = lang.id;
-  });
-});
+import {
+  extensionForLanguage,
+  findCodeBlockElement,
+  getLanguageOptions,
+  languageLabel,
+  normalizeLanguageId,
+  resolveLanguageInput,
+} from "./codeBlock";
 
 interface InlineCodeBlockProps {
   id: string;
   code: string;
   language: string;
-  onChange: (code: string, language: string) => void;
+  editing: boolean;
+  containerRef: { readonly current: HTMLDivElement | null };
+  onDraftChange: (code: string, language: string) => void;
+  onCommit: (code: string, language: string) => void;
+  onExit: () => void;
   onRemove?: () => void;
 }
 
-function simpleHighlight(code: string, language: string): string {
-  const escaped = code
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">");
-  
-  if (language === "plaintext") return escaped;
+const TOOLBAR_HEIGHT = 44;
 
-  const keywords = {
-    javascript: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|finally|throw|new|this|super|extends|implements|interface|type|typeof|instanceof|delete|in|of|do|switch|case|default|break|continue|debugger|with|yield)\b/g,
-    typescript: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|finally|throw|new|this|super|extends|implements|interface|type|typeof|instanceof|delete|in|of|do|switch|case|default|break|continue|debugger|with|yield|enum|namespace|declare|module|abstract|public|private|protected|readonly|static|get|set)\b/g,
-    python: /\b(def|class|if|else|elif|for|while|import|from|as|return|try|except|finally|raise|with|lambda|yield|global|nonlocal|assert|pass|break|continue|del|or|and|not|in|is|None|True|False)\b/g,
-    html: /(<\/?)([a-zA-Z][a-zA-Z0-9]*)/g,
-    css: /\b([a-zA-Z-]+)(?=\s*:)/g,
-    json: /"([^"]+)"(?=\s*:)/g,
-  };
-
-  const kwRegex = keywords[language as keyof typeof keywords];
-  if (!kwRegex) return escaped;
-
-  return escaped.replace(kwRegex, (match) => `<span class="keyword">${match}</span>`);
+function extensionLabel(extension: string): string {
+  return extension.replace(/^\./, "");
 }
 
-export function InlineCodeBlock({ id, code, language, onChange, onRemove }: InlineCodeBlockProps) {
-  const [isEditing, setIsEditing] = useState(false);
+export function InlineCodeBlock({
+  id,
+  code,
+  language,
+  editing,
+  containerRef,
+  onDraftChange,
+  onCommit,
+  onExit,
+  onRemove,
+}: InlineCodeBlockProps) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [toolbarHovered, setToolbarHovered] = useState(false);
-  const [localCode, setLocalCode] = useState(code);
-  const [localLanguage, setLocalLanguage] = useState(language);
-  const languageRef = useRef<HTMLDivElement>(null);
-  const targetRef = useRef<HTMLElement | null>(null);
+  const [activeLanguage, setActiveLanguage] = useState(() =>
+    normalizeLanguageId(language),
+  );
+  const [extensionInput, setExtensionInput] = useState(() =>
+    extensionLabel(extensionForLanguage(language)),
+  );
+  const [lineCount, setLineCount] = useState(
+    () => Math.max(1, code.split("\n").length),
+  );
+
+  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const languageMenuRef = useRef<HTMLDivElement | null>(null);
+  const extensionInputRef = useRef<HTMLInputElement | null>(null);
+  const codeRef = useRef(code);
+  const languageRef = useRef(normalizeLanguageId(language));
+  const editingRef = useRef(editing);
+  const closedRef = useRef(false);
+  const baselineRef = useRef({
+    code,
+    language: normalizeLanguageId(language),
+  });
+  const blurTimerRef = useRef<number | null>(null);
+  const copyTimerRef = useRef<number | null>(null);
+  const lastPointerDownRef = useRef(0);
+  const latestRef = useRef({
+    onCommit,
+    onExit,
+    onDraftChange,
+    onRemove,
+  });
 
   useEffect(() => {
-    setLocalCode(code);
-  }, [code]);
+    latestRef.current = { onCommit, onExit, onDraftChange, onRemove };
+  });
 
   useEffect(() => {
-    setLocalLanguage(language);
-  }, [language]);
+    editingRef.current = editing;
+  }, [editing]);
 
-  // Find the target atomic-code-block element in the editor
+  // Find the atomic block that this React portal should dock into.
   useEffect(() => {
-    const findTarget = () => {
-      const target = document.querySelector(`[data-code-block-id="${id}"]`) as HTMLElement | null;
-      targetRef.current = target;
-      if (target && isEditing) {
-        // Update the view mode display when not editing
-        updateViewMode(target);
+    if (!editing) {
+      setTarget(null);
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const find = () => findCodeBlockElement(container, id);
+
+    const existing = find();
+    if (existing) {
+      setTarget(existing);
+      return;
+    }
+
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      const next = find();
+      if (next) {
+        setTarget(next);
+        window.clearInterval(timer);
+      } else if (attempts >= 20) {
+        window.clearInterval(timer);
+      }
+    }, 50);
+
+    return () => window.clearInterval(timer);
+  }, [editing, id, containerRef]);
+
+  // Reset the local editing session whenever the block enters edit mode.
+  useEffect(() => {
+    if (!editing) return;
+    const normalized = normalizeLanguageId(language);
+    editingRef.current = true;
+    closedRef.current = false;
+    baselineRef.current = { code, language: normalized };
+    codeRef.current = code;
+    languageRef.current = normalized;
+    setActiveLanguage(normalized);
+    setExtensionInput(extensionLabel(extensionForLanguage(normalized)));
+    setLineCount(Math.max(1, code.split("\n").length));
+    setLanguageOpen(false);
+    setCopied(false);
+  }, [editing, code, language]);
+
+  // Reserve the block's space while the overlay is mounted so following
+  // content is pushed down instead of being covered by the editor.
+  const editorHeight = Math.max(140, lineCount * 21 + 44);
+  const overlayHeight = editorHeight + TOOLBAR_HEIGHT;
+
+  useEffect(() => {
+    if (!editing || !target) return;
+    target.dataset.editing = "true";
+    target.style.minHeight = `${overlayHeight}px`;
+    return () => {
+      delete target.dataset.editing;
+      target.style.removeProperty("min-height");
+    };
+  }, [editing, target, overlayHeight]);
+
+  // Real unmount (note switch, selection mode, delete) must not lose work.
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current !== null) {
+        window.clearTimeout(blurTimerRef.current);
+        blurTimerRef.current = null;
+      }
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = null;
+      }
+      if (
+        !closedRef.current &&
+        editingRef.current &&
+        (codeRef.current !== baselineRef.current.code ||
+          languageRef.current !== baselineRef.current.language)
+      ) {
+        closedRef.current = true;
+        latestRef.current.onCommit(codeRef.current, languageRef.current);
       }
     };
-    findTarget();
-    // Retry in case the element hasn't been inserted yet
-    const interval = setInterval(findTarget, 100);
-    return () => clearInterval(interval);
-  }, [id, isEditing]);
+  }, []);
 
-  // Listen for edit trigger from the toolbar click
-  useEffect(() => {
-    const handleEditTrigger = (e: CustomEvent) => {
-      if (e.detail.id === id) {
-        setIsEditing(true);
+  const finish = useCallback((notifyExit: boolean) => {
+    if (!editingRef.current || closedRef.current) return;
+    closedRef.current = true;
+    if (blurTimerRef.current !== null) {
+      window.clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+    latestRef.current.onCommit(codeRef.current, languageRef.current);
+    if (notifyExit) latestRef.current.onExit();
+  }, []);
+
+  const handleCodeChange = useCallback((nextCode: string) => {
+    codeRef.current = nextCode;
+    setLineCount(Math.max(1, nextCode.split("\n").length));
+    latestRef.current.onDraftChange(nextCode, languageRef.current);
+  }, []);
+
+  const applyLanguage = useCallback((nextLanguage: string) => {
+    const normalized = normalizeLanguageId(nextLanguage);
+    languageRef.current = normalized;
+    setActiveLanguage(normalized);
+    setExtensionInput(extensionLabel(extensionForLanguage(normalized)));
+    latestRef.current.onDraftChange(codeRef.current, normalized);
+  }, []);
+
+  const handleExtensionInput = useCallback(
+    (value: string) => {
+      setExtensionInput(value);
+      const resolved = resolveLanguageInput(value);
+      if (resolved && resolved.id !== languageRef.current) {
+        applyLanguage(resolved.id);
       }
+    },
+    [applyLanguage],
+  );
+
+  const handleEditorBlur = useCallback(() => {
+    if (blurTimerRef.current !== null) {
+      window.clearTimeout(blurTimerRef.current);
+    }
+    blurTimerRef.current = window.setTimeout(() => {
+      blurTimerRef.current = null;
+      if (!editingRef.current || closedRef.current) return;
+      if (Date.now() - lastPointerDownRef.current < 500) return;
+      const activeElement = document.activeElement;
+      if (activeElement && overlayRef.current?.contains(activeElement)) {
+        return;
+      }
+      finish(true);
+    }, 160);
+  }, [finish]);
+
+  // Clicking outside the overlay finishes editing immediately. This also
+  // covers the case where focus already left Monaco for a toolbar button.
+  useEffect(() => {
+    if (!editing) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const node = event.target as Node;
+      if (overlayRef.current?.contains(node)) return;
+      if (target?.contains(node)) return;
+      finish(true);
     };
-    document.addEventListener('code-block-edit', handleEditTrigger as EventListener);
-    return () => document.removeEventListener('code-block-edit', handleEditTrigger as EventListener);
-  }, [id]);
-
-  const updateViewMode = (target: HTMLElement) => {
-    if (isEditing) return;
-    // Update the code display in the view mode (the pre/code inside the atomic-code-block)
-    const pre = target.querySelector('pre');
-    if (pre) {
-      const codeEl = pre.querySelector('code');
-      if (codeEl) {
-        codeEl.className = `language-${localLanguage}`;
-        codeEl.innerHTML = simpleHighlight(localCode, localLanguage);
-      }
-    }
-    // Update data attributes
-    target.dataset.code = localCode;
-    target.dataset.language = localLanguage;
-  };
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [editing, target, finish]);
 
   useEffect(() => {
-    if (!isEditing && targetRef.current) {
-      updateViewMode(targetRef.current);
-    }
-  }, [localCode, localLanguage, isEditing]);
+    if (!editing) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
+      const widget = target?.querySelector(
+        ".suggest-widget.visible, .parameter-hints-widget.visible",
+      );
+      if (widget) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (languageOpen) {
         setLanguageOpen(false);
-        if (isEditing) setIsEditing(false);
+        return;
       }
+      if (document.activeElement === extensionInputRef.current) {
+        extensionInputRef.current?.blur();
+        return;
+      }
+      finish(true);
     };
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [isEditing]);
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [editing, languageOpen, target, finish]);
 
   useEffect(() => {
     if (!languageOpen) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (!languageRef.current?.contains(e.target as Node)) {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!languageMenuRef.current?.contains(event.target as Node)) {
         setLanguageOpen(false);
       }
     };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [languageOpen]);
 
-  const handleCodeChange = useCallback((value: string) => {
-    setLocalCode(value);
-  }, []);
-
-  const handleEditorBlur = useCallback(() => {
-    if (!toolbarHovered && !languageOpen) {
-      setIsEditing(false);
-      onChange(localCode, localLanguage);
-    }
-  }, [toolbarHovered, languageOpen, localCode, localLanguage, onChange]);
-
-  const handleLanguageChange = useCallback((newLang: string) => {
-    setLocalLanguage(newLang);
-    setLanguageOpen(false);
-  }, []);
-
-  const handleExtensionInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.trim();
-    if (val.startsWith(".")) {
-      const ext = val.slice(1).toLowerCase();
-      if (LANGUAGE_MAP[ext]) {
-        setLocalLanguage(LANGUAGE_MAP[ext]);
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(codeRef.current);
+      setCopied(true);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
       }
+      copyTimerRef.current = window.setTimeout(() => {
+        setCopied(false);
+        copyTimerRef.current = null;
+      }, 1600);
+    } catch {
+      setCopied(false);
     }
   }, []);
 
-  // View mode is now handled by the actual DOM inside contentEditable
-  // This component only renders the EDIT mode as a portal overlay
+  const handleRemove = useCallback(() => {
+    closedRef.current = true;
+    latestRef.current.onRemove?.();
+  }, []);
 
-  const EditModeOverlay = () => {
-    const target = targetRef.current;
-    if (!target || !isEditing) return null;
+  if (!editing || !target) return null;
 
-    // Get target position for portal positioning
-    const rect = target.getBoundingClientRect();
-    const editorRect = target.closest('[contenteditable="true"]')?.getBoundingClientRect();
-    
-    if (!editorRect) return null;
+  const extensionResolved = resolveLanguageInput(extensionInput) !== null;
+  const extensionInvalid =
+    extensionInput.trim().length > 0 && !extensionResolved;
 
-    const top = rect.top - editorRect.top + target.closest('[contenteditable="true"]')!.scrollTop;
-    const left = rect.left - editorRect.left + target.closest('[contenteditable="true"]')!.scrollLeft;
-    const height = rect.height;
-
-    return createPortal(
+  return createPortal(
+    <div
+      ref={overlayRef}
+      data-editor-container="true"
+      className="atomic-code-block-editor"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: overlayHeight,
+        zIndex: 30,
+        borderRadius: 9,
+      }}
+      onMouseDownCapture={() => {
+        lastPointerDownRef.current = Date.now();
+      }}
+      onKeyDown={(event) => event.stopPropagation()}
+      onKeyUp={(event) => event.stopPropagation()}
+      onBlur={(event) => {
+        const next = event.relatedTarget as Node | null;
+        if (
+          next &&
+          (overlayRef.current?.contains(next) ||
+            target.contains(next))
+        ) {
+          return;
+        }
+        window.setTimeout(() => {
+          if (!editingRef.current || closedRef.current) return;
+          if (Date.now() - lastPointerDownRef.current < 500) return;
+          const active = document.activeElement;
+          if (active && overlayRef.current?.contains(active)) return;
+          finish(true);
+        }, 0);
+      }}
+    >
       <div
-        className="atomic-code-block-editor-overlay relative"
-        onMouseEnter={() => setToolbarHovered(true)}
-        onMouseLeave={() => setToolbarHovered(false)}
-        style={{
-          position: 'absolute',
-          top: top,
-          left: left,
-          width: rect.width,
-          minHeight: height,
-          zIndex: 100,
-          pointerEvents: 'auto',
-        }}
+        className="flex h-11 items-center gap-2 rounded-t-[9px] border-b border-white/10 bg-[#0d0d16]/95 px-2.5 backdrop-blur-sm sm:px-3"
+        style={{ height: TOOLBAR_HEIGHT }}
       >
-        <div
-          ref={languageRef}
-          className="absolute top-0 left-0 right-0 flex items-center gap-2 px-3 py-2 bg-[#0a0a12]/95 backdrop-blur-sm border-b border-white/10 z-10"
-        >
-          <div className="relative flex items-center gap-2 flex-1 min-w-0">
-            <FileCode className="size-4 text-white/40 shrink-0" />
+        <FileCode className="hidden size-4 shrink-0 text-white/35 sm:block" />
 
-            <div className="relative flex-1 min-w-0">
-              <button
-                type="button"
-                onClick={() => setLanguageOpen(!languageOpen)}
-                className="flex items-center gap-1 w-full rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
-                aria-haspopup="listbox"
-                aria-expanded={languageOpen}
-              >
-                <span className="truncate font-mono flex-1">{LANGUAGES.find((l) => l.id === localLanguage)?.label ?? localLanguage}</span>
-                <ChevronDown className={`size-3.5 shrink-0 transition-transform ${languageOpen ? "rotate-180 text-[#cf9eff]" : "text-white/35"}`} />
-              </button>
-              {languageOpen && (
-                <div className="absolute left-0 top-full mt-1 z-10 min-w-[180px] max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-[#111] py-1 shadow-md">
-                  {LANGUAGES.map((lang) => (
-                    <button
-                      key={lang.id}
-                      type="button"
-                      onClick={() => handleLanguageChange(lang.id)}
-                      className={`flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm transition-colors ${localLanguage === lang.id ? "bg-[#cf9eff]/12 text-[#cf9eff]" : "hover:bg-white/[0.07] text-white/75"}`}
-                    >
-                      {localLanguage === lang.id && <Check className="size-3.5 shrink-0 text-[#cf9eff]" />}
-                      <span className="truncate font-mono">{lang.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <input
-              type="text"
-              placeholder="Type .sql, .js, .py..."
-              className="w-[110px] min-w-0 rounded border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:border-[#cf9eff]/45 focus:bg-white/[0.06] focus:outline-none font-mono text-[10px]"
-              onChange={handleExtensionInput}
-              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-              aria-label="File extension for language"
+        <div ref={languageMenuRef} className="relative min-w-0">
+          <button
+            type="button"
+            onClick={() => setLanguageOpen((current) => !current)}
+            className="flex h-7 max-w-[138px] items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.07] hover:text-white"
+            aria-haspopup="listbox"
+            aria-expanded={languageOpen}
+            aria-label="Code language"
+          >
+            <span className="truncate font-mono">
+              {languageLabel(activeLanguage)}
+            </span>
+            <ChevronDown
+              className={`size-3.5 shrink-0 transition-transform ${
+                languageOpen
+                  ? "rotate-180 text-[#cf9eff]"
+                  : "text-white/35"
+              }`}
             />
-          </div>
+          </button>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={async () => {
-                await navigator.clipboard.writeText(localCode);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-              disabled={!localCode.trim()}
-              className="relative rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-30 group"
-              aria-label="Copy code"
+          {languageOpen && (
+            <div
+              role="listbox"
+              aria-label="Choose code language"
+              data-lenis-prevent
+              className="absolute left-0 top-full z-50 mt-1 max-h-64 w-60 overflow-y-auto overscroll-contain rounded-lg border border-white/10 bg-[#111] py-1 shadow-xl"
             >
-              {copied ? <Check className="size-4 text-green-400" /> : <Copy className="size-4" />}
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap">
-                {copied ? "Copied!" : "Copy"}
-              </span>
-            </button>
-            {onRemove && (
-              <button
-                type="button"
-                onClick={onRemove}
-                className="rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white"
-                aria-label="Remove code block"
-              >
-                <svg className="size-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
+              {getLanguageOptions().map((option) => {
+                const selected = option.id === activeLanguage;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      applyLanguage(option.id);
+                      setLanguageOpen(false);
+                    }}
+                    className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors ${
+                      selected
+                        ? "bg-[#cf9eff]/12 text-[#cf9eff]"
+                        : "text-white/70 hover:bg-white/[0.07] hover:text-white"
+                    }`}
+                  >
+                    {selected ? (
+                      <Check className="size-3.5 shrink-0" />
+                    ) : (
+                      <span className="size-3.5 shrink-0" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate font-mono">
+                      {option.label}
+                    </span>
+                    {option.extension && (
+                      <span className="shrink-0 font-mono text-[10px] text-white/30">
+                        {option.extension}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        <div style={{ paddingTop: 44, minHeight: height - 44 }}>
-          <CodeEditor
-            value={localCode}
-            onChange={handleCodeChange}
-            language={localLanguage}
-            height={`${Math.max(height - 44, 120)}px`}
-            onBlur={handleEditorBlur}
+        <div className="shrink-0">
+          <input
+            ref={extensionInputRef}
+            type="text"
+            value={extensionInput}
+            onChange={(event) => handleExtensionInput(event.target.value)}
+            onBlur={() =>
+              setExtensionInput(
+                extensionLabel(extensionForLanguage(activeLanguage)),
+              )
+            }
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === "Enter") {
+                event.preventDefault();
+                extensionInputRef.current?.blur();
+              }
+            }}
+            placeholder="js, py, sql"
+            aria-label="File extension, for example .sql"
+            aria-invalid={extensionInvalid}
+            spellCheck={false}
+            autoComplete="off"
+            className={`h-7 w-[92px] rounded-md border bg-white/[0.04] px-2 font-mono text-[11px] text-white placeholder:font-sans placeholder:text-white/30 focus:bg-white/[0.07] focus:outline-none sm:w-[118px] ${
+              extensionInvalid
+                ? "border-red-400/50 focus:border-red-400/70"
+                : "border-white/10 focus:border-[#cf9eff]/45"
+            }`}
           />
         </div>
-      </div>,
-      document.body
-    );
-  };
 
-  // Only render the edit mode overlay as a portal
-  // View mode is handled by the actual DOM inside contentEditable
-  return (
-    <>
-      <EditModeOverlay />
-    </>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void handleCopy()}
+            className="relative rounded p-1.5 text-white/40 transition-colors hover:bg-white/[0.07] hover:text-white"
+            aria-label="Copy code"
+          >
+            {copied ? (
+              <Check className="size-4 text-green-400" />
+            ) : (
+              <Copy className="size-4" />
+            )}
+          </button>
+          {onRemove && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="rounded p-1.5 text-white/40 transition-colors hover:bg-red-500/10 hover:text-red-300"
+              aria-label="Remove code block"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="overflow-hidden rounded-b-[9px] bg-[#1e1e1e]"
+        style={{ height: editorHeight }}
+      >
+        <CodeEditor
+          value={code}
+          onChange={handleCodeChange}
+          language={activeLanguage}
+          height={`${editorHeight}px`}
+          onBlur={handleEditorBlur}
+          wordWrap="off"
+          compact
+          bare
+          placeholder="Start typing code…"
+        />
+      </div>
+    </div>,
+    target,
   );
 }

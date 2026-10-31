@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -27,6 +27,15 @@ import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { InlineCodeBlock } from "../../components/notes/InlineCodeBlock";
+import {
+  buildNotesExportHtml,
+  CODE_BLOCK_CSS,
+  findCodeBlockElement,
+  isLanguageReady,
+  normalizeLanguageId,
+  renderCodeBlockViewHtml,
+  renderCodeBlockViewHtmlAsync,
+} from "../../components/notes/codeBlock";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import { supabase } from "../../lib/supabase";
@@ -246,6 +255,9 @@ export default function NotesPage() {
   const activeRef = useRef<string | null>(activeId);
   const codeBlocksRef = useRef<Array<{ id: string; code: string; language: string }>>([]);
   const savedRangeRef = useRef<Range | null>(null);
+  const editingBlockIdRef = useRef<string | null>(null);
+  const saveNoteContentRef = useRef<() => void>(() => {});
+  const draftSaveRef = useRef<number | null>(null);
 
   // Multi-select state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -253,6 +265,7 @@ export default function NotesPage() {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
   const [codeBlocks, setCodeBlocks] = useState<Array<{ id: string; code: string; language: string }>>([]);
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [courseMenuOpen, setCourseMenuOpen] = useState(false);
   const courseMenuRef = useRef<HTMLDivElement>(null);
@@ -415,101 +428,121 @@ export default function NotesPage() {
     });
   }, [notes, courses]);
 
-useEffect(() => {
-    activeRef.current = activeId;
-    const note = notes.find((n) => n.id === activeId);
-    if (editorRef.current && note) {
-      try {
-        editorRef.current.innerHTML = sanitizeHtml(note.html);
-        
-        // Restore code blocks from atomic-code-block elements in the loaded HTML
-        const blockElements = Array.from(editorRef.current.querySelectorAll('.atomic-code-block')) as HTMLElement[];
-        if (blockElements.length > 0) {
-          const restored = blockElements
-            .filter((el) => el.dataset.codeBlockId)
-            .map((el) => {
-              // Ensure each block has the view mode HTML (toolbar + pre/code)
-              if (!el.querySelector('.atomic-code-block-toolbar')) {
-                // Add toolbar
-                const toolbar = document.createElement('div');
-                toolbar.className = 'atomic-code-block-toolbar';
-                toolbar.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; height: 44px; background: rgba(10, 10, 18, 0.8); backdrop-filter: blur(4px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; padding: 0 12px; opacity: 0; transition: opacity 0.15s; pointer-events: none;';
-                const langLabel = el.dataset.language ?? 'javascript';
-                toolbar.innerHTML = `
-                  <span class="file-code-icon" style="color: rgba(255,255,255,0.4);">📄</span>
-                  <span style="font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.6); flex: 1;">${langLabel}</span>
-                  <button class="copy-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Copy">📋</button>
-                  <button class="edit-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Edit">✏️</button>
-                `;
-                el.insertBefore(toolbar, el.firstChild);
-                
-                // Add hover effect
-                el.addEventListener('mouseenter', () => {
-                  toolbar.style.opacity = '1';
-                  toolbar.style.pointerEvents = 'auto';
-                });
-                el.addEventListener('mouseleave', () => {
-                  toolbar.style.opacity = '0';
-                  toolbar.style.pointerEvents = 'none';
-                });
-                
-                // Add click handler
-                el.addEventListener('click', (e: MouseEvent) => {
-                  if (!(e.target as Element).closest('.copy-btn')) {
-                    const event = new CustomEvent('code-block-edit', { detail: { id: el.dataset.codeBlockId } });
-                    document.dispatchEvent(event);
-                  }
-                });
-                
-                // Add copy handler
-                toolbar.querySelector('.copy-btn')?.addEventListener('click', ((e: MouseEvent) => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(el.dataset.code ?? '');
-                  const btn = e.currentTarget as HTMLButtonElement;
-                  const original = btn.textContent;
-                  btn.textContent = '✓';
-                  setTimeout(() => { btn.textContent = original; }, 1500);
-                }) as EventListener);
-              }
-              // Ensure pre/code exists
-              if (!el.querySelector('pre')) {
-                const pre = document.createElement('pre');
-                pre.style.cssText = 'background-color: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 0 0 8px 8px; font-family: "Fira Code", "Consolas", monospace; font-size: 14px; line-height: 1.5; overflow-x: auto; margin: 0; min-height: 24px;';
-                const codeEl = document.createElement('code');
-                codeEl.className = `language-${el.dataset.language ?? 'javascript'}`;
-                codeEl.textContent = el.dataset.code ?? '';
-                pre.appendChild(codeEl);
-                el.appendChild(pre);
-              }
-              
-              return {
-                id: el.dataset.codeBlockId!,
-                code: el.dataset.code ?? '',
-                language: el.dataset.language ?? 'javascript',
-              };
-            });
-          setCodeBlocks(restored);
-        } else {
-          setCodeBlocks([]);
-        }
-      } catch (err) {
-        console.error('Failed to load note:', err);
-        setCodeBlocks([]);
+  useEffect(() => {
+    if (activeRef.current !== activeId) {
+      saveNoteContentRef.current();
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      if (draftSaveRef.current !== null) {
+        window.clearTimeout(draftSaveRef.current);
+        draftSaveRef.current = null;
       }
     }
+
+    activeRef.current = activeId;
+    setEditingBlockId(null);
+
+    const editor = editorRef.current;
+    const note = notes.find((n) => n.id === activeId);
+    if (!editor || !note) {
+      if (!note) {
+        codeBlocksRef.current = [];
+        setCodeBlocks([]);
+      }
+      return;
+    }
+
+    editor.innerHTML = sanitizeHtml(note.html);
+
+    const restored = Array.from(
+      editor.querySelectorAll<HTMLElement>(".atomic-code-block"),
+    ).map((element) => {
+      const id =
+        element.dataset.codeBlockId ||
+        `block-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}`;
+      const code =
+        element.dataset.code ??
+        element.querySelector("code")?.textContent ??
+        "";
+      const language = normalizeLanguageId(
+        element.dataset.language ?? "plaintext",
+      );
+
+      element.dataset.codeBlockId = id;
+      element.dataset.code = code;
+      element.dataset.language = language;
+      element.contentEditable = "false";
+      element.innerHTML = renderCodeBlockViewHtml(code, language);
+
+      return { id, code, language };
+    });
+
+    codeBlocksRef.current = restored;
+    setCodeBlocks(restored);
     // selectionMode is a dep so leaving multi-select repopulates the editor
     // (the contentEditable is remounted after being hidden).
   }, [activeId, selectionMode]);
+
+  useEffect(() => {
+    editingBlockIdRef.current = editingBlockId;
+  }, [editingBlockId]);
 
   // Keep codeBlocksRef in sync with codeBlocks state
   useEffect(() => {
     codeBlocksRef.current = codeBlocks;
   }, [codeBlocks]);
 
+  // Re-render saved views when a block changes and no overlay is mounted.
+  // Lazy Monaco grammars are upgraded asynchronously so the first paint is
+  // never blank or unstyled.
+  useEffect(() => {
+    if (editingBlockId) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    let alive = true;
+
+    for (const block of codeBlocks) {
+      const element = findCodeBlockElement(editor, block.id);
+      if (!element) continue;
+
+      element.dataset.code = block.code;
+      element.dataset.language = block.language;
+      element.innerHTML = renderCodeBlockViewHtml(
+        block.code,
+        block.language,
+      );
+
+      if (isLanguageReady(block.language)) continue;
+
+      void renderCodeBlockViewHtmlAsync(block.code, block.language).then(
+        (html) => {
+          if (!alive || editingBlockIdRef.current === block.id) return;
+          const current = findCodeBlockElement(
+            editorRef.current ?? editor,
+            block.id,
+          );
+          if (current) current.innerHTML = html;
+        },
+      );
+    }
+
+    return () => {
+      alive = false;
+    };
+  }, [codeBlocks, editingBlockId]);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
       if (savedRef.current) window.clearTimeout(savedRef.current);
+      if (draftSaveRef.current !== null) {
+        window.clearTimeout(draftSaveRef.current);
+        draftSaveRef.current = null;
+      }
       void flush();
     };
   }, [flush]);
@@ -533,38 +566,53 @@ useEffect(() => {
     networkRef.current = window.setTimeout(() => void flush(), 700);
   };
 
+  const serializeEditorHtml = useCallback((): string | null => {
+    const editor = editorRef.current;
+    if (!editor) return null;
+
+    const clone = editor.cloneNode(true) as HTMLElement;
+
+    // Strip the React-mounted Monaco overlay and any legacy editor chrome.
+    clone
+      .querySelectorAll("[data-editor-container]")
+      .forEach((node) => node.remove());
+    clone
+      .querySelectorAll(".atomic-code-block-toolbar")
+      .forEach((node) => node.remove());
+
+    // Unwrap legacy wrappers, keeping the atomic block itself.
+    clone.querySelectorAll(".atomic-code-block-wrapper").forEach((wrapper) => {
+      const block = wrapper.querySelector(".atomic-code-block");
+      if (block) wrapper.replaceWith(block);
+      else wrapper.remove();
+    });
+
+    // Persist the editor's latest values instead of the stale static view.
+    clone
+      .querySelectorAll<HTMLElement>(".atomic-code-block")
+      .forEach((block) => {
+        const id = block.dataset.codeBlockId;
+        if (!id) return;
+        const data = codeBlocksRef.current.find((item) => item.id === id);
+        if (!data) return;
+
+        block.dataset.code = data.code;
+        block.dataset.language = data.language;
+        block.setAttribute("contenteditable", "false");
+        block.removeAttribute("data-editing");
+        block.removeAttribute("style");
+        block.innerHTML = renderCodeBlockViewHtml(data.code, data.language);
+      });
+
+    return clone.innerHTML;
+  }, []);
+
   const saveNoteContent = useCallback(() => {
     const id = activeRef.current;
-    if (!id || !editorRef.current) return;
-    
-    // Clone editor content and strip editor containers (Monaco DOM) before saving
-    const clone = editorRef.current.cloneNode(true) as HTMLElement;
-    
-    // Remove React-mounted Monaco editor containers from atomic code blocks
-    const editorContainers = clone.querySelectorAll('[data-editor-container]');
-    editorContainers.forEach((container) => container.remove());
-    
-    // Remove the atomic-code-block-wrapper divs but keep the atomic-code-block elements
-    const wrappers = clone.querySelectorAll('.atomic-code-block-wrapper');
-    wrappers.forEach((wrapper) => {
-      const block = wrapper.querySelector('.atomic-code-block') as HTMLElement | null;
-      if (block) {
-        // Ensure data attributes are up to date from React state
-        const blockId = block.getAttribute('data-code-block-id');
-        if (blockId) {
-          const blockData = codeBlocksRef.current.find((b) => b.id === blockId);
-          if (blockData) {
-            block.dataset.code = blockData.code;
-            block.dataset.language = blockData.language;
-          }
-        }
-        wrapper.replaceWith(block);
-      } else {
-        wrapper.remove();
-      }
-    });
-    
-    const html = clone.innerHTML;
+    if (!id) return;
+    const html = serializeEditorHtml();
+    if (html === null) return;
+
     persist(id, { html });
     // Also update local notes state for UI consistency (sidebar, etc)
     setNotes((prev) =>
@@ -572,42 +620,22 @@ useEffect(() => {
         note.id === id ? { ...note, html, updatedAt: Date.now() } : note,
       ),
     );
-  }, []);
+  }, [serializeEditorHtml]);
+
+  useEffect(() => {
+    saveNoteContentRef.current = saveNoteContent;
+  }, [saveNoteContent]);
 
   const handleInput = () => {
-    // Only update pending ref for debounced server save - NO setNotes
     const id = activeRef.current;
-    if (!id || !editorRef.current) return;
-    
-    // Clone editor content and strip editor containers (Monaco DOM) before saving
-    const clone = editorRef.current.cloneNode(true) as HTMLElement;
-    
-    // Remove React-mounted Monaco editor containers from atomic code blocks
-    const editorContainers = clone.querySelectorAll('[data-editor-container]');
-    editorContainers.forEach((container) => container.remove());
-    
-    // Remove the atomic-code-block-wrapper divs but keep the atomic-code-block elements
-    const wrappers = clone.querySelectorAll('.atomic-code-block-wrapper');
-    wrappers.forEach((wrapper) => {
-      const block = wrapper.querySelector('.atomic-code-block') as HTMLElement | null;
-      if (block) {
-        const blockId = block.getAttribute('data-code-block-id');
-        if (blockId) {
-          const blockData = codeBlocksRef.current.find((b) => b.id === blockId);
-          if (blockData) {
-            block.dataset.code = blockData.code;
-            block.dataset.language = blockData.language;
-          }
-        }
-        wrapper.replaceWith(block);
-      } else {
-        wrapper.remove();
-      }
-    });
-    
-    const html = clone.innerHTML;
+    if (!id) return;
     if (timerRef.current) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => persist(id, { html }), 600);
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null;
+      if (activeRef.current !== id) return;
+      const html = serializeEditorHtml();
+      if (html !== null) persist(id, { html });
+    }, 600);
   };
 
   const saveOrder = (ordered: Note[]) => {
@@ -668,7 +696,15 @@ useEffect(() => {
       .map((note, index) => ({ ...note, sortOrder: index }));
     setNotes(next);
     saveOrder(next);
-    if (activeId === id) setActiveId(next[0]?.id ?? null);
+    if (activeId === id) {
+      activeRef.current = null;
+      if (draftSaveRef.current !== null) {
+        window.clearTimeout(draftSaveRef.current);
+        draftSaveRef.current = null;
+      }
+      setEditingBlockId(null);
+      setActiveId(next[0]?.id ?? null);
+    }
     void deleteNote(id);
   };
 
@@ -698,177 +734,246 @@ useEffect(() => {
     saveNoteContent();
   }, [saveNoteContent]);
 
-  const saveSelection = useCallback(() => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      if (editorRef.current?.contains(range.commonAncestorContainer)) {
-        savedRangeRef.current = range.cloneRange();
+  const saveSelection = useCallback(
+    (event?: { target: EventTarget | null }) => {
+      const target = event?.target;
+      if (
+        target instanceof Element &&
+        target.closest(".atomic-code-block, [data-editor-container]")
+      ) {
+        return;
       }
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (editorRef.current?.contains(range.commonAncestorContainer)) {
+          savedRangeRef.current = range.cloneRange();
+        }
+      }
+    },
+    [],
+  );
+
+  const endCodeEdit = useCallback(() => {
+    if (draftSaveRef.current !== null) {
+      window.clearTimeout(draftSaveRef.current);
+      draftSaveRef.current = null;
     }
+    setEditingBlockId(null);
   }, []);
 
   const insertCodeBlock = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-    
-    // Use saved range if available, otherwise current selection
-    let range: Range | null = null;
-    if (savedRangeRef.current) {
-      range = savedRangeRef.current.cloneRange();
+
+    const selection = window.getSelection();
+    const liveRange =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0)
+        : null;
+    const savedRange = savedRangeRef.current;
+    const range =
+      liveRange && editor.contains(liveRange.commonAncestorContainer)
+        ? liveRange
+        : savedRange && editor.contains(savedRange.commonAncestorContainer)
+          ? savedRange
+          : null;
+
+    const id = `block-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    const language = "javascript";
+
+    const block = document.createElement("div");
+    block.className = "atomic-code-block";
+    block.contentEditable = "false";
+    block.dataset.codeBlockId = id;
+    block.dataset.code = "";
+    block.dataset.language = language;
+    block.innerHTML = renderCodeBlockViewHtml("", language);
+
+    const trailing = document.createElement("p");
+    trailing.innerHTML = "<br>";
+
+    const topLevelChild = (node: Node | null): HTMLElement | null => {
+      let current: Node | null = node;
+      while (current && current.parentNode !== editor) {
+        current = current.parentNode;
+      }
+      return current instanceof HTMLElement ? current : null;
+    };
+
+    let placement: HTMLElement = trailing;
+
+    if (range) {
+      range.collapse(true);
+      const top = topLevelChild(range.startContainer);
+
+      if (top?.classList.contains("atomic-code-block")) {
+        top.after(block, trailing);
+      } else if (
+        top &&
+        ["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE"].includes(
+          top.tagName,
+        )
+      ) {
+        const tailRange = document.createRange();
+        tailRange.selectNodeContents(top);
+        tailRange.setStart(range.startContainer, range.startOffset);
+        const tail = tailRange.extractContents();
+        const tailBlock = top.cloneNode(false) as HTMLElement;
+        tailBlock.appendChild(tail);
+        top.after(tailBlock);
+        top.after(block);
+
+        if (tailBlock.textContent?.trim() || tailBlock.querySelector("*")) {
+          placement = tailBlock;
+        } else {
+          tailBlock.remove();
+          block.after(trailing);
+        }
+      } else if (top) {
+        top.after(block, trailing);
+      } else {
+        editor.append(block, trailing);
+      }
     } else {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        range = sel.getRangeAt(0).cloneRange();
-      }
+      editor.append(block, trailing);
     }
-    
-    if (!range) return;
-    // Ensure range is within the editor
-    if (!editorRef.current?.contains(range.commonAncestorContainer)) return;
-    
-    // Collapse range to insert point
-    range.collapse(true);
-    
-    // Generate ID for the new block
-    const id = Math.random().toString(36).slice(2);
-    const newBlock = { id, code: '// Write code here...', language: 'javascript' };
-    
-    // Create atomic code block container - insert DIRECTLY into contentEditable
-    const blockContainer = document.createElement('div');
-    blockContainer.className = 'atomic-code-block';
-    blockContainer.contentEditable = "false";
-    blockContainer.dataset.language = 'javascript';
-    blockContainer.dataset.code = '// Write code here...';
-    blockContainer.dataset.codeBlockId = id;
-    blockContainer.style.cssText = 'width: 100%; margin: 8px 0;';
-    
-    // Add view mode HTML (pre/code) inside the block
-    const pre = document.createElement('pre');
-    pre.style.cssText = 'background-color: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 0 0 8px 8px; font-family: "Fira Code", "Consolas", monospace; font-size: 14px; line-height: 1.5; overflow-x: auto; margin: 0; min-height: 24px;';
-    const codeEl = document.createElement('code');
-    codeEl.className = 'language-javascript';
-    codeEl.textContent = '// Write code here...';
-    pre.appendChild(codeEl);
-    blockContainer.appendChild(pre);
-    
-    // Add toolbar header (hidden by default, shown on hover)
-    const toolbar = document.createElement('div');
-    toolbar.className = 'atomic-code-block-toolbar';
-    toolbar.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; height: 44px; background: rgba(10, 10, 18, 0.8); backdrop-filter: blur(4px); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px; padding: 0 12px; opacity: 0; transition: opacity 0.15s; pointer-events: none;';
-    toolbar.innerHTML = `
-      <span class="file-code-icon" style="color: rgba(255,255,255,0.4);">📄</span>
-      <span style="font-family: monospace; font-size: 11px; color: rgba(255,255,255,0.6); flex: 1;">JavaScript</span>
-      <button class="copy-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Copy">📋</button>
-      <button class="edit-btn" style="background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; padding: 4px; opacity: 0.7;" title="Edit">✏️</button>
-    `;
-    blockContainer.insertBefore(toolbar, pre);
-    
-    // Add hover effect to show toolbar
-    blockContainer.addEventListener('mouseenter', () => {
-      toolbar.style.opacity = '1';
-      toolbar.style.pointerEvents = 'auto';
-    });
-    blockContainer.addEventListener('mouseleave', () => {
-      toolbar.style.opacity = '0';
-      toolbar.style.pointerEvents = 'none';
-    });
-    
-    // Add click handler to enter edit mode
-    blockContainer.addEventListener('click', (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.copy-btn')) {
-        // Trigger edit mode via the React component
-        const event = new CustomEvent('code-block-edit', { detail: { id } });
-        document.dispatchEvent(event);
-      }
-    });
-    
-    // Add copy handler
-    toolbar.querySelector('.copy-btn')?.addEventListener('click', ((e: MouseEvent) => {
-      e.stopPropagation();
-      navigator.clipboard.writeText('// Write code here...');
-      // Show copied feedback
-      const btn = e.currentTarget as HTMLButtonElement;
-      const original = btn.textContent;
-      btn.textContent = '✓';
-      setTimeout(() => { btn.textContent = original; }, 1500);
-    }) as EventListener);
-    
-    // Insert at cursor
-    range.deleteContents();
-    range.insertNode(blockContainer);
-    
-    // Add trailing <p><br></p> for continued typing after the block
-    const afterPara = document.createElement('p');
-    afterPara.innerHTML = '<br>';
-    range.setStartAfter(blockContainer);
-    range.setEndAfter(blockContainer);
-    range.insertNode(afterPara);
-    
-    // Move cursor after the block (user continues typing after)
-    range.setStartAfter(afterPara);
-    range.collapse(true);
-    const sel = window.getSelection();
-    if (sel) {
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
-    
-    // Add to codeBlocks state for React to mount Monaco editor overlay
-    setCodeBlocks((prev) => {
-      const next = [...prev, newBlock];
-      codeBlocksRef.current = next;
-      return next;
-    });
+
+    const caret = document.createRange();
+    caret.setStart(placement, 0);
+    caret.collapse(true);
+    const nextSelection = window.getSelection();
+    nextSelection?.removeAllRanges();
+    nextSelection?.addRange(caret);
+    savedRangeRef.current = null;
+
+    codeBlocksRef.current = [
+      ...codeBlocksRef.current,
+      { id, code: "", language },
+    ];
+    setCodeBlocks(codeBlocksRef.current);
+    setEditingBlockId(id);
   }, []);
 
-  const handleCodeBlockRemove = useCallback((id: string) => {
-    setCodeBlocks((prev) => {
-      const block = prev.find((b) => b.id === id);
-      if (!block) return prev;
-      
-      // Remove from DOM
+  const handleCodeBlockDraft = useCallback(
+    (id: string, code: string, language: string) => {
+      const normalized = normalizeLanguageId(language);
+      const index = codeBlocksRef.current.findIndex(
+        (block) => block.id === id,
+      );
+
+      if (index >= 0) {
+        codeBlocksRef.current = codeBlocksRef.current.map((block) =>
+          block.id === id
+            ? { ...block, code, language: normalized }
+            : block,
+        );
+      } else {
+        codeBlocksRef.current = [
+          ...codeBlocksRef.current,
+          { id, code, language: normalized },
+        ];
+      }
+
       const editor = editorRef.current;
-      if (editor) {
-        const blockElement = editor.querySelector(`[data-code-block-id="${id}"]`);
-        if (blockElement) {
-          const next = blockElement.nextElementSibling;
-          blockElement.remove();
-          if (next?.tagName === 'P' && next.innerHTML === '<br>') {
-            next.remove();
-          }
+      const element = editor ? findCodeBlockElement(editor, id) : null;
+      if (element) {
+        element.dataset.code = code;
+        element.dataset.language = normalized;
+      }
+
+      if (draftSaveRef.current !== null) {
+        window.clearTimeout(draftSaveRef.current);
+      }
+      draftSaveRef.current = window.setTimeout(() => {
+        draftSaveRef.current = null;
+        saveNoteContentRef.current();
+      }, 600);
+    },
+    [],
+  );
+
+  const handleCodeBlockCommit = useCallback(
+    (id: string, code: string, language: string) => {
+      const normalized = normalizeLanguageId(language);
+      codeBlocksRef.current = codeBlocksRef.current.map((block) =>
+        block.id === id
+          ? { ...block, code, language: normalized }
+          : block,
+      );
+
+      const editor = editorRef.current;
+      const element = editor ? findCodeBlockElement(editor, id) : null;
+      if (element) {
+        element.dataset.code = code;
+        element.dataset.language = normalized;
+      }
+
+      setCodeBlocks(codeBlocksRef.current);
+      saveNoteContent();
+    },
+    [saveNoteContent],
+  );
+
+  const handleCodeBlockRemove = useCallback(
+    (id: string) => {
+      codeBlocksRef.current = codeBlocksRef.current.filter(
+        (block) => block.id !== id,
+      );
+      setCodeBlocks(codeBlocksRef.current);
+
+      const editor = editorRef.current;
+      const element = editor ? findCodeBlockElement(editor, id) : null;
+      if (editor && element) {
+        const next = element.nextElementSibling;
+        element.remove();
+        if (
+          next?.tagName === "P" &&
+          next.innerHTML === "<br>" &&
+          !next.nextElementSibling
+        ) {
+          next.remove();
+        }
+        if (editor.childNodes.length === 0) {
+          const paragraph = document.createElement("p");
+          paragraph.innerHTML = "<br>";
+          editor.appendChild(paragraph);
         }
       }
-      
-      handleInput();
-      const next = prev.filter((b) => b.id !== id);
-      codeBlocksRef.current = next;
-      return next;
-    });
-  }, [handleInput]);
 
-  const handleCodeBlockChange = useCallback((id: string, code: string, language: string) => {
-    setCodeBlocks((prev) => {
-      const next = prev.map((b) => (b.id === id ? { ...b, code, language } : b));
-      codeBlocksRef.current = next;
-      return next;
-    });
-    
-    // Update DOM attributes for persistence
-    const editor = editorRef.current;
-    if (editor) {
-      const blockElement = editor.querySelector(`[data-code-block-id="${id}"]`) as HTMLElement | null;
-      if (blockElement) {
-        blockElement.dataset.code = code;
-        blockElement.dataset.language = language;
-      }
-    }
-  }, []);
+      endCodeEdit();
+      saveNoteContent();
+    },
+    [endCodeEdit, saveNoteContent],
+  );
+
+  const handleEditorClick = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const element = event.target as HTMLElement;
+      const blockElement = element.closest<HTMLElement>(
+        ".atomic-code-block",
+      );
+      const id = blockElement?.dataset.codeBlockId;
+      if (!id) return;
+      if (blockElement.dataset.editing === "true") return;
+      event.preventDefault();
+      setEditingBlockId(id);
+    },
+    [],
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (!active || selectionMode) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest(".atomic-code-block, [data-editor-container]")
+      ) {
+        return;
+      }
 
       const key = e.key.toUpperCase();
       const mods: string[] = [];
@@ -919,6 +1024,11 @@ useEffect(() => {
   }, []);
 
   const enterSelectionMode = useCallback((type: 'download' | 'share') => {
+    saveNoteContentRef.current();
+    if (draftSaveRef.current !== null) {
+      window.clearTimeout(draftSaveRef.current);
+      draftSaveRef.current = null;
+    }
     setBulkActionType(type);
     setSelectionMode(true);
   }, []);
@@ -931,113 +1041,13 @@ useEffect(() => {
         (id): id is string => typeof id === "string",
       );
       const downloadNotes = await bulkDownloadNotes(ids);
-      
-      // Transform atomic code blocks to styled code blocks for download
-      const transformCodeBlocks = (html: string): string => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const blocks = tempDiv.querySelectorAll('.atomic-code-block');
-        blocks.forEach((ph: Element) => {
-          const el = ph as HTMLElement;
-          const lang = el.getAttribute('data-language') || 'plaintext';
-          const codeContent = el.getAttribute('data-code') || '';
-          // Create a beautiful VS Code-like HTML block
-          const pre = document.createElement('pre');
-          pre.style.cssText = 'background-color: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; font-family: monospace; overflow-x: auto; margin: 16px 0;';
-          const code = document.createElement('code');
-          code.className = `language-${lang}`;
-          code.textContent = codeContent; // Use textContent to safely escape HTML
-          pre.appendChild(code);
-          ph.replaceWith(pre);
-        });
-        return tempDiv.innerHTML;
-      };
-      
-      // Create HTML file with all notes content (preserves rich text formatting)
-      const content = downloadNotes
-        .map(
-          (note) => `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${note.title}</title>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    h1, h2, h3, h4, h5, h6 {
-      color: #111;
-      margin-top: 24px;
-      margin-bottom: 12px;
-      line-height: 1.3;
-    }
-    h1 { font-size: 2.5rem; border-bottom: 2px solid #eaeaea; padding-bottom: 8px; }
-    h2 { font-size: 1.8rem; }
-    h3 { font-size: 1.4rem; }
-    p { margin: 12px 0; }
-    ul, ol { margin: 12px 0; padding-left: 24px; }
-    li { margin: 6px 0; }
-    code {
-      background: #f4f4f4;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: "SF Mono", "Fira Code", "Monaco", monospace;
-      font-size: 0.9em;
-    }
-    pre {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      border-radius: 8px;
-      overflow-x: auto;
-      margin: 16px 0;
-      padding: 16px;
-    }
-    pre code {
-      background: none;
-      padding: 0;
-      color: inherit;
-      font-size: 0.9rem;
-      display: block;
-    }
-    blockquote {
-      border-left: 4px solid #cf9eff;
-      padding-left: 16px;
-      margin: 16px 0;
-      color: #666;
-      font-style: italic;
-    }
-    a { color: #cf9eff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    hr { border: none; border-top: 1px solid #eaeaea; margin: 24px 0; }
-    strong { font-weight: 600; }
-    em { font-style: italic; }
-    u { text-decoration: underline; }
-    .note-separator {
-      border-top: 2px dashed #cf9eff;
-      margin: 40px 0;
-      padding-top: 20px;
-    }
-  </style>
-</head>
-<body>
-  <h1>${note.title}</h1>
-  <div>${transformCodeBlocks(note.html)}</div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
-</body>
-</html>
-`,
-        )
-        .join('<div class="note-separator"></div>');
-      
+      const content = await buildNotesExportHtml(
+        downloadNotes.map((note) => ({
+          title: note.title,
+          html: note.html,
+        })),
+      );
+
       const blob = new Blob([content], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1047,8 +1057,12 @@ useEffect(() => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
-      toast.success(`Downloaded ${downloadNotes.length} note${downloadNotes.length > 1 ? "s" : ""}`);
+
+      toast.success(
+        `Downloaded ${downloadNotes.length} note${
+          downloadNotes.length > 1 ? "s" : ""
+        }`,
+      );
       clearSelection();
     } catch (error) {
       toast.error("Failed to download notes");
@@ -1277,6 +1291,7 @@ useEffect(() => {
 
   return (
     <div className="space-y-8">
+      <style>{CODE_BLOCK_CSS}</style>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.4em] text-star/70">
@@ -1664,6 +1679,7 @@ useEffect(() => {
                       suppressContentEditableWarning
                       onInput={handleInput}
                       onBlur={handleEditorBlur}
+                      onClick={handleEditorClick}
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
@@ -1677,7 +1693,15 @@ useEffect(() => {
                         id={block.id}
                         code={block.code}
                         language={block.language}
-                        onChange={(code, language) => handleCodeBlockChange(block.id, code, language)}
+                        editing={editingBlockId === block.id}
+                        containerRef={editorRef}
+                        onDraftChange={(code, language) =>
+                          handleCodeBlockDraft(block.id, code, language)
+                        }
+                        onCommit={(code, language) =>
+                          handleCodeBlockCommit(block.id, code, language)
+                        }
+                        onExit={endCodeEdit}
                         onRemove={() => handleCodeBlockRemove(block.id)}
                       />
                     ))}
