@@ -8,8 +8,10 @@ import {
   Play,
   RefreshCw,
   Rocket,
+  Trash2,
 } from "lucide-react";
 import {
+  deletePipelineRun,
   fetchPipelineRun,
   fetchPipelineRuns,
   fetchPipelineStatus,
@@ -67,6 +69,7 @@ export default function PipelinePage() {
   const [deploying, setDeploying] = useState(false);
   const [preview, setPreview] = useState<AdminPostPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -174,6 +177,57 @@ export default function PipelinePage() {
     } finally {
       setPreviewLoading(false);
     }
+  };
+
+  const handleDeleteRun = async (runId: string) => {
+    if (!window.confirm("Are you sure you want to delete this pipeline run log?")) {
+      return;
+    }
+    setDeletingId(runId);
+    try {
+      await deletePipelineRun(runId);
+      toast.success("Pipeline run log deleted.");
+      setRuns((prev) => prev.filter((run) => run.id !== runId));
+      if (selectedId === runId) {
+        setSelectedId(runs.find((r) => r.id !== runId)?.id ?? null);
+        setDetail(null);
+      }
+      await loadOverview();
+    } catch (e) {
+      toast.error(messageOf(e));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    const count = runs.length;
+    if (
+      !window.confirm(
+        `Are you sure you want to clear all ${count} pipeline run logs?`,
+      )
+    ) {
+      return;
+    }
+    const errors: string[] = [];
+    for (const run of runs) {
+      try {
+        await deletePipelineRun(run.id);
+      } catch (e) {
+        errors.push(messageOf(e));
+      }
+    }
+    setRuns([]);
+    setSelectedId(null);
+    setDetail(null);
+    if (errors.length === 0) {
+      toast.success(`Cleared ${count} pipeline run log(s).`);
+    } else {
+      toast.error(
+        `Cleared ${count - errors.length} of ${count} log(s). ${errors.join("; ")}`,
+      );
+    }
+    await loadOverview();
   };
 
   const latest = active ?? runs[0] ?? null;
@@ -349,48 +403,84 @@ export default function PipelinePage() {
 
           <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <Card className="overflow-hidden">
-              <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
-                <p className="text-sm font-semibold text-white">Run history</p>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-gray-500">
-                  {runs.length} run{runs.length === 1 ? "" : "s"}
-                </span>
+              <div className="flex flex-wrap items-center justify-between border-b border-white/[0.07] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-white">
+                    Run history
+                  </p>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-gray-500">
+                    {runs.length} run{runs.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {runs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-gray-400 transition-colors hover:text-red-400 hover:border-red-500/30"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
               {runs.length === 0 ? (
                 <EmptyState message="Run history is empty." />
               ) : (
-                <ul className="divide-y divide-white/[0.05]">
-                  {runs.map((run) => (
-                    <li key={run.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(run.id)}
-                        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] ${
-                          selectedId === run.id ? "bg-white/[0.045]" : ""
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <StatusPill status={run.status} />
-                            <span className="text-[10px] uppercase tracking-[0.14em] text-gray-500">
-                              {run.trigger}
-                            </span>
-                            <StagePill stage={run.current_stage} />
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <ul className="divide-y divide-white/[0.05]">
+                    {runs.map((run) => (
+                      <li key={run.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(run.id)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03] ${
+                            selectedId === run.id ? "bg-white/[0.045]" : ""
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <StatusPill status={run.status} />
+                              <span className="text-[10px] uppercase tracking-[0.14em] text-gray-500">
+                                {run.trigger}
+                              </span>
+                              <StagePill stage={run.current_stage} />
+                            </div>
+                            <p className="mt-1.5 truncate text-xs text-gray-400">
+                              {formatDateTime(run.started_at)} ·{" "}
+                              {runDuration(run)}
+                            </p>
                           </div>
-                          <p className="mt-1.5 truncate text-xs text-gray-400">
-                            {formatDateTime(run.started_at)} ·{" "}
-                            {runDuration(run)}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <ScoreBadge score={run.score} />
-                          <p className="mt-1 text-[10px] text-gray-500">
-                            {run.word_count ? `${run.word_count} words` : ""}
-                          </p>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                          <div className="shrink-0 text-right">
+                            <ScoreBadge score={run.score} />
+                            <p className="mt-1 text-[10px] text-gray-500">
+                              {run.word_count ? `${run.word_count} words` : ""}
+                            </p>
+                          </div>
+                          {run.status !== "running" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteRun(run.id);
+                              }}
+                              disabled={deletingId === run.id}
+                              className="ml-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-gray-400 transition-colors hover:text-red-400 hover:border-red-500/30 disabled:opacity-50"
+                              aria-label={`Delete run ${run.id}`}
+                            >
+                              {deletingId === run.id ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </Card>
 
@@ -407,7 +497,7 @@ export default function PipelinePage() {
                 ) : !selectedRun ? (
                   <EmptyState message="Select a run to inspect its stages." />
                 ) : (
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 space-y-2 overflow-x-auto">
                     {steps.length === 0 ? (
                       <p className="text-xs text-gray-500">
                         No stage records yet.

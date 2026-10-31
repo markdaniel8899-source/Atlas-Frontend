@@ -167,6 +167,15 @@ export function fetchPipelineRun(runId: string): Promise<PipelineRunDetail> {
   );
 }
 
+export function deletePipelineRun(
+  runId: string,
+): Promise<{ deleted: boolean; run_id: string }> {
+  return request<{ deleted: boolean; run_id: string }>(
+    `/api/blog/pipeline/runs/${encodeURIComponent(runId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function triggerPipeline(
   trigger: "cron" | "admin" | "manual" | "retry" = "admin",
 ): Promise<TriggerResult> {
