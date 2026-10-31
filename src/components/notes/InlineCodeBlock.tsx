@@ -339,7 +339,7 @@ export function InlineCodeBlock({
       }}
     >
       <div
-        className="flex h-11 items-center gap-2 rounded-t-[9px] border-b border-white/10 bg-[#0d0d16]/95 px-2.5 backdrop-blur-sm sm:px-3"
+        className="relative z-20 flex h-11 items-center gap-2 rounded-t-[9px] border-b border-white/10 bg-[#0d0d16]/95 px-2.5 backdrop-blur-sm sm:px-3"
         style={{ height: TOOLBAR_HEIGHT }}
       >
         <FileCode className="hidden size-4 shrink-0 text-white/35 sm:block" />
@@ -468,7 +468,7 @@ export function InlineCodeBlock({
       </div>
 
       <div
-        className="overflow-hidden rounded-b-[9px] bg-[#1e1e1e]"
+        className="relative z-10 overflow-hidden rounded-b-[9px] bg-[#1e1e1e]"
         style={{ height: editorHeight }}
       >
         <CodeEditor
