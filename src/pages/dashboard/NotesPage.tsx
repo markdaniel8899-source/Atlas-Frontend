@@ -1663,7 +1663,13 @@ export default function NotesPage() {
                   type="text"
                   value={active.title}
                   onChange={(e) => {
-                    persist(active.id, { title: e.target.value });
+                    const title = e.target.value;
+                    setNotes((prev) =>
+                      prev.map((note) =>
+                        note.id === active.id ? { ...note, title } : note,
+                      ),
+                    );
+                    persist(active.id, { title });
                   }}
                   placeholder="Untitled note"
                   className="w-full bg-transparent text-2xl font-semibold tracking-[-0.03em] text-white placeholder:text-white/20 focus:outline-none"
