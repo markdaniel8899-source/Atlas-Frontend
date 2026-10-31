@@ -31,6 +31,7 @@ import { EASE } from "../lib/motion";
 import { CurtainLink, curtainNavigate } from "../components/PageCurtain";
 import { TimerProvider } from "../context/TimerContext";
 import { NotificationBell } from "../components/notifications/NotificationBell";
+import { useLiveNotifications } from "../hooks/useLiveNotifications";
 import DashboardHome from "../pages/dashboard/DashboardHome";
 import RoadmapPage from "../pages/dashboard/RoadmapPage";
 import CoursesPage from "../pages/dashboard/CoursesPage";
@@ -267,6 +268,7 @@ export default function DashboardLayout() {
 
   const user = getUser();
   const userId = user?.id;
+  useLiveNotifications();
   const activePath =
     location.pathname.length > 1 && location.pathname.endsWith("/")
       ? location.pathname.slice(0, -1)

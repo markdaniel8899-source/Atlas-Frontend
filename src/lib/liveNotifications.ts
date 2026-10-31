@@ -10,9 +10,14 @@ import {
   fetchSharedNotes,
 } from "./db/notifications";
 import { notifyNotesChanged, notifySquadChanged } from "./db/events";
+import { getUser } from "./auth";
 
 function personName(names: Map<string, string>, id: string): string {
   return names.get(id) ?? "A friend";
+}
+
+function stillSignedInAs(userId: string): boolean {
+  return getUser()?.id === userId;
 }
 
 /** Old items found on first sync land in the bell without a toast storm. */
@@ -24,7 +29,10 @@ function isRecent(iso: string | null, windowMs = 10 * 60_000): boolean {
 
 /** Re-count pending requests and surface a notification for each new one. */
 export async function syncFriendRequestNotifications(): Promise<void> {
+  const me = getUser();
+  if (!me) return;
   const requests = await fetchIncomingFriendRequests();
+  if (!stillSignedInAs(me.id)) return;
   setFriendRequestCount(requests.length);
   notifySquadChanged();
   if (requests.length === 0) return;
@@ -52,7 +60,10 @@ export async function syncFriendRequestNotifications(): Promise<void> {
 
 /** Surface requests of mine that a friend accepted recently. */
 export async function syncFriendAcceptNotifications(): Promise<void> {
+  const me = getUser();
+  if (!me) return;
   const accepted = await fetchAcceptedInvites();
+  if (!stillSignedInAs(me.id)) return;
   if (accepted.length === 0) return;
 
   const fresh = accepted.filter(
@@ -76,7 +87,10 @@ export async function syncFriendAcceptNotifications(): Promise<void> {
 
 /** Surface freshly shared notes (the row is copied into the recipient). */
 export async function syncSharedNoteNotifications(): Promise<void> {
+  const me = getUser();
+  if (!me) return;
   const notes = await fetchSharedNotes();
+  if (!stillSignedInAs(me.id)) return;
   if (notes.length === 0) return;
 
   const fresh = notes.filter(

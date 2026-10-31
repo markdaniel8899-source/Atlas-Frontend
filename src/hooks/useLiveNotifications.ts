@@ -140,7 +140,7 @@ export function useLiveNotifications(): void {
             const friendshipId = String(rowOf(payload).id ?? "");
             const addresseeId = String(rowOf(payload).addressee_id ?? "");
             void fetchDisplayNames([addresseeId]).then((names) => {
-              if (!alive) return;
+              if (!alive || getUser()?.id !== me.id) return;
               pushNotification({
                 id: `friend-accepted:${friendshipId}`,
                 kind: "friend_accepted",
