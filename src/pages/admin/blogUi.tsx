@@ -331,7 +331,7 @@ export function PostPreviewDialog({
   if (!post) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6">
       <div
         className="absolute inset-0"
         onClick={onClose}
@@ -341,9 +341,9 @@ export function PostPreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Preview ${post.title}`}
-        className="relative z-10 my-4 w-full max-w-3xl rounded-2xl border border-white/10 bg-[#0d0d16] shadow-2xl"
+        className="relative z-10 w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-2xl border border-white/10 bg-[#0d0d16] shadow-2xl flex flex-col"
       >
-        <header className="sticky top-0 z-10 flex items-start gap-4 rounded-t-2xl border-b border-white/10 bg-[#0d0d16]/95 px-5 py-4 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-start gap-4 rounded-t-2xl border-b border-white/10 bg-[#0d0d16]/95 px-5 py-4 backdrop-blur flex-shrink-0">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill status={post.published_at ? "completed" : "draft"} />
@@ -383,7 +383,7 @@ export function PostPreviewDialog({
           </div>
         </header>
 
-        <div className="px-5 pb-8">
+        <div className="px-5 pb-8 flex-1 overflow-y-auto">
           {post.cover_image_url && (
             <img
               src={post.cover_image_url}
