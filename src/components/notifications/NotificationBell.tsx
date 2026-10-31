@@ -15,6 +15,7 @@ import {
   useNotifications,
   type NotificationKind,
 } from "../../lib/notifications";
+import { syncAllNotifications } from "../../lib/liveNotifications";
 import { EASE } from "../../lib/motion";
 
 const ICONS: Record<NotificationKind, typeof Bell> = {
@@ -55,6 +56,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!open) return;
+    void syncAllNotifications();
     const onPointerDown = (event: MouseEvent | TouchEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
