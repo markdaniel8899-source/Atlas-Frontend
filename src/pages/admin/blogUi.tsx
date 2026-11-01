@@ -55,7 +55,7 @@ export function ScoreBadge({
     return <span className={`text-xs text-gray-600 ${className}`}>—</span>;
   }
   const tone =
-    score >= 90
+    score >= 80
       ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"
       : score >= 70
         ? "border-amber-400/25 bg-amber-500/10 text-amber-300"
