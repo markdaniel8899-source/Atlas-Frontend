@@ -190,6 +190,19 @@ export default function Auth({ mode }: { mode: "login" | "signup" }) {
       }
 
       if (result.error) {
+        if (result.requiresOtp) {
+          navigate(
+            `/verify-otp?email=${encodeURIComponent(
+              normalizedEmail,
+            )}&mode=signup&resume=1`,
+            {
+              replace: true,
+              state: { notice: { tone: "info", text: result.error } },
+            },
+          );
+          return;
+        }
+
         setNotice({ tone: "error", text: result.error });
         return;
       }

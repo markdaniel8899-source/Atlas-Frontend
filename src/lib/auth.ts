@@ -10,6 +10,8 @@ export interface AuthUser {
 
 export interface AuthResult {
   error?: string;
+  /** Password was valid, but the account still needs the custom email OTP. */
+  requiresOtp?: boolean;
 }
 
 export const CONFIG_ERROR =
@@ -89,6 +91,17 @@ export async function emailExists(email: string): Promise<boolean | null> {
 
   if (error) return null;
   return data === true;
+}
+
+async function profileIsVerified(userId: string): Promise<boolean | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("is_verified")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.is_verified === true;
 }
 
 /**
@@ -179,11 +192,27 @@ export async function verifyEmailOtp(
     return { error: "We couldn't verify that code. Try again." };
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .update({ is_verified: true })
+    .eq("id", data.user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    writeCache(null);
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    return {
+      error:
+        "We couldn't complete verification. Request a new code and try again.",
+    };
+  }
+
   writeCache(toAuthUser(data.user));
   return {};
 }
 
-/** Default login: email + password, no OTP. */
+/** Password login; unverified accounts must complete the custom email OTP. */
 export async function signIn(
   email: string,
   password: string,
@@ -201,8 +230,30 @@ export async function signIn(
   });
 
   if (error) return { error: readableError(error.message) };
+  if (!data.user) {
+    return { error: "We couldn't sign you in. Please try again." };
+  }
 
-  if (data.user) writeCache(toAuthUser(data.user));
+  const verified = await profileIsVerified(data.user.id);
+
+  if (verified === false) {
+    await supabase.auth.signOut().catch(() => undefined);
+    writeCache(null);
+    return {
+      error: "Please verify your email OTP first.",
+      requiresOtp: true,
+    };
+  }
+
+  if (verified === null) {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    writeCache(null);
+    return {
+      error: "We couldn't verify your account status. Please try again.",
+    };
+  }
+
+  writeCache(toAuthUser(data.user));
   return {};
 }
 
@@ -238,6 +289,19 @@ export async function resolveSession(): Promise<AuthUser | null> {
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
+    clearSession();
+    return null;
+  }
+
+  const verified = await profileIsVerified(data.user.id);
+
+  if (verified === false) {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    clearSession();
+    return null;
+  }
+
+  if (verified === null) {
     clearSession();
     return null;
   }

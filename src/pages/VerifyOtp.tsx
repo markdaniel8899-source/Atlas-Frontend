@@ -6,7 +6,7 @@ import type {
 } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, CheckCircle2, Mail } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { EASE } from "../lib/motion";
 import {
@@ -31,21 +31,28 @@ const RESEND_COOLDOWN = 60;
 
 export default function VerifyOtp() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
 
   const email = normalizeEmail(searchParams.get("email") ?? "");
   const rawMode = searchParams.get("mode");
   const mode: Mode | null =
     rawMode === "signup" || rawMode === "forgot" ? rawMode : null;
+  const resumeAfterLogin = searchParams.get("resume") === "1";
 
   const [otp, setOtp] = useState<string[]>(() =>
     Array(OTP_LENGTH).fill(""),
   );
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(() => {
+    const incoming = (location.state as { notice?: Notice } | null)?.notice;
+    return incoming ?? null;
+  });
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
+  const [cooldown, setCooldown] = useState(
+    resumeAfterLogin ? 0 : RESEND_COOLDOWN,
+  );
 
   const otpValue = otp.join("");
 
@@ -154,7 +161,9 @@ export default function VerifyOtp() {
         return;
       }
 
-      if (mode === "signup") {
+      if (mode === "signup" && resumeAfterLogin) {
+        navigate("/app", { replace: true });
+      } else if (mode === "signup") {
         await signOut("local").catch(() => undefined);
         navigate(
           `/login?message=${encodeURIComponent(
