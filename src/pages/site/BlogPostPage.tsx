@@ -62,6 +62,12 @@ const PROSE_CLASS = [
   "[&_figure]:contents",
   "[&_figcaption]:hidden",
   "[&_img]:mt-8 [&_img]:h-auto [&_img]:w-full [&_img]:max-w-full [&_img]:rounded-2xl",
+  "[&_table]:mt-8 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm [&_table]:leading-6",
+  "[&_caption]:mb-3 [&_caption]:text-left [&_caption]:text-xs [&_caption]:text-white/45",
+  "[&_thead]:bg-white/[0.03]",
+  "[&_th]:border [&_th]:border-white/15 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:align-top [&_th]:font-semibold [&_th]:text-white/90",
+  "[&_td]:border [&_td]:border-white/10 [&_td]:px-3 [&_td]:py-2 [&_td]:text-left [&_td]:align-top [&_td]:text-white/65",
+  "[&_.table-wrap]:overflow-x-auto",
 ].join(" ");
 
 function ShareIcon({ path }: { path: string }) {
