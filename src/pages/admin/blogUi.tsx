@@ -331,7 +331,10 @@ export function PostPreviewDialog({
   if (!post) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6"
+      data-lenis-prevent
+    >
       <div
         className="absolute inset-0"
         onClick={onClose}
@@ -341,9 +344,9 @@ export function PostPreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-label={`Preview ${post.title}`}
-        className="relative z-10 w-full max-w-3xl max-h-[calc(100vh-2rem)] rounded-2xl border border-white/10 bg-[#0d0d16] shadow-2xl flex flex-col"
+        className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d16] shadow-2xl sm:max-h-[calc(100dvh-3rem)]"
       >
-        <header className="sticky top-0 z-10 flex items-start gap-4 rounded-t-2xl border-b border-white/10 bg-[#0d0d16]/95 px-5 py-4 backdrop-blur flex-shrink-0">
+        <header className="sticky top-0 z-10 flex shrink-0 items-start gap-4 rounded-t-2xl border-b border-white/10 bg-[#0d0d16]/95 px-5 py-4 backdrop-blur">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <StatusPill status={post.published_at ? "completed" : "draft"} />
@@ -383,7 +386,7 @@ export function PostPreviewDialog({
           </div>
         </header>
 
-        <div className="px-5 pb-8 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-8" data-lenis-prevent>
           {post.cover_image_url && (
             <img
               src={post.cover_image_url}
