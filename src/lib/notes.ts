@@ -4,6 +4,7 @@ export interface Note {
   id: string;
   title: string;
   html: string;
+  createdAt: number;
   updatedAt: number;
   /** Course this note belongs to (notes.course_id); null = unlinked. */
   courseId: number | null;

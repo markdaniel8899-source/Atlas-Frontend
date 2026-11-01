@@ -1278,7 +1278,7 @@ export default function NotesPage() {
               )}
             </div>
             <span className="mt-0.5 block text-xs text-white/35">
-              {new Date(note.updatedAt).toLocaleDateString("en-US", {
+              {new Date(note.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
               })}

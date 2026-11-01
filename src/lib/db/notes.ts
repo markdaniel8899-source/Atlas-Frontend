@@ -7,6 +7,7 @@ interface NoteRow {
   id: number;
   title: string;
   content: string;
+  created_at: string;
   updated_at: string;
   course_id: number | null;
   topic_id: number | null;
@@ -15,13 +16,17 @@ interface NoteRow {
   shared_at: string | null;
 }
 
-const NOTE_COLUMNS = "id, title, content, updated_at, course_id, topic_id, shared_by, shared_at";
+const NOTE_COLUMNS =
+  "id, title, content, created_at, updated_at, course_id, topic_id, shared_by, shared_at";
 
 function toNote(row: NoteRow): Note {
   return {
     id: String(row.id),
     title: row.title,
     html: row.content,
+    createdAt: Number.isNaN(Date.parse(row.created_at))
+      ? Date.now()
+      : Date.parse(row.created_at),
     updatedAt: Number.isNaN(Date.parse(row.updated_at))
       ? Date.now()
       : Date.parse(row.updated_at),
