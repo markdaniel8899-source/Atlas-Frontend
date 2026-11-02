@@ -45,8 +45,6 @@ interface FaqEntry {
   answer: string;
 }
 
-const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 export function tidyDashes(value: string): string {
   return value.replace(/\s*—\s*/g, ", ").replace(/,\s*,/g, ",");
 }
@@ -102,7 +100,6 @@ function normalizeImageUrl(value: unknown): string | null {
 
 function normalizeRow(row: Record<string, unknown>): StaticBlogPost | null {
   const slug = String(row.slug ?? "").trim();
-  if (!SLUG_RE.test(slug)) return null;
   const publishedAt = String(row.published_at ?? "").trim();
   if (!publishedAt) return null;
 
