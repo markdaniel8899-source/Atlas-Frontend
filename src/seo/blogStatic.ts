@@ -362,8 +362,8 @@ function assetTags(assets: StaticAssets): string {
 const STATIC_CSS = `
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-body{margin:0;background:#030305;color:#e8e5f2;font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.75}
-a{color:#cf9eff;text-decoration-thickness:1px;text-underline-offset:3px}
+body{margin:0;background:#030305;color:rgba(255,255,255,0.7);font-family:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.75}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:3px}
 .static-shell{width:min(760px,calc(100% - 40px));margin:0 auto;padding:36px 0 80px}
 .static-brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-weight:700;letter-spacing:-.02em}
 .static-brand span{display:inline-block;width:9px;height:9px;border:1px solid #cf9eff;background:#4044cc;transform:rotate(45deg)}
