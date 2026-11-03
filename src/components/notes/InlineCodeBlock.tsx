@@ -375,7 +375,7 @@ export function InlineCodeBlock({
           <button
             type="button"
             onClick={() => setLanguageOpen((current) => !current)}
-            className="flex h-7 max-w-[104px] items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.07] hover:text-white sm:max-w-[138px]"
+            className="flex h-7 max-w-[92px] items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.07] hover:text-white sm:max-w-[138px]"
             aria-haspopup="listbox"
             aria-expanded={languageOpen}
             aria-label="Code language"
@@ -397,7 +397,7 @@ export function InlineCodeBlock({
               role="listbox"
               aria-label="Choose code language"
               data-lenis-prevent
-              className="absolute left-0 top-full z-50 mt-1 max-h-64 w-60 overflow-y-auto overscroll-contain rounded-lg border border-white/10 bg-[#111] py-1 shadow-xl"
+              className="absolute left-0 top-full z-50 mt-1 max-h-64 w-60 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-lg border border-white/10 bg-[#111] py-1 shadow-xl"
             >
               {getLanguageOptions().map((option) => {
                 const selected = option.id === activeLanguage;
@@ -437,7 +437,7 @@ export function InlineCodeBlock({
           )}
         </div>
 
-        <div className="hidden shrink-0 sm:block">
+        <div className="shrink-0">
           <input
             ref={extensionInputRef}
             type="text"
@@ -460,7 +460,7 @@ export function InlineCodeBlock({
             aria-invalid={extensionInvalid}
             spellCheck={false}
             autoComplete="off"
-            className={`h-7 w-[92px] rounded-md border bg-white/[0.04] px-2 font-mono text-[11px] text-white placeholder:font-sans placeholder:text-white/30 focus:bg-white/[0.07] focus:outline-none sm:w-[118px] ${
+            className={`h-7 w-[62px] rounded-md border bg-white/[0.04] px-1.5 font-mono text-[10px] text-white placeholder:font-sans placeholder:text-white/30 focus:bg-white/[0.07] focus:outline-none sm:w-[118px] sm:px-2 sm:text-[11px] ${
               extensionInvalid
                 ? "border-red-400/50 focus:border-red-400/70"
                 : "border-white/10 focus:border-[#cf9eff]/45"
