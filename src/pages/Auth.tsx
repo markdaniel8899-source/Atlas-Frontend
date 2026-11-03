@@ -59,8 +59,8 @@ function readPillarTier(): PillarTier {
   if (typeof window === "undefined") return "default";
   const width = window.innerWidth;
   const dpr = window.devicePixelRatio || 1;
-  if (width >= 2560 || width * dpr >= 4000) return "xl";
-  if (width >= 1920 || width * dpr >= 2600) return "large";
+  if (width >= 1920 || width * dpr >= 3000) return "xl";
+  if (width >= 1440 || width * dpr >= 2000) return "large";
   return "default";
 }
 
@@ -245,7 +245,13 @@ export default function Auth({ mode }: { mode: "login" | "signup" }) {
           pillarRotation={25}
           interactive={false}
           mixBlendMode="screen"
-          quality={pillarTier === "default" ? "high" : "medium"}
+          quality={
+            pillarTier === "default"
+              ? "high"
+              : pillarTier === "xl"
+                ? "low"
+                : "medium"
+          }
         />
         {pillarTier !== "default" && (
           <div
