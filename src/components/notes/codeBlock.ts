@@ -428,6 +428,8 @@ export const CODE_BLOCK_CSS = `
 .atomic-code-block {
   position: relative;
   margin: 14px 0;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
   background: #1e1e1e;
@@ -440,6 +442,7 @@ export const CODE_BLOCK_CSS = `
 }
 .atomic-code-block .atomic-code-block-view {
   display: flex;
+  min-width: 0;
   align-items: stretch;
   max-width: 100%;
   border-radius: 9px;

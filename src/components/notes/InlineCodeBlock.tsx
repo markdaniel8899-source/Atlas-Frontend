@@ -131,6 +131,33 @@ export function InlineCodeBlock({
     setCopied(false);
   }, [editing, code, language]);
 
+  // On phones, reveal the editor once it mounts and keep it visible when the
+  // software keyboard opens.
+  useEffect(() => {
+    if (!editing || !target) return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+
+    const reveal = (smooth: boolean) => {
+      overlayRef.current?.scrollIntoView({
+        block: "center",
+        behavior: smooth ? "smooth" : "auto",
+      });
+    };
+
+    const timers = [
+      window.setTimeout(() => reveal(true), 80),
+      window.setTimeout(() => reveal(true), 360),
+    ];
+    const viewport = window.visualViewport;
+    const handleViewportChange = () => reveal(false);
+    viewport?.addEventListener("resize", handleViewportChange);
+
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      viewport?.removeEventListener("resize", handleViewportChange);
+    };
+  }, [editing, target]);
+
   // Reserve the block's space while the overlay is mounted so following
   // content is pushed down instead of being covered by the editor.
   const editorHeight = Math.max(140, lineCount * 21 + 44);
@@ -339,7 +366,7 @@ export function InlineCodeBlock({
       }}
     >
       <div
-        className="relative z-20 flex h-11 items-center gap-2 rounded-t-[9px] border-b border-white/10 bg-[#0d0d16]/95 px-2.5 backdrop-blur-sm sm:px-3"
+        className="relative z-20 flex h-11 min-w-0 items-center gap-1.5 rounded-t-[9px] border-b border-white/10 bg-[#0d0d16]/95 px-2.5 backdrop-blur-sm sm:gap-2 sm:px-3"
         style={{ height: TOOLBAR_HEIGHT }}
       >
         <FileCode className="hidden size-4 shrink-0 text-white/35 sm:block" />
@@ -348,7 +375,7 @@ export function InlineCodeBlock({
           <button
             type="button"
             onClick={() => setLanguageOpen((current) => !current)}
-            className="flex h-7 max-w-[138px] items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.07] hover:text-white"
+            className="flex h-7 max-w-[104px] items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 text-[11px] text-white/75 transition-colors hover:border-[#cf9eff]/45 hover:bg-white/[0.07] hover:text-white sm:max-w-[138px]"
             aria-haspopup="listbox"
             aria-expanded={languageOpen}
             aria-label="Code language"
@@ -410,7 +437,7 @@ export function InlineCodeBlock({
           )}
         </div>
 
-        <div className="shrink-0">
+        <div className="hidden shrink-0 sm:block">
           <input
             ref={extensionInputRef}
             type="text"

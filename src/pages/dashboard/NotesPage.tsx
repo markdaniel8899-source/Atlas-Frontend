@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Code,
   Download,
+  EllipsisVertical,
   GripVertical,
   Heading2,
   Italic,
@@ -269,6 +270,8 @@ export default function NotesPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [courseMenuOpen, setCourseMenuOpen] = useState(false);
   const courseMenuRef = useRef<HTMLDivElement>(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
+  const mobileActionsRef = useRef<HTMLDivElement>(null);
 
   const selectedCourseId = useMemo(() => {
     const raw = Number(searchParams.get("courseId") ?? "");
@@ -341,6 +344,27 @@ export default function NotesPage() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [courseMenuOpen]);
+
+  // Close the mobile actions menu on outside tap or Escape.
+  useEffect(() => {
+    if (!mobileActionsOpen) return;
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!mobileActionsRef.current?.contains(event.target as Node)) {
+        setMobileActionsOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileActionsOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [mobileActionsOpen]);
 
   // Fetch only the notes of the active context: the selected course's
   // notes when a course is picked, otherwise every note (the list is then
@@ -1154,6 +1178,93 @@ export default function NotesPage() {
     },
   ];
 
+  /** Shared "move to course" option list for the desktop menu and the mobile
+   *  three-dot menu. */
+  const courseOptionButtons = active ? (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          updateNoteCourse(active.id, null);
+          setCourseMenuOpen(false);
+          setMobileActionsOpen(false);
+        }}
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
+          active.courseId === null
+            ? "bg-[#cf9eff]/12 text-[#cf9eff]"
+            : "hover:bg-white/[0.07] text-white/75"
+        }`}
+      >
+        <span
+          className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+            active.courseId === null
+              ? "border-[#cf9eff]/40 bg-[#cf9eff]/15 text-[#cf9eff]"
+              : "border-white/10 bg-white/[0.05] text-white/45"
+          }`}
+        >
+          <StickyNote className="size-4" />
+        </span>
+        <span
+          className={`min-w-0 flex-1 truncate ${
+            active.courseId === null
+              ? "font-medium text-white"
+              : "text-white/75"
+          }`}
+        >
+          General
+        </span>
+        {active.courseId === null && (
+          <Check className="size-4 shrink-0 text-[#cf9eff]" />
+        )}
+      </button>
+      {courses.map((course) => (
+        <button
+          key={course.id}
+          type="button"
+          onClick={() => {
+            updateNoteCourse(active.id, course.id);
+            setCourseMenuOpen(false);
+            setMobileActionsOpen(false);
+          }}
+          className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
+            active.courseId === course.id
+              ? "bg-[#cf9eff]/12"
+              : "hover:bg-white/[0.07]"
+          }`}
+        >
+          <span
+            className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
+              active.courseId === course.id
+                ? "border-[#cf9eff]/40 bg-[#cf9eff]/15"
+                : "border-white/10 bg-white/[0.05]"
+            }`}
+            style={{
+              color:
+                active.courseId === course.id ? course.accent : "white",
+            }}
+          >
+            <BookOpen className="size-4" style={{ color: course.accent }} />
+          </span>
+          <span
+            className={`min-w-0 flex-1 truncate ${
+              active.courseId === course.id
+                ? "font-medium text-white"
+                : "text-white/75"
+            }`}
+          >
+            {course.title}
+          </span>
+          {active.courseId === course.id && (
+            <Check
+              className="size-4 shrink-0"
+              style={{ color: course.accent }}
+            />
+          )}
+        </button>
+      ))}
+    </>
+  ) : null;
+
   const onSubmitNewNote = (event: FormEvent) => {
     event.preventDefault();
     void addNote();
@@ -1475,7 +1586,7 @@ export default function NotesPage() {
         )}
 
         {!selectionMode && (
-          <section className="glass card-sheen flex min-h-[65vh] flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+          <section className="glass card-sheen flex min-h-[65vh] min-w-0 flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
           {active ? (
             <>
               <div className="flex flex-wrap items-center gap-1 border-b border-white/[0.07] px-4 py-3">
@@ -1502,6 +1613,7 @@ export default function NotesPage() {
                   </button>
                 ))}
                 <span className="ml-auto flex items-center gap-1.5">
+                  <div className="hidden items-center gap-1.5 md:flex">
                   <button
                     type="button"
                     onClick={() => active && enterSelectionMode('download')}
@@ -1552,86 +1664,7 @@ export default function NotesPage() {
                               transition={{ duration: 0.16, ease: EASE }}
                               className="absolute right-0 top-full mt-2 z-50 min-w-[180px] max-w-[90vw] rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl"
                             >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  updateNoteCourse(active.id, null);
-                                  setCourseMenuOpen(false);
-                                }}
-                                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
-                                  active.courseId === null
-                                    ? "bg-[#cf9eff]/12 text-[#cf9eff]"
-                                    : "hover:bg-white/[0.07] text-white/75"
-                                }`}
-                              >
-                                <span
-                                  className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
-                                    active.courseId === null
-                                      ? "border-[#cf9eff]/40 bg-[#cf9eff]/15 text-[#cf9eff]"
-                                      : "border-white/10 bg-white/[0.05] text-white/45"
-                                  }`}
-                                >
-                                  <StickyNote className="size-4" />
-                                </span>
-                                <span
-                                  className={`min-w-0 flex-1 truncate ${
-                                    active.courseId === null
-                                      ? "font-medium text-white"
-                                      : "text-white/75"
-                                  }`}
-                                >
-                                  General
-                                </span>
-                                {active.courseId === null && (
-                                  <Check className="size-4 shrink-0 text-[#cf9eff]" />
-                                )}
-                              </button>
-                              {courses.map((course) => (
-                                <button
-                                  key={course.id}
-                                  type="button"
-                                  onClick={() => {
-                                    updateNoteCourse(active.id, course.id);
-                                    setCourseMenuOpen(false);
-                                  }}
-                                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
-                                    active.courseId === course.id
-                                      ? "bg-[#cf9eff]/12"
-                                      : "hover:bg-white/[0.07]"
-                                  }`}
-                                >
-                                  <span
-                                    className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
-                                      active.courseId === course.id
-                                        ? "border-[#cf9eff]/40 bg-[#cf9eff]/15"
-                                        : "border-white/10 bg-white/[0.05]"
-                                    }`}
-                                    style={{
-                                      color:
-                                        active.courseId === course.id
-                                          ? course.accent
-                                          : "white",
-                                    }}
-                                  >
-                                    <BookOpen className="size-4" style={{ color: course.accent }} />
-                                  </span>
-                                  <span
-                                    className={`min-w-0 flex-1 truncate ${
-                                      active.courseId === course.id
-                                        ? "font-medium text-white"
-                                        : "text-white/75"
-                                    }`}
-                                  >
-                                    {course.title}
-                                  </span>
-                                  {active.courseId === course.id && (
-                                    <Check
-                                      className="size-4 shrink-0"
-                                      style={{ color: course.accent }}
-                                    />
-                                  )}
-                                </button>
-                              ))}
+                              {courseOptionButtons}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -1655,6 +1688,103 @@ export default function NotesPage() {
                       Delete note
                     </span>
                   </button>
+                  </div>
+                  <span
+                    className={`text-xs transition-opacity duration-300 md:hidden ${
+                      saved ? "text-[#cf9eff]/80 opacity-100" : "opacity-0"
+                    }`}
+                  >
+                    Saved
+                  </span>
+                  <div ref={mobileActionsRef} className="relative md:hidden">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen((prev) => !prev);
+                        setCourseMenuOpen(false);
+                      }}
+                      aria-haspopup="menu"
+                      aria-expanded={mobileActionsOpen}
+                      aria-label="Note actions"
+                      className={`rounded-lg p-2 transition-colors ${
+                        mobileActionsOpen
+                          ? "bg-[#cf9eff]/15 text-[#cf9eff]"
+                          : "text-white/45 hover:bg-white/[0.07] hover:text-white"
+                      }`}
+                    >
+                      <EllipsisVertical className="size-4" />
+                    </button>
+                    <AnimatePresence>
+                      {mobileActionsOpen && (
+                        <motion.div
+                          role="menu"
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.16, ease: EASE }}
+                          className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMobileActionsOpen(false);
+                              if (active) enterSelectionMode("download");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white"
+                          >
+                            <Download className="size-4" /> Download notes
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            disabled={!shareableId}
+                            onClick={() => {
+                              setMobileActionsOpen(false);
+                              if (active) enterSelectionMode("share");
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white/75"
+                          >
+                            <Share2 className="size-4" /> Share notes
+                          </button>
+                          {active && courses.length > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => setCourseMenuOpen((prev) => !prev)}
+                                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/75 transition-colors hover:bg-white/[0.07] hover:text-white"
+                              >
+                                <BookOpen className="size-4" /> Move to course
+                                <ChevronDown
+                                  className={`ml-auto size-3.5 transition-transform ${
+                                    courseMenuOpen ? "rotate-180" : ""
+                                  }`}
+                                />
+                              </button>
+                              {courseMenuOpen && (
+                                <div className="mt-1 max-h-52 overflow-y-auto overscroll-contain border-t border-white/[0.07] pt-1">
+                                  {courseOptionButtons}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <div className="mx-1 my-1 border-t border-white/[0.07]" />
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setMobileActionsOpen(false);
+                              if (active) setDeleteConfirmId(active.id);
+                            }}
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-red-300/80 transition-colors hover:bg-red-500/10 hover:text-red-200"
+                          >
+                            <Trash2 className="size-4" /> Delete note
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </span>
               </div>
 
@@ -1678,7 +1808,7 @@ export default function NotesPage() {
 
 {!selectionMode ? (
                 <>
-                  <div className="relative min-h-[38vh] flex-1">
+                  <div className="relative min-h-0 flex-1 max-md:max-h-[55dvh] max-md:overflow-y-auto max-md:overscroll-contain">
                     <div
                       ref={editorRef}
                       contentEditable
@@ -1689,7 +1819,7 @@ export default function NotesPage() {
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
-                      className="min-h-[38vh] flex-1 px-6 py-5 text-sm leading-relaxed text-white/70 focus:outline-none [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      className="min-h-[38vh] flex-1 px-4 py-5 text-sm leading-relaxed text-white/70 focus:outline-none sm:px-6 [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
                     {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}
