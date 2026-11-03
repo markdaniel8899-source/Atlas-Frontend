@@ -49,9 +49,9 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
     return (
       <Card className="p-6 sm:p-7">
         <div className="animate-pulse space-y-5">
-          <div className="flex gap-8">
-            <div className="h-11 w-36 rounded-xl bg-white/[0.06]" />
-            <div className="h-11 w-36 rounded-xl bg-white/[0.06]" />
+          <div className="flex gap-4 sm:gap-8">
+            <div className="h-11 w-28 rounded-xl bg-white/[0.06] sm:w-36" />
+            <div className="h-11 w-28 rounded-xl bg-white/[0.06] sm:w-36" />
           </div>
           <div className="h-2.5 w-full rounded-full bg-white/[0.05]" />
         </div>
@@ -94,11 +94,13 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
             <RankBadge
               rank={rankData.tier.key}
               tier={rankData.current.step}
-              size={34}
-              sm:size={44}
+              size={44}
+              className="size-9 md:size-11"
             />
             <div className="text-left leading-tight">
-              <p className="text-lg font-semibold text-white">{rankData.name}</p>
+              <p className="text-base font-semibold text-white sm:text-lg">
+                {rankData.name}
+              </p>
               <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.22em] text-white/35">
                 current rank
               </p>

@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Card } from "../ui/Card";
 import { summariseHeatmap } from "../../lib/db/activity";
 import type { HeatmapDay } from "../../lib/db/types";
@@ -46,6 +46,7 @@ interface GridCell {
 
 interface GridColumn {
   key: string;
+  month: number;
   monthLabel: string | null;
   cells: GridCell[];
 }
@@ -75,7 +76,6 @@ function buildColumns(days: HeatmapDay[], weeks: number): GridColumn[] {
   first.setUTCDate(lastSunday.getUTCDate() - (weeks - 1) * 7);
 
   const columns: GridColumn[] = [];
-  let previousMonth = -1;
 
   for (let week = 0; week < weeks; week += 1) {
     const columnStart = new Date(first);
@@ -98,17 +98,28 @@ function buildColumns(days: HeatmapDay[], weeks: number): GridColumn[] {
       });
     }
 
-    const month = columnStart.getUTCMonth();
-    const monthLabel =
-      previousMonth === -1 || month !== previousMonth ? MONTHS[month] : null;
-    previousMonth = month;
-
-    columns.push({ key: `w${week}`, monthLabel, cells });
+    columns.push({
+      key: `w${week}`,
+      month: columnStart.getUTCMonth(),
+      monthLabel: null,
+      cells,
+    });
   }
 
   // Most recent week (containing today) on the left so today's progress
   // starts from the left edge and is visible without horizontal scroll.
-  return columns.reverse();
+  const ordered = columns.reverse();
+  // Month labels now sit on the left edge of each month group (the newest
+  // week of that month), since the grid runs newest-to-oldest.
+  let previousMonth = -1;
+  for (const column of ordered) {
+    column.monthLabel =
+      previousMonth === -1 || column.month !== previousMonth
+        ? MONTHS[column.month]
+        : null;
+    previousMonth = column.month;
+  }
+  return ordered;
 }
 
 function cellTitle(cell: GridCell): string | undefined {
@@ -120,11 +131,45 @@ function cellTitle(cell: GridCell): string | undefined {
   }`;
 }
 
+/** Phones can't fit a year of cells without horizontal scroll, so show a
+ *  shorter window there. Today always stays at the left edge. */
+function weeksForWidth(width: number, maxWeeks: number): number {
+  if (width < 640) return Math.min(18, maxWeeks);
+  if (width < 1024) return Math.min(30, maxWeeks);
+  return maxWeeks;
+}
+
+function useResponsiveWeeks(maxWeeks: number): number {
+  const [weeks, setWeeks] = useState(() =>
+    typeof window === "undefined"
+      ? maxWeeks
+      : weeksForWidth(window.innerWidth, maxWeeks),
+  );
+  useEffect(() => {
+    const update = () => setWeeks(weeksForWidth(window.innerWidth, maxWeeks));
+    update();
+    window.addEventListener("resize", update, { passive: true });
+    return () => window.removeEventListener("resize", update);
+  }, [maxWeeks]);
+  return weeks;
+}
+
 export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
-  const columns = useMemo(() => buildColumns(days, weeks), [days, weeks]);
+  const visibleWeeks = useResponsiveWeeks(weeks);
+  const visibleDays = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setUTCHours(0, 0, 0, 0);
+    cutoff.setUTCDate(cutoff.getUTCDate() - visibleWeeks * 7);
+    const iso = cutoff.toISOString().slice(0, 10);
+    return days.filter((day) => String(day.day).slice(0, 10) >= iso);
+  }, [days, visibleWeeks]);
+  const columns = useMemo(
+    () => buildColumns(visibleDays, visibleWeeks),
+    [visibleDays, visibleWeeks],
+  );
   const { totalSeconds, activeDays } = useMemo(
-    () => summariseHeatmap(days),
-    [days],
+    () => summariseHeatmap(visibleDays),
+    [visibleDays],
   );
   const hours = Math.round((totalSeconds / 3600) * 10) / 10;
 
@@ -136,7 +181,7 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
             Activity
           </p>
           <h2 className="mt-1.5 text-lg font-medium tracking-[-0.02em] text-white">
-            Last {weeks} weeks
+            Last {visibleWeeks} weeks
           </h2>
         </div>
         <p className="text-xs text-white/40">
@@ -149,7 +194,7 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
       <div
         className="mt-6 flex gap-3"
         role="img"
-        aria-label={`Focus activity for the last ${weeks} weeks, ${activeDays} active days.`}
+        aria-label={`Focus activity for the last ${visibleWeeks} weeks, ${activeDays} active days.`}
       >
         <div className="min-w-0 flex-1 overflow-hidden">
           <div className="max-w-full">
@@ -170,7 +215,7 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
             </div>
 
             <div
-              className="grid gap-1"
+              className="grid gap-[2px] sm:gap-1"
               style={{
                 gridTemplateColumns: `auto repeat(${columns.length}, minmax(0, 1fr))`,
               }}

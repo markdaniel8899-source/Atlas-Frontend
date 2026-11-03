@@ -184,7 +184,7 @@ function NavLinks({
           title={open ? undefined : item.label}
           aria-label={item.label}
           className={({ isActive }) =>
-            `relative flex items-center rounded-xl border px-4 py-3 text-base sm:text-sm transition-colors ${
+            `relative flex items-center rounded-xl border px-4 py-3 text-base md:text-sm transition-colors ${
               open ? "gap-3" : "justify-center"
             } ${
               isActive
@@ -193,9 +193,9 @@ function NavLinks({
             }`
           }
         >
-          <item.icon className="size-6 shrink-0 sm:size-4" />
+          <item.icon className="size-6 shrink-0 md:size-4" />
           {open && (
-            <span className="truncate text-lg sm:text-sm">{item.label}</span>
+            <span className="truncate text-lg md:text-sm">{item.label}</span>
           )}
         </NavLink>
       ))}
@@ -369,7 +369,7 @@ export default function DashboardLayout() {
 
       <aside
         className={`fixed inset-y-0 left-0 z-30 hidden overflow-hidden border-r border-white/[0.05] bg-white/[0.03] backdrop-blur-md transition-[width] duration-300 md:block ${
-          isSidebarOpen ? "w-80" : "w-24"
+          isSidebarOpen ? "w-64" : "w-20"
         }`}
       >
         <Sidebar
@@ -380,14 +380,14 @@ export default function DashboardLayout() {
 
       <header
         className={`fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-white/[0.05] bg-white/[0.03] px-4 backdrop-blur-md transition-[left] duration-300 md:px-8 ${
-          isSidebarOpen ? "md:left-80" : "md:left-24"
+          isSidebarOpen ? "md:left-64" : "md:left-20"
         }`}
       >
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white md:hidden"
+            className="grid size-11 place-items-center rounded-lg text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white md:hidden"
             aria-label="Open navigation"
           >
             <Menu className="size-5" />
@@ -517,12 +517,12 @@ export default function DashboardLayout() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.35, ease: EASE }}
-              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-white/[0.05] bg-[rgba(6,6,14,0.94)] backdrop-blur-2xl md:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-60 border-r border-white/[0.05] bg-[rgba(6,6,14,0.94)] backdrop-blur-2xl md:hidden"
             >
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="absolute top-4 right-4 rounded-lg p-2 text-white/50 transition-colors hover:text-white"
+                className="absolute top-3 right-3 grid size-10 place-items-center rounded-lg text-white/50 transition-colors hover:text-white"
                 aria-label="Close navigation"
               >
                 <X className="size-4" />
@@ -541,7 +541,7 @@ export default function DashboardLayout() {
           activePath === "/app/assistant"
             ? "h-dvh"
             : "min-h-dvh"
-        } ${isSidebarOpen ? "md:pl-80" : "md:pl-24"}`}
+        } ${isSidebarOpen ? "md:pl-64" : "md:pl-20"}`}
       >
         <div
           className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12 ${
