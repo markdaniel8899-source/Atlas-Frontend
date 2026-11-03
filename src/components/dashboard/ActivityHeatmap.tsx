@@ -151,7 +151,7 @@ export function ActivityHeatmap({ days, weeks = 53 }: ActivityHeatmapProps) {
         role="img"
         aria-label={`Focus activity for the last ${weeks} weeks, ${activeDays} active days.`}
       >
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <div className="max-w-full">
             <div className="relative h-4">
               {columns.map((column, index) =>
