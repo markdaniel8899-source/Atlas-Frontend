@@ -70,7 +70,7 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
           className="pointer-events-none absolute -top-28 -right-16 size-72 rounded-full bg-[#cf9eff]/12 blur-3xl"
         />
 
-        <div className="relative flex flex-wrap items-center gap-x-10 gap-y-6">
+        <div className="relative flex flex-wrap items-center gap-x-4 sm:gap-x-10 gap-y-6">
           <Cell
             tone="border-orange-400/25 bg-orange-400/[0.08]"
             icon={<Flame className="size-5 text-[#ff8f52]" />}
@@ -94,7 +94,8 @@ export function PlayerStats({ profile, loading }: PlayerStatsProps) {
             <RankBadge
               rank={rankData.tier.key}
               tier={rankData.current.step}
-              size={44}
+              size={34}
+              sm:size={44}
             />
             <div className="text-left leading-tight">
               <p className="text-lg font-semibold text-white">{rankData.name}</p>

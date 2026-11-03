@@ -193,8 +193,10 @@ function NavLinks({
             }`
           }
         >
-          <item.icon className="size-4 shrink-0" />
-          {open && <span className="truncate">{item.label}</span>}
+          <item.icon className="size-5 shrink-0 sm:size-4" />
+          {open && (
+            <span className="truncate text-base sm:text-sm">{item.label}</span>
+          )}
         </NavLink>
       ))}
     </nav>
