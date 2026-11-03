@@ -184,7 +184,7 @@ function NavLinks({
           title={open ? undefined : item.label}
           aria-label={item.label}
           className={({ isActive }) =>
-            `relative flex items-center rounded-xl border px-4 py-3 text-base md:text-sm transition-colors ${
+            `relative flex items-center rounded-xl border px-3.5 py-2.5 text-base md:text-sm transition-colors ${
               open ? "gap-3" : "justify-center"
             } ${
               isActive
@@ -193,9 +193,9 @@ function NavLinks({
             }`
           }
         >
-          <item.icon className="size-6 shrink-0 md:size-4" />
+          <item.icon className="size-5 shrink-0 md:size-4" />
           {open && (
-            <span className="truncate text-lg md:text-sm">{item.label}</span>
+            <span className="truncate text-base md:text-sm">{item.label}</span>
           )}
         </NavLink>
       ))}
