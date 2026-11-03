@@ -106,7 +106,9 @@ function buildColumns(days: HeatmapDay[], weeks: number): GridColumn[] {
     columns.push({ key: `w${week}`, monthLabel, cells });
   }
 
-  return columns;
+  // Most recent week (containing today) on the left so today's progress
+  // starts from the left edge and is visible without horizontal scroll.
+  return columns.reverse();
 }
 
 function cellTitle(cell: GridCell): string | undefined {
