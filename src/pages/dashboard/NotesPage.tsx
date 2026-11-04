@@ -64,10 +64,52 @@ interface Tool {
 interface NoteGroup {
   key: string;
   title: string;
+  accent: string;
   notes: Note[];
 }
 
 const NOTE_ORDER_PREFIX = "atlas:note-order:";
+
+/** Neutral accent for notes that are not linked to a course. */
+const GENERAL_ACCENT = "#8b90a3";
+
+/** Course accents assigned when a course is created (mirrors db/courses.ts). */
+const NOTE_ACCENTS = [
+  "#9db4ff",
+  "#5fbdb2",
+  "#a982e0",
+  "#5aa7cd",
+  "#e0975f",
+  "#cd6f95",
+  "#cf9eff",
+];
+
+function hexToRgba(hex: string, alpha: number): string {
+  const value = hex.replace("#", "");
+  const full =
+    value.length === 3
+      ? value
+          .split("")
+          .map((char) => char + char)
+          .join("")
+      : value;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return `rgba(207, 158, 255, ${alpha})`;
+  const int = Number.parseInt(full, 16);
+  return `rgba(${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}, ${alpha})`;
+}
+
+/** Stable accent for a note: its course accent, or a palette colour derived
+ *  from the course id when the course is not in the local list (shared note). */
+function noteAccent(
+  note: Note,
+  accentByCourseId: Map<number, string>,
+): string {
+  if (note.courseId == null) return GENERAL_ACCENT;
+  return (
+    accentByCourseId.get(note.courseId) ??
+    NOTE_ACCENTS[Math.abs(note.courseId) % NOTE_ACCENTS.length]
+  );
+}
 
 function noteOrderKey(): string {
   return `${NOTE_ORDER_PREFIX}${getUser()?.id ?? "guest"}`;
@@ -116,7 +158,7 @@ function CourseSwitcher({
   value,
   onChange,
 }: {
-  courses: { id: number; title: string }[];
+  courses: { id: number; title: string; accent?: string }[];
   value: number | null;
   onChange: (courseId: number | null) => void;
 }) {
@@ -124,14 +166,16 @@ function CourseSwitcher({
   const rootRef = useRef<HTMLDivElement>(null);
 
   const items = [
-    { id: null, title: "All notes", icon: StickyNote },
+    { id: null, title: "All notes", icon: StickyNote, accent: "#cf9eff" },
     ...courses.map((course) => ({
       id: course.id,
       title: course.title,
       icon: BookOpen,
+      accent: course.accent ?? "#cf9eff",
     })),
   ];
   const selected = items.find((item) => item.id === value) ?? items[0];
+  const selectedAccent = selected.accent;
 
   useEffect(() => {
     if (!open) return;
@@ -165,7 +209,8 @@ function CourseSwitcher({
         }`}
       >
         <StickyNote
-          className={`size-4 shrink-0 ${open ? "text-[#cf9eff]" : "text-[#cf9eff]/70"}`}
+          className={`size-4 shrink-0 ${open ? "" : "opacity-80"}`}
+          style={{ color: selectedAccent }}
         />
         <span className="truncate">{selected.title}</span>
         <ChevronDown
@@ -189,6 +234,7 @@ function CourseSwitcher({
             {items.map((item) => {
               const Icon = item.icon;
               const active = item.id === value;
+              const accent = item.accent ?? "#cf9eff";
               return (
                 <button
                   key={item.id ?? "all"}
@@ -200,15 +246,23 @@ function CourseSwitcher({
                     setOpen(false);
                   }}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-star ${
-                    active ? "bg-[#cf9eff]/12" : "hover:bg-white/[0.07]"
+                    active ? "" : "hover:bg-white/[0.07]"
                   }`}
+                  style={active ? { backgroundColor: hexToRgba(accent, 0.12) } : undefined}
                 >
                   <span
                     className={`grid size-8 shrink-0 place-items-center rounded-lg border ${
-                      active
-                        ? "border-[#cf9eff]/40 bg-[#cf9eff]/15 text-[#cf9eff]"
-                        : "border-white/10 bg-white/[0.05] text-white/45"
+                      active ? "" : "border-white/10 bg-white/[0.05]"
                     }`}
+                    style={
+                      active
+                        ? {
+                            color: accent,
+                            borderColor: hexToRgba(accent, 0.4),
+                            backgroundColor: hexToRgba(accent, 0.15),
+                          }
+                        : undefined
+                    }
                   >
                     <Icon className="size-4" />
                   </span>
@@ -220,7 +274,7 @@ function CourseSwitcher({
                     {item.title}
                   </span>
                   {active && (
-                    <Check className="size-4 shrink-0 text-[#cf9eff]" />
+                    <Check className="size-4 shrink-0" style={{ color: accent }} />
                   )}
                 </button>
               );
@@ -287,6 +341,11 @@ export default function NotesPage() {
   const activeCourseId = selectedCourse ? selectedCourseId : null;
 
   const active = notes.find((n) => n.id === activeId) ?? null;
+  const activeCourse =
+    active?.courseId != null
+      ? (courses.find((course) => course.id === active.courseId) ?? null)
+      : null;
+  const activeAccent = activeCourse?.accent ?? GENERAL_ACCENT;
   /** Share only persisted notes: numeric positive id, no optimistic rows. */
   const shareableId =
     active && toShareableId(active.id) !== null ? active.id : null;
@@ -429,6 +488,11 @@ export default function NotesPage() {
     };
   }, [coursesLoading, selectedCourseId, activeCourseId, mergePending]);
 
+  const accentByCourseId = useMemo(
+    () => new Map(courses.map((course) => [course.id, course.accent])),
+    [courses],
+  );
+
   const groupedNotes = useMemo<NoteGroup[]>(() => {
     const groups = new Map<string, NoteGroup>();
     for (const note of notes) {
@@ -441,16 +505,17 @@ export default function NotesPage() {
         note.courseId == null
           ? "General"
           : (course?.title ?? note.courseTitle ?? "Course");
+      const accent = noteAccent(note, accentByCourseId);
       const group = groups.get(key);
       if (group) group.notes.push(note);
-      else groups.set(key, { key, title, notes: [note] });
+      else groups.set(key, { key, title, accent, notes: [note] });
     }
     return Array.from(groups.values()).sort((a, b) => {
       if (a.key === "general") return -1;
       if (b.key === "general") return 1;
       return a.title.localeCompare(b.title);
     });
-  }, [notes, courses]);
+  }, [notes, courses, accentByCourseId]);
 
   useEffect(() => {
     if (activeRef.current !== activeId) {
@@ -1276,6 +1341,8 @@ export default function NotesPage() {
     const isSelected = selectedIds.has(note.id);
     const hasSender = note.sharedBy != null;
     const isSelectionContext = context === 'selection';
+    const accent = noteAccent(note, accentByCourseId);
+    const isActive = note.id === activeId && !selectionMode;
 
     return (
       <li
@@ -1309,7 +1376,7 @@ export default function NotesPage() {
           setDraggingId(null);
           setDragOverId(null);
         }}
-        className={`rounded-xl transition-all duration-200 ease-in-out ${
+        className={`relative rounded-xl transition-all duration-200 ease-in-out ${
           dragging ? "opacity-45" : ""
         } ${
           dragOver ? "shadow-[0_0_0_2px_rgba(207,158,255,0.55)]" : ""
@@ -1360,14 +1427,29 @@ export default function NotesPage() {
             }
           }}
           title={selectionMode ? "Toggle selection" : "Drag to reorder"}
-          className={`group flex w-full items-start gap-2.5 rounded-xl px-3 py-3 text-left transition-colors ${
-            note.id === activeId && !selectionMode
-              ? "border border-white/10 bg-white/[0.07]"
+          className={`group relative flex w-full items-start gap-2.5 rounded-xl border py-3 pr-3 pl-4 text-left transition-colors ${
+            isActive
+              ? ""
               : isSelected
-                ? "bg-transparent"
-                : "border border-transparent hover:bg-white/[0.04]"
+                ? "border-transparent bg-transparent"
+                : "border-transparent hover:border-white/10 hover:bg-white/[0.04]"
           }`}
+          style={{
+            backgroundColor: isActive
+              ? hexToRgba(accent, 0.14)
+              : isSelected
+                ? "transparent"
+                : hexToRgba(accent, 0.05),
+            borderColor: isActive ? hexToRgba(accent, 0.35) : undefined,
+          }}
         >
+          <span
+            aria-hidden="true"
+            className={`absolute top-2 bottom-2 left-1.5 w-[3px] rounded-full transition-opacity ${
+              isActive ? "opacity-100" : "opacity-60 group-hover:opacity-100"
+            }`}
+            style={{ backgroundColor: accent }}
+          />
           {!selectionMode && (
             <GripVertical
               className="mt-0.5 size-3.5 shrink-0 cursor-grab text-white/15 transition-colors group-hover:text-white/45"
@@ -1436,7 +1518,14 @@ export default function NotesPage() {
 
       <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
         <aside className="glass card-sheen flex max-h-[65vh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-          <div className="shrink-0 border-b border-white/[0.07] px-4 py-3">
+          <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] px-4 py-3">
+            <span
+              aria-hidden="true"
+              className="size-1.5 shrink-0 rounded-full"
+              style={{
+                backgroundColor: selectedCourse?.accent ?? "#cf9eff",
+              }}
+            />
             <p className="truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-white/60">
               {selectedCourse?.title ?? "All Notes"}
             </p>
@@ -1484,7 +1573,15 @@ export default function NotesPage() {
                         ) : (
                           <ChevronDown className="size-3 shrink-0" />
                         )}
-                        <span className="min-w-0 flex-1 truncate">
+                        <span
+                          aria-hidden="true"
+                          className="size-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: group.accent }}
+                        />
+                        <span
+                          className="min-w-0 flex-1 truncate"
+                          style={{ color: hexToRgba(group.accent, 0.9) }}
+                        >
                           {group.title}
                         </span>
                       </button>
@@ -1565,7 +1662,15 @@ export default function NotesPage() {
                           ) : (
                             <ChevronDown className="size-3 shrink-0" />
                           )}
-                          <span className="min-w-0 flex-1 truncate">
+                          <span
+                            aria-hidden="true"
+                            className="size-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: group.accent }}
+                          />
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            style={{ color: hexToRgba(group.accent, 0.9) }}
+                          >
                             {group.title}
                           </span>
                         </button>
@@ -1789,6 +1894,19 @@ export default function NotesPage() {
               </div>
 
               <div className="border-b border-white/[0.07] px-6 pt-5">
+                {activeCourse && (
+                  <div
+                    className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                    style={{ color: hexToRgba(activeAccent, 0.9) }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: activeAccent }}
+                    />
+                    <span className="truncate">{activeCourse.title}</span>
+                  </div>
+                )}
                 <input
                   type="text"
                   value={active.title}
