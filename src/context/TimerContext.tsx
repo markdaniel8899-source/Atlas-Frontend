@@ -9,19 +9,33 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { useCourses } from "../hooks/useCourses";
+import { getUser } from "../lib/auth";
+import { supabase } from "../lib/supabase";
 import {
-  elapsedMs,
+  defaultTimerState,
   loadTimerState,
   pauseTimer,
   requestTimerNotificationPermission,
   resetTimer,
   saveTimerState,
+  sessionElapsedMs,
   setTargetMinutes,
   showTimerNotification,
   startTimer,
   subscribeTimer,
 } from "../lib/timer";
 import type { TimerState } from "../lib/timer";
+import {
+  cachedDeviceId,
+  decideTimerSync,
+  ensureDeviceId,
+  loadTimerSyncMeta,
+  markTimerDirty,
+  markTimerSynced,
+  pushTimerState,
+  saveTimerSyncMeta,
+} from "../lib/timerSync";
+import type { RemoteTimer } from "../lib/timerSync";
 import { commitFocus, flushFocus } from "../lib/db/focus";
 import { notifyFocusChanged } from "../lib/db/events";
 import { getGlobalFocusSeconds } from "../lib/db/profile";
@@ -70,6 +84,7 @@ export function useTimer(): TimerContextValue {
 }
 
 export function TimerProvider({ children }: { children: ReactNode }) {
+  const userId = getUser()?.id ?? null;
   const [state, setState] = useState<TimerState>(() => loadTimerState());
   const [globalBase, setGlobalBase] = useState(0);
   const [courseBase, setCourseBase] = useState(0);
@@ -93,6 +108,73 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setState(next);
   }, []);
 
+  const syncBusyRef = useRef(false);
+  const syncVersionRef = useRef(0);
+  const syncReadyRef = useRef(false);
+  const adoptedRef = useRef<TimerState | null>(null);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+
+  /** Mirror a timer started on the mobile app / another browser. */
+  const adoptRemote = useCallback(
+    (remote: RemoteTimer) => {
+      if (!userId || userIdRef.current !== userId) return;
+      syncVersionRef.current += 1;
+      adoptedRef.current = remote.state;
+      applyState(remote.state);
+      saveTimerState(remote.state);
+      const meta = loadTimerSyncMeta(userId);
+      saveTimerSyncMeta(userId, {
+        ...meta,
+        dirty: false,
+        remoteUpdatedAt: remote.updatedAt,
+        deviceId: ensureDeviceId(),
+      });
+    },
+    [applyState, userId],
+  );
+
+  /** Push a transition to the server. Offline failures stay marked dirty. */
+  const pushSync = useCallback(
+    (current: TimerState) => {
+      if (!userId) return;
+      const ownerId = userId;
+      const version = ++syncVersionRef.current;
+      const deviceId = ensureDeviceId();
+      markTimerDirty(ownerId, deviceId);
+      void pushTimerState(ownerId, current, deviceId).then((updatedAt) => {
+        if (!updatedAt || userIdRef.current !== ownerId) return;
+        if (version !== syncVersionRef.current) return;
+        markTimerSynced(ownerId, updatedAt, deviceId);
+      });
+    },
+    [userId],
+  );
+
+  /** Decide local vs remote (dirty local wins, otherwise newest row wins). */
+  const syncNow = useCallback(async () => {
+    if (!userId || syncBusyRef.current) return;
+    const ownerId = userId;
+    syncBusyRef.current = true;
+    try {
+      const local = stateRef.current;
+      const decision = await decideTimerSync(ownerId, local);
+      if (userIdRef.current !== ownerId) return;
+      // A local action landed while the row was loading: never adopt over it.
+      if (stateRef.current !== local) {
+        pushSync(stateRef.current);
+        return;
+      }
+      if (decision.type === "adopt") adoptRemote(decision.remote);
+      else if (decision.type === "push") pushSync(decision.state);
+    } catch {
+      // Offline: the local timer keeps running.
+    } finally {
+      syncBusyRef.current = false;
+      syncReadyRef.current = true;
+    }
+  }, [adoptRemote, pushSync, userId]);
+
   const reloadBases = useCallback(async (courseId: number | null) => {
     const [globalSeconds, courseSeconds] = await Promise.all([
       getGlobalFocusSeconds(),
@@ -102,10 +184,107 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setCourseBase(courseSeconds);
   }, []);
 
-  // Persist every transition (route changes keep the timer alive via this).
+  // Persist every transition (route changes keep the timer alive via this)
+  // and mirror it to the account's server row for the mobile app.
   useEffect(() => {
-    saveTimerState(state);
-  }, [state]);
+    if (userId) {
+      let owner: string | null = null;
+      try {
+        owner = window.localStorage.getItem("atlas.timer.owner");
+      } catch {
+        owner = userId;
+      }
+      // Another account still owns the stored timer; the reset effect below
+      // replaces it before anything is saved or pushed.
+      if (owner && owner !== userId) return;
+    }
+    // Never persist a stale render after an owner switch / adoption.
+    const current = stateRef.current;
+    if (current !== state) return;
+    saveTimerState(current);
+    if (!userId || !syncReadyRef.current) return;
+    if (adoptedRef.current === current) {
+      adoptedRef.current = null;
+      return;
+    }
+    adoptedRef.current = null;
+    pushSync(current);
+  }, [state, userId, pushSync]);
+
+  // The website timer lives in localStorage, so reset it when a different
+  // account signs in on this browser instead of leaking one user's session.
+  useEffect(() => {
+    if (!userId) return;
+    const key = "atlas.timer.owner";
+    let owner: string | null = null;
+    try {
+      owner = window.localStorage.getItem(key);
+      if (!owner) window.localStorage.setItem(key, userId);
+    } catch {
+      return;
+    }
+    if (!owner || owner === userId) return;
+    applyState(defaultTimerState());
+    try {
+      window.localStorage.setItem(key, userId);
+    } catch {
+      // Ignore storage failures; the remote row still wins.
+    }
+  }, [userId, applyState]);
+
+  // First load: the app may already have a running timer for this account.
+  useEffect(() => {
+    if (!userId) return;
+    syncReadyRef.current = false;
+    let cancelled = false;
+    void syncNow().finally(() => {
+      if (!cancelled) syncReadyRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, syncNow]);
+
+  // Another device (mobile app / second browser) changed the timer row.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`atlas-timer:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "focus_timers",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const row = (payload as { new?: { device_id?: string } }).new;
+          if (row?.device_id && row.device_id === cachedDeviceId()) return;
+          void syncNow();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, syncNow]);
+
+  // Returning to the tab / reconnecting re-checks the authoritative timer.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      setTick((value) => value + 1);
+      void syncNow();
+    };
+    const onOnline = () => void syncNow();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+    };
+  }, [syncNow]);
 
   // Cross-tab: adopt state written by another tab of the same app.
   useEffect(
@@ -156,7 +335,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     const current = stateRef.current;
     if (current.mode === "running") {
-      const elapsed = elapsedMs(current);
+      const elapsed = sessionElapsedMs(current);
       const delta = Math.floor((elapsed - current.flushedMs) / 1000);
       // Optimistic bump keeps the hero counter continuous while the
       // queued write lands; reloadBases reconciles it with the database.
@@ -189,7 +368,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const current = stateRef.current;
       if (current.mode === "idle") return;
 
-      const elapsed = elapsedMs(current);
+      const elapsed = sessionElapsedMs(current);
       const delta = Math.floor((elapsed - current.flushedMs) / 1000);
       if (delta > 0) {
         setGlobalBase((value) => value + delta);
@@ -231,7 +410,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       if (current.mode === "running") {
         // Credit the time already spent to the old course, then let the rest
         // of the session continue on the new one.
-        const elapsed = elapsedMs(current);
+        const elapsed = sessionElapsedMs(current);
         const delta = Math.floor((elapsed - current.flushedMs) / 1000);
         if (delta > 0) setGlobalBase((value) => value + delta);
 
@@ -286,8 +465,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (state.mode !== "running") completionNotifiedRef.current = false;
   }, [state.mode]);
   useEffect(() => {
-    if (state.mode !== "running") return;
-    if (elapsedMs(state) >= state.targetMin * 60_000) {
+    if (state.mode === "idle") return;
+    if (
+      state.targetMin > 0 &&
+      sessionElapsedMs(state) >= state.targetMin * 60_000
+    ) {
       if (!completionNotifiedRef.current) {
         completionNotifiedRef.current = true;
         // Native browser notification (permission requested on start) and
@@ -311,7 +493,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   );
 
   const value: TimerContextValue = useMemo(() => {
-    const elapsed = elapsedMs(state);
+    const elapsed = sessionElapsedMs(state);
     const pending = Math.max(0, elapsed - state.flushedMs) / 1000;
     return {
       state,

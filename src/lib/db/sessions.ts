@@ -16,9 +16,12 @@ export function sessionXp(seconds: number): number {
 }
 
 export async function logSession(entry: SessionLog): Promise<boolean> {
-  const seconds = Math.max(
-    0,
-    Math.round((entry.endedAt.getTime() - entry.startedAt.getTime()) / 1000),
+  const seconds = Math.min(
+    86_400,
+    Math.max(
+      0,
+      Math.round((entry.endedAt.getTime() - entry.startedAt.getTime()) / 1000),
+    ),
   );
   if (seconds < 60) return false;
 
