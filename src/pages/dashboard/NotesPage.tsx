@@ -1208,28 +1208,27 @@ export default function NotesPage() {
     if (!editor) return;
     editor.focus();
 
-    // Create dark-themed modal for rows/cols selection
     const modal = document.createElement("div");
     modal.style.cssText =
-      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;";
+      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 23, 0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999;";
 
     modal.innerHTML = `
-      <div style="background: #1f2937; padding: 24px; border-radius: 12px; border: 1px solid #374151; min-width: 300px;">
-        <h3 style="color: #f9fafb; margin: 0 0 20px 0; font-size: 18px;">Insert Table</h3>
-
-        <div style="margin-bottom: 16px;">
-          <label style="color: #e5e7eb; display: block; margin-bottom: 8px;">Rows:</label>
-          <input type="number" id="tableRows" value="3" min="1" max="20" style="width: 100%; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #f9fafb;">
-        </div>
+      <div style="background: rgba(17, 24, 39, 0.9); padding: 28px; border-radius: 16px; border: 1px solid rgba(124, 92, 255, 0.4); min-width: 320px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6);">
+        <h3 style="color: #f9fafb; margin: 0 0 24px 0; font-size: 18px; font-weight: 600;">Insert Table</h3>
 
         <div style="margin-bottom: 20px;">
-          <label style="color: #e5e7eb; display: block; margin-bottom: 8px;">Columns:</label>
-          <input type="number" id="tableCols" value="3" min="1" max="20" style="width: 100%; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #f9fafb;">
+          <label style="color: #a1a1aa; display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500;">Rows</label>
+          <input type="number" id="tableRows" value="3" min="1" max="20" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid #374151; border-radius: 8px; color: #f9fafb; font-size: 14px; outline: none;">
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <label style="color: #a1a1aa; display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500;">Columns</label>
+          <input type="number" id="tableCols" value="3" min="1" max="20" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid #374151; border-radius: 8px; color: #f9fafb; font-size: 14px; outline: none;">
         </div>
 
         <div style="display: flex; gap: 12px;">
-          <button id="tableCancel" style="flex: 1; padding: 10px; background: #374151; color: #f9fafb; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
-          <button id="tableInsert" style="flex: 1; padding: 10px; background: #7c5cff; color: #ffffff; border: none; border-radius: 6px; cursor: pointer;">Insert</button>
+          <button id="tableCancel" style="flex: 1; padding: 11px; background: transparent; color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">Cancel</button>
+          <button id="tableInsert" style="flex: 1; padding: 11px; background: #7c5cff; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 0 20px rgba(124, 92, 255, 0.4);">Insert</button>
         </div>
       </div>
     `;
@@ -1242,6 +1241,7 @@ export default function NotesPage() {
     const insertBtn = document.getElementById("tableInsert") as HTMLButtonElement;
 
     rowsInput.focus();
+    rowsInput.select();
 
     cancelBtn.onclick = () => modal.remove();
 
@@ -1265,7 +1265,6 @@ export default function NotesPage() {
       createAndInsertTable(rows, cols);
     };
 
-    // Allow Enter to insert
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter") insertBtn.click();
       if (e.key === "Escape") cancelBtn.click();
@@ -1283,13 +1282,12 @@ export default function NotesPage() {
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
 
-    // Dark theme table styles
     const tableStyle =
-      "border-collapse: collapse; width: 100%; margin: 16px 0; font-family: inherit; background-color: #1f2937; border: 1px solid #374151;";
+      "border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0; font-family: inherit; background: rgba(17, 24, 39, 0.5); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overflow: hidden;";
     const headerStyle =
-      "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 600; background-color: #111827; color: #f9fafb;";
+      "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);";
     const cellStyle =
-      "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 400; background-color: #1f2937; color: #e5e7eb;";
+      "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
 
     let tableHTML =
       '<table style="' +
@@ -1320,15 +1318,12 @@ export default function NotesPage() {
 
     if (!table.parentNode) return;
 
-    // Add floating toolbar above the table
-    addTableToolbar(table as HTMLTableElement);
+    addTableControls(table as HTMLTableElement);
 
-    // Add paragraph after table so user can continue typing
     const p = document.createElement("p");
     p.innerHTML = "<br>";
     table.parentNode.insertBefore(p, table.nextSibling);
 
-    // Move cursor after table
     const caret = document.createRange();
     caret.setStartAfter(p);
     caret.collapse(true);
@@ -1339,35 +1334,56 @@ export default function NotesPage() {
     setTimeout(() => handleInput(), 100);
   };
 
-  const addTableToolbar = (table: HTMLTableElement) => {
-    const toolbar = document.createElement("div");
-    toolbar.className = "table-toolbar";
-    toolbar.style.cssText =
-      "display: flex; gap: 8px; margin-bottom: 8px; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; z-index: 1000;";
+  const addTableControls = (table: HTMLTableElement) => {
+    const wrapper = document.createElement("div");
+    wrapper.style.cssText =
+      "position: relative; margin: 16px 0; display: inline-block; width: 100%;";
 
-    toolbar.innerHTML = `
-      <button class="table-btn" data-action="add-row" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Row</button>
-      <button class="table-btn" data-action="remove-row" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">- Row</button>
-      <button class="table-btn" data-action="add-col" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Col</button>
-      <button class="table-btn" data-action="remove-col" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">- Col</button>
-      <button class="table-btn" data-action="delete-table" style="padding: 6px 12px; background: #dc2626; color: #ffffff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
-    `;
-
-    // Insert toolbar before table
     if (table.parentNode) {
-      table.parentNode.insertBefore(toolbar, table);
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    } else {
+      return;
     }
 
-    toolbar.querySelectorAll(".table-btn").forEach((btn) => {
+    const topControls = document.createElement("div");
+    topControls.style.cssText =
+      "display: flex; gap: 6px; margin-bottom: 6px; padding: 6px 10px; background: rgba(17, 24, 39, 0.6); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font-size: 11px;";
+
+    topControls.innerHTML = `
+      <button class="table-ctrl" data-action="add-row" title="Add row" style="padding: 4px 8px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-weight: 500;">+ Row</button>
+      <button class="table-ctrl" data-action="remove-row" title="Remove row" style="padding: 4px 8px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 6px; cursor: pointer; font-weight: 500;">\u2212 Row</button>
+      <button class="table-ctrl" data-action="add-col" title="Add column" style="padding: 4px 8px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-weight: 500;">+ Col</button>
+      <button class="table-ctrl" data-action="remove-col" title="Remove column" style="padding: 4px 8px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 6px; cursor: pointer; font-weight: 500;">\u2212 Col</button>
+    `;
+
+    const sideControls = document.createElement("div");
+    sideControls.style.cssText =
+      "position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;";
+
+    sideControls.innerHTML = `
+      <button class="table-side" data-action="copy-table" title="Copy table" style="padding: 6px 10px; background: rgba(17, 24, 39, 0.7); color: #f9fafb; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500; backdrop-filter: blur(4px);">Copy</button>
+      <button class="table-side" data-action="delete-table" title="Delete table" style="padding: 6px 10px; background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500;">Delete</button>
+    `;
+
+    wrapper.insertBefore(topControls, table);
+    wrapper.appendChild(sideControls);
+
+    topControls.querySelectorAll(".table-ctrl").forEach((btn) => {
       (btn as HTMLElement).onclick = (e: MouseEvent) =>
-        handleTableAction(e, table, toolbar);
+        handleTableAction(e, table, wrapper);
+    });
+
+    sideControls.querySelectorAll(".table-side").forEach((btn) => {
+      (btn as HTMLElement).onclick = (e: MouseEvent) =>
+        handleTableAction(e, table, wrapper);
     });
   };
 
   const handleTableAction = (
     e: MouseEvent,
     table: HTMLTableElement,
-    toolbar: HTMLElement
+    wrapper: HTMLElement
   ) => {
     const btn = e.currentTarget as HTMLElement | null;
     const action = btn?.dataset.action;
@@ -1378,7 +1394,7 @@ export default function NotesPage() {
       for (let i = 0; i < cols; i++) {
         const cell = newRow.insertCell();
         cell.style.cssText =
-          "border: 1px solid #374151; padding: 10px 12px; text-align: left; background-color: #1f2937; color: #e5e7eb;";
+          "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
         cell.textContent = `Cell ${newRow.rowIndex + 1}-${i + 1}`;
@@ -1391,8 +1407,8 @@ export default function NotesPage() {
       for (let i = 0; i < table.rows.length; i++) {
         const cell = table.rows[i].insertCell();
         const style = i === 0
-          ? "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 600; background-color: #111827; color: #f9fafb;"
-          : "border: 1px solid #374151; padding: 10px 12px; text-align: left; background-color: #1f2937; color: #e5e7eb;";
+          ? "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);"
+          : "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.style.cssText = style;
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
@@ -1407,14 +1423,31 @@ export default function NotesPage() {
           table.rows[i].deleteCell(cols - 1);
         }
       }
+    } else if (action === "copy-table") {
+      const html = table.outerHTML;
+      navigator.clipboard.writeText(html).then(() => {
+        const original = btn?.textContent ?? "";
+        if (btn) {
+          btn.textContent = "Copied!";
+          btn.style.background = "rgba(34, 197, 94, 0.2)";
+          btn.style.color = "#4ade80";
+          setTimeout(() => {
+            btn.textContent = original;
+            btn.style.background = "rgba(17, 24, 39, 0.7)";
+            btn.style.color = "#f9fafb";
+          }, 1500);
+        }
+      });
     } else if (action === "delete-table") {
       if (confirm("Delete this table?")) {
-        toolbar.remove();
-        table.remove();
+        wrapper.remove();
       }
+      return;
     }
 
-    setTimeout(() => handleInput(), 100);
+    if (action !== "delete-table") {
+      setTimeout(() => handleInput(), 100);
+    }
   };
 
   const tools: Tool[] = [
