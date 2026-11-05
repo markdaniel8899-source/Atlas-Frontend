@@ -20,6 +20,7 @@ import {
   Quote,
   Share2,
   StickyNote,
+  Table,
   Trash2,
   Underline,
   Users,
@@ -1202,6 +1203,81 @@ export default function NotesPage() {
     }
   };
 
+  const insertTable = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+
+    const rowsInput = prompt("Number of rows:", "3");
+    const colsInput = prompt("Number of columns:", "3");
+
+    const rows = parseInt(rowsInput ?? "", 10);
+    const cols = parseInt(colsInput ?? "", 10);
+
+    if (
+      !rowsInput ||
+      !colsInput ||
+      Number.isNaN(rows) ||
+      Number.isNaN(cols) ||
+      rows < 1 ||
+      cols < 1 ||
+      rows > 20 ||
+      cols > 20
+    ) {
+      alert("Please enter valid numbers (1-20).");
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+
+    let tableHTML =
+      '<table style="border-collapse: collapse; width: 100%; margin: 16px 0; font-family: inherit; border: 1px solid #d1d5db;">';
+
+    for (let i = 0; i < rows; i++) {
+      tableHTML += "<tr>";
+      for (let j = 0; j < cols; j++) {
+        const cellType = i === 0 ? "th" : "td";
+        const cellStyle =
+          "border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-weight: " +
+          (i === 0 ? "600" : "400") +
+          "; background-color: " +
+          (i === 0 ? "#f9fafb" : "#ffffff") +
+          ";";
+        const cellContent =
+          i === 0 ? `Header ${j + 1}` : `Cell ${i + 1}-${j + 1}`;
+        tableHTML += `<${cellType} style="${cellStyle}" contenteditable="true">${cellContent}</${cellType}>`;
+      }
+      tableHTML += "</tr>";
+    }
+    tableHTML += "</table>";
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = tableHTML;
+    const table = tempDiv.firstChild;
+
+    if (!table) return;
+
+    range.deleteContents();
+    range.insertNode(table as Node);
+
+    if (!table.parentNode) return;
+
+    const p = document.createElement("p");
+    p.innerHTML = "<br>";
+    table.parentNode.insertBefore(p, table.nextSibling);
+
+    const caret = document.createRange();
+    caret.setStartAfter(p);
+    caret.collapse(true);
+    const nextSelection = window.getSelection();
+    nextSelection?.removeAllRanges();
+    nextSelection?.addRange(caret);
+
+    setTimeout(() => handleInput(), 100);
+  };
+
   const tools: Tool[] = [
     { label: "Bold", icon: Bold, run: () => document.execCommand("bold"), shortcut: `${MOD} + B` },
     { label: "Italic", icon: Italic, run: () => document.execCommand("italic"), shortcut: `${MOD} + I` },
@@ -1240,6 +1316,12 @@ export default function NotesPage() {
       icon: Code,
       run: insertCodeBlock,
       shortcut: `${ALT} + ${SHIFT} + E`,
+    },
+    {
+      label: "Table",
+      icon: Table,
+      run: insertTable,
+      shortcut: `${ALT} + ${SHIFT} + T`,
     },
   ];
 
