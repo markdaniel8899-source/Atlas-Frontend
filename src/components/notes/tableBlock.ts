@@ -89,6 +89,31 @@ export function renderTableBlockViewHtml(input: unknown): string {
   return `<div class="atomic-table-view"><table class="atomic-table">${head}${bodyHtml}</table></div>`;
 }
 
+export function renderTableClipboardHtml(input: unknown): string {
+  const rows = normalizeTableRows(input);
+  const header = rows[0] ?? [];
+  const body = rows.slice(1);
+  const cellStyle =
+    "border:1px solid #c9c9c9;padding:6px 10px;text-align:left;vertical-align:top;";
+  const headStyle = `${cellStyle}background:#f2f2f2;font-weight:600;`;
+
+  const head = `<thead><tr>${header
+    .map((cell) => `<th style="${headStyle}">${escapeTableHtml(cell)}</th>`)
+    .join("")}</tr></thead>`;
+  const rowsHtml = body
+    .map(
+      (row) =>
+        `<tr>${row
+          .map((cell) => `<td style="${cellStyle}">${escapeTableHtml(cell)}</td>`)
+          .join("")}</tr>`,
+    )
+    .join("");
+
+  return `<table style="border-collapse:collapse;border-spacing:0;font-family:inherit;">${head}${
+    body.length ? `<tbody>${rowsHtml}</tbody>` : ""
+  }</table>`;
+}
+
 export function readTableRowsFromElement(table: HTMLTableElement): string[][] {
   const rows = Array.from(table.rows).map((row) =>
     Array.from(row.cells).map((cell) =>
@@ -403,6 +428,20 @@ export const TABLE_BLOCK_CSS = `
   font-weight: 600;
 }
 @media (max-width: 639px) {
+  .atomic-table-block {
+    margin: 12px 0;
+  }
+  .atomic-table-view {
+    border-radius: 8px;
+  }
+  .atomic-table th,
+  .atomic-table td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .atomic-table-overlay {
+    border-radius: 8px;
+  }
   .atomic-table-toolbar {
     gap: 4px;
     padding: 0 8px;
@@ -415,6 +454,9 @@ export const TABLE_BLOCK_CSS = `
   }
   .atomic-table-toolbar-btn-text {
     display: none;
+  }
+  .atomic-table-editor {
+    padding: 8px;
   }
   .atomic-table-input {
     min-width: 82px;

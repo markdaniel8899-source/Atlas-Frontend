@@ -1,6 +1,6 @@
 import { getUser } from "../auth";
 import { supabase } from "../supabase";
-import { sanitizeHtml } from "../notes";
+import { sanitizeNoteHtml } from "../notes";
 import type { Note } from "../notes";
 
 interface NoteRow {
@@ -240,7 +240,7 @@ export async function updateNote(
 
   const values: Record<string, unknown> = {};
   if (patch.title !== undefined) values.title = patch.title;
-  if (patch.html !== undefined) values.content = sanitizeHtml(patch.html);
+  if (patch.html !== undefined) values.content = sanitizeNoteHtml(patch.html);
   if (patch.sortOrder !== undefined) values.sort_order = patch.sortOrder;
   if (patch.courseId !== undefined) values.course_id = patch.courseId;
   if (Object.keys(values).length === 0) return;

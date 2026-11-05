@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent, MouseEvent as ReactMouseEvent } from "react";
+import type {
+  ClipboardEvent as ReactClipboardEvent,
+  FormEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -34,6 +38,7 @@ import {
   buildNotesExportHtml,
   CODE_BLOCK_CSS,
   findCodeBlockElement,
+  hydrateCodeBlocks,
   isLanguageReady,
   normalizeLanguageId,
   renderCodeBlockViewHtml,
@@ -47,10 +52,15 @@ import {
   normalizeTableRows,
   readTableBlockRows,
   renderTableBlockViewHtml,
+  renderTableClipboardHtml,
   TABLE_BLOCK_CSS,
   type TableBlockData,
 } from "../../components/notes/tableBlock";
-import { sanitizeHtml } from "../../lib/notes";
+import {
+  htmlToPlainText,
+  normalizeInlineFormatting,
+  sanitizeNoteHtml,
+} from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import { supabase } from "../../lib/supabase";
 import {
@@ -313,6 +323,7 @@ export default function NotesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { courses, loading: coursesLoading } = useCourses();
   const editorRef = useRef<HTMLDivElement>(null);
+  const editorSectionRef = useRef<HTMLElement>(null);
   const timerRef = useRef<number | null>(null);
   const savedRef = useRef<number | null>(null);
   const networkRef = useRef<number | null>(null);
@@ -563,33 +574,9 @@ export default function NotesPage() {
       return;
     }
 
-    editor.innerHTML = sanitizeHtml(note.html);
+    editor.innerHTML = sanitizeNoteHtml(note.html);
 
-    const restored = Array.from(
-      editor.querySelectorAll<HTMLElement>(".atomic-code-block"),
-    ).map((element) => {
-      const id =
-        element.dataset.codeBlockId ||
-        `block-${Date.now().toString(36)}-${Math.random()
-          .toString(36)
-          .slice(2, 8)}`;
-      const code =
-        element.dataset.code ??
-        element.querySelector("code")?.textContent ??
-        "";
-      const language = normalizeLanguageId(
-        element.dataset.language ?? "plaintext",
-      );
-
-      element.dataset.codeBlockId = id;
-      element.dataset.code = code;
-      element.dataset.language = language;
-      element.contentEditable = "false";
-      element.innerHTML = renderCodeBlockViewHtml(code, language);
-
-      return { id, code, language };
-    });
-
+    const restored = hydrateCodeBlocks(editor);
     codeBlocksRef.current = restored;
     setCodeBlocks(restored);
 
@@ -844,6 +831,7 @@ export default function NotesPage() {
       return ordered;
     });
     setActiveId(note.id);
+    revealEditorOnMobile();
   };
 
   const removeNote = (id: string) => {
@@ -887,6 +875,16 @@ export default function NotesPage() {
     editorRef.current?.focus();
   };
 
+  const revealEditorOnMobile = () => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    window.requestAnimationFrame(() => {
+      editorSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
+
   const handleEditorBlur = useCallback(() => {
     // Save note content when editor loses focus
     saveNoteContent();
@@ -912,6 +910,164 @@ export default function NotesPage() {
       }
     },
     [],
+  );
+
+  const restoreEditorSelection = useCallback((): boolean => {
+    const editor = editorRef.current;
+    if (!editor) return false;
+
+    const selection = window.getSelection();
+    if (
+      selection &&
+      selection.rangeCount > 0 &&
+      editor.contains(selection.getRangeAt(0).commonAncestorContainer)
+    ) {
+      return true;
+    }
+
+    const saved = savedRangeRef.current;
+    if (saved && editor.contains(saved.commonAncestorContainer)) {
+      selection?.removeAllRanges();
+      selection?.addRange(saved);
+      return true;
+    }
+
+    if (!selection) return false;
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }, []);
+
+  const applyEditorCommand = useCallback(
+    (command: string, value?: string) => {
+      if (!restoreEditorSelection()) return;
+      try {
+        document.execCommand("styleWithCSS", false, "false");
+      } catch {
+        void 0;
+      }
+      document.execCommand(command, false, value);
+      saveSelection();
+    },
+    [restoreEditorSelection, saveSelection],
+  );
+
+  const getSelectionBlock = useCallback((): HTMLElement | null => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return null;
+
+    let node: Node | null = selection.getRangeAt(0).startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    let element = node instanceof HTMLElement ? node : null;
+
+    while (element && element !== editor) {
+      if (element.closest(".atomic-code-block, .atomic-table-block")) {
+        return null;
+      }
+      if (/^(P|DIV|H1|H2|H3|H4|H5|H6|BLOCKQUOTE|LI)$/.test(element.tagName)) {
+        return element;
+      }
+      element = element.parentElement;
+    }
+
+    return null;
+  }, []);
+
+  const handleCopy = useCallback(
+    (event: ReactClipboardEvent<HTMLDivElement>) => {
+      const editor = editorRef.current;
+      const selection = window.getSelection();
+      if (
+        !editor ||
+        !selection ||
+        selection.rangeCount === 0 ||
+        selection.isCollapsed
+      ) {
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      if (!editor.contains(range.commonAncestorContainer)) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(range.cloneContents());
+      wrapper
+        .querySelectorAll(
+          "[data-editor-container], [data-table-editor-container], .atomic-code-block-toolbar, .atomic-table-toolbar, .table-top-bar, .table-btn",
+        )
+        .forEach((node) => node.remove());
+      wrapper
+        .querySelectorAll("[contenteditable]")
+        .forEach((node) => node.removeAttribute("contenteditable"));
+      wrapper
+        .querySelectorAll<HTMLElement>(".atomic-code-block, .atomic-table-block")
+        .forEach((block) => block.removeAttribute("style"));
+      normalizeInlineFormatting(wrapper);
+      wrapper
+        .querySelectorAll<HTMLElement>(".atomic-table-block")
+        .forEach((block) => {
+          const table = document.createElement("div");
+          table.innerHTML = renderTableClipboardHtml(
+            readTableBlockRows(block),
+          );
+          block.replaceWith(table);
+        });
+
+      const html = wrapper.innerHTML;
+      if (!html) return;
+
+      event.clipboardData.setData("text/html", html);
+      event.clipboardData.setData("text/plain", htmlToPlainText(html));
+      event.preventDefault();
+    },
+    [],
+  );
+
+  const handlePaste = useCallback(
+    (event: ReactClipboardEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest("[data-editor-container], [data-table-editor-container]")
+      ) {
+        return;
+      }
+
+      const pasted = event.clipboardData.getData("text/html");
+      if (!pasted) return;
+
+      const cleaned = sanitizeNoteHtml(pasted);
+      if (!cleaned.trim()) return;
+
+      event.preventDefault();
+      if (!restoreEditorSelection()) return;
+
+      try {
+        document.execCommand("styleWithCSS", false, "false");
+      } catch {
+        void 0;
+      }
+      document.execCommand("insertHTML", false, cleaned);
+
+      const editor = editorRef.current;
+      if (editor) {
+        const restoredCode = hydrateCodeBlocks(editor);
+        codeBlocksRef.current = restoredCode;
+        setCodeBlocks(restoredCode);
+
+        const restoredTables = hydrateTableBlocks(editor);
+        tableBlocksRef.current = restoredTables;
+        setTableBlocks(restoredTables);
+      }
+
+      saveSelection();
+      handleInput();
+    },
+    [handleInput, restoreEditorSelection, saveSelection],
   );
 
   const endCodeEdit = useCallback(() => {
@@ -1254,25 +1410,37 @@ export default function NotesPage() {
         return;
       }
 
-      const key = e.key.toUpperCase();
-      const mods: string[] = [];
-      if (e.metaKey || e.ctrlKey) mods.push(MOD);
-      if (e.altKey) mods.push(ALT);
-      if (e.shiftKey) mods.push(SHIFT);
-      const modPart = mods.join(" + ");
+      const key = e.key.toLowerCase();
+      const mod = e.metaKey || e.ctrlKey;
+      const findTool = (label: string) =>
+        tools.find((tool) => tool.label === label);
 
-      const tool = tools.find((t) => {
-        const shortcut = t.shortcut?.toUpperCase().replace(/\s+/g, " ");
-        const expected = `${modPart.toUpperCase()} + ${key}`;
-        return shortcut === expected;
-      });
-      if (tool) {
-        e.preventDefault();
-        e.stopPropagation();
-        focusEditor();
-        tool.run();
-        handleInput();
+      let tool: Tool | undefined;
+      if (mod && !e.altKey && !e.shiftKey) {
+        if (key === "b") tool = findTool("Bold");
+        else if (key === "i") tool = findTool("Italic");
+        else if (key === "u") tool = findTool("Underline");
+        else if (key === "q") tool = findTool("Quote");
+      } else if (mod && e.altKey && !e.shiftKey) {
+        if (key === "h" || key === "2") tool = findTool("Heading");
+      } else if (e.altKey && e.shiftKey && !mod) {
+        if (key === "h") tool = findTool("Heading");
+        else if (key === "l") tool = findTool("Bullet list");
+        else if (key === "n") tool = findTool("Numbered list");
+        else if (key === "e") tool = findTool("Code block");
+        else if (key === "t") tool = findTool("Table");
+      } else if (mod && e.shiftKey && !e.altKey) {
+        if (key === "7" || key === "&") tool = findTool("Numbered list");
+        else if (key === "8" || key === "*") tool = findTool("Bullet list");
+        else if (key === "9") tool = findTool("Code block");
       }
+
+      if (!tool) return;
+      e.preventDefault();
+      e.stopPropagation();
+      focusEditor();
+      tool.run();
+      handleInput();
     },
     [active, selectionMode, handleInput],
   );
@@ -1365,31 +1533,28 @@ export default function NotesPage() {
   const ALT = isMac ? "⌥" : "Alt";
 
   const toggleHeading = () => {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const container = range.startContainer;
-    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as Element);
-    const heading = element?.closest("h2");
-    if (heading) {
-      document.execCommand("formatBlock", false, "p");
-    } else {
-      document.execCommand("formatBlock", false, "h2");
-    }
+    if (!restoreEditorSelection()) return;
+    const block = getSelectionBlock();
+    const target = block?.closest("h2") ? "p" : "h2";
+    applyEditorCommand("formatBlock", `<${target}>`);
   };
 
   const toggleQuote = () => {
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const container = range.startContainer;
-    const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : (container as Element);
-    const quote = element?.closest("blockquote");
+    if (!restoreEditorSelection()) return;
+    const block = getSelectionBlock();
+    const quote = block?.closest("blockquote");
     if (quote) {
-      document.execCommand("formatBlock", false, "p");
-    } else {
-      document.execCommand("formatBlock", false, "blockquote");
+      const parent = quote.parentNode;
+      if (parent) {
+        while (quote.firstChild) {
+          parent.insertBefore(quote.firstChild, quote);
+        }
+        parent.removeChild(quote);
+        saveSelection();
+      }
+      return;
     }
+    applyEditorCommand("formatBlock", "<blockquote>");
   };
 
   const insertTable = () => {
@@ -1483,12 +1648,12 @@ export default function NotesPage() {
   };
 
   const tools: Tool[] = [
-    { label: "Bold", icon: Bold, run: () => document.execCommand("bold"), shortcut: `${MOD} + B` },
-    { label: "Italic", icon: Italic, run: () => document.execCommand("italic"), shortcut: `${MOD} + I` },
+    { label: "Bold", icon: Bold, run: () => applyEditorCommand("bold"), shortcut: `${MOD} + B` },
+    { label: "Italic", icon: Italic, run: () => applyEditorCommand("italic"), shortcut: `${MOD} + I` },
     {
       label: "Underline",
       icon: Underline,
-      run: () => document.execCommand("underline"),
+      run: () => applyEditorCommand("underline"),
       shortcut: `${MOD} + U`,
     },
     {
@@ -1506,13 +1671,13 @@ export default function NotesPage() {
     {
       label: "Bullet list",
       icon: List,
-      run: () => document.execCommand("insertUnorderedList"),
+      run: () => applyEditorCommand("insertUnorderedList"),
       shortcut: `${ALT} + ${SHIFT} + L`,
     },
     {
       label: "Numbered list",
       icon: ListOrdered,
-      run: () => document.execCommand("insertOrderedList"),
+      run: () => applyEditorCommand("insertOrderedList"),
       shortcut: `${ALT} + ${SHIFT} + N`,
     },
     {
@@ -1710,6 +1875,7 @@ export default function NotesPage() {
               });
             } else {
               setActiveId(note.id);
+              revealEditorOnMobile();
             }
           }}
           title={selectionMode ? "Toggle selection" : "Drag to reorder"}
@@ -1769,7 +1935,7 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <style>{CODE_BLOCK_CSS}</style>
       <style>{TABLE_BLOCK_CSS}</style>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -1780,10 +1946,10 @@ export default function NotesPage() {
           <RevealText
             as="h1"
             text="Notes that survive the session."
-            className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl"
+            className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end sm:gap-3">
           <CourseSwitcher
             courses={courses}
             value={selectedCourseId}
@@ -1803,8 +1969,8 @@ export default function NotesPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-        <aside className="glass card-sheen flex max-h-[65vh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[260px_1fr]">
+        <aside className="glass card-sheen flex max-h-[42dvh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] lg:max-h-[65vh]">
           <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] px-4 py-3">
             <span
               aria-hidden="true"
@@ -1978,33 +2144,38 @@ export default function NotesPage() {
         )}
 
         {!selectionMode && (
-          <section className="glass card-sheen flex min-h-[65vh] min-w-0 flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+          <section ref={editorSectionRef} className="glass card-sheen flex min-h-[60vh] min-w-0 flex-col rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] lg:min-h-[65vh]">
           {active ? (
             <>
-              <div className="flex flex-wrap items-center gap-1 border-b border-white/[0.07] px-4 py-3">
-                {tools.map((tool) => (
-                  <button
-                    key={tool.label}
-                    type="button"
-                    title={tool.label}
-                    aria-label={tool.label}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      focusEditor();
-                      tool.run();
-                      handleInput();
-                    }}
-                    className="relative group rounded-lg p-2 text-white/45 transition-colors hover:bg-[#cf9eff]/15 hover:text-[#cf9eff]"
-                  >
-                    <tool.icon className="size-4" />
-                    {tool.shortcut && (
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
-                        {tool.shortcut}
-                      </span>
-                    )}
-                  </button>
-                ))}
-                <span className="ml-auto flex items-center gap-1.5">
+              <div className="flex items-center gap-1 border-b border-white/[0.07] px-2 py-2 sm:px-4 sm:py-3">
+                <div
+                  data-lenis-prevent
+                  className="flex min-w-0 flex-1 items-center gap-0.5 max-sm:overflow-x-auto max-sm:overscroll-x-contain max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:gap-1"
+                >
+                  {tools.map((tool) => (
+                    <button
+                      key={tool.label}
+                      type="button"
+                      title={tool.label}
+                      aria-label={tool.label}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        focusEditor();
+                        tool.run();
+                        handleInput();
+                      }}
+                      className="relative group shrink-0 rounded-lg p-2 text-white/45 transition-colors hover:bg-[#cf9eff]/15 hover:text-[#cf9eff]"
+                    >
+                      <tool.icon className="size-4" />
+                      {tool.shortcut && (
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 text-[10px] font-medium text-white bg-[#111] border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap">
+                          {tool.shortcut}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-1 sm:pl-2">
                   <div className="hidden items-center gap-1.5 md:flex">
                   <button
                     type="button"
@@ -2180,7 +2351,7 @@ export default function NotesPage() {
                 </span>
               </div>
 
-              <div className="border-b border-white/[0.07] px-6 pt-5">
+              <div className="border-b border-white/[0.07] px-4 pt-4 sm:px-6 sm:pt-5">
                 {activeCourse && (
                   <div
                     className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em]"
@@ -2207,13 +2378,13 @@ export default function NotesPage() {
                     persist(active.id, { title });
                   }}
                   placeholder="Untitled note"
-                  className="w-full bg-transparent text-2xl font-semibold tracking-[-0.03em] text-white placeholder:text-white/20 focus:outline-none"
+                  className="w-full bg-transparent text-xl font-semibold tracking-[-0.03em] text-white placeholder:text-white/20 focus:outline-none sm:text-2xl"
                 />
               </div>
 
 {!selectionMode ? (
                 <>
-                  <div className="relative min-h-0 flex-1 max-md:max-h-[55dvh] max-md:overflow-y-auto max-md:overscroll-contain">
+                  <div className="relative min-h-0 flex-1 max-md:max-h-[58dvh] max-md:overflow-y-auto max-md:overscroll-contain">
                     <div
                       ref={editorRef}
                       contentEditable
@@ -2221,10 +2392,12 @@ export default function NotesPage() {
                       onInput={handleInput}
                       onBlur={handleEditorBlur}
                       onClick={handleEditorClick}
+                      onCopy={handleCopy}
+                      onPaste={handlePaste}
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
-                      className="min-h-[38vh] flex-1 px-4 py-5 text-sm leading-relaxed text-white/70 focus:outline-none sm:px-6 [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-[15px] leading-relaxed text-white/70 focus:outline-none sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
                     {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}
@@ -2272,7 +2445,7 @@ export default function NotesPage() {
               )}
             </>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center sm:p-10">
               <p className="text-sm text-white/40">
                 {loading
                   ? "Loading notes…"

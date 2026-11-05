@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Minus, Plus, Table as TableIcon, Trash2 } from "lucide-react";
-import { normalizeTableRows } from "./tableBlock";
+import { normalizeTableRows, renderTableClipboardHtml } from "./tableBlock";
 
 interface InlineTableBlockProps {
   id: string;
@@ -213,22 +213,46 @@ export function InlineTableBlock({
     updateRows(next);
   }, [updateRows]);
 
-  const handleCopy = useCallback(async () => {
-    const tsv = rowsRef.current.map((row) => row.join("\t")).join("\n");
-    try {
-      await navigator.clipboard.writeText(tsv);
-      setCopied(true);
-      if (copyTimerRef.current !== null) {
-        window.clearTimeout(copyTimerRef.current);
-      }
-      copyTimerRef.current = window.setTimeout(() => {
-        setCopied(false);
-        copyTimerRef.current = null;
-      }, 1600);
-    } catch {
-      setCopied(false);
+  const markCopied = useCallback(() => {
+    setCopied(true);
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
     }
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      copyTimerRef.current = null;
+    }, 1600);
   }, []);
+
+  const handleCopy = useCallback(async () => {
+    const rows = rowsRef.current;
+    const tsv = rows.map((row) => row.join("\t")).join("\n");
+    const html = renderTableClipboardHtml(rows);
+
+    try {
+      if (
+        typeof ClipboardItem !== "undefined" &&
+        typeof navigator.clipboard?.write === "function"
+      ) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([tsv], { type: "text/plain" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(tsv);
+      }
+      markCopied();
+    } catch {
+      try {
+        await navigator.clipboard.writeText(tsv);
+        markCopied();
+      } catch {
+        setCopied(false);
+      }
+    }
+  }, [markCopied]);
 
   const handleRemove = useCallback(() => {
     closedRef.current = true;

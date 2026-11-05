@@ -1,5 +1,5 @@
 import { monaco } from "../../lib/monacoSetup";
-import { sanitizeHtml } from "../../lib/notes";
+import { sanitizeNoteHtml } from "../../lib/notes";
 import {
   readTableBlockRows,
   renderTableBlockViewHtml,
@@ -392,6 +392,38 @@ export function findCodeBlockElement(
   );
 }
 
+export function hydrateCodeBlocks(container: HTMLElement): CodeBlockData[] {
+  const seen = new Set<string>();
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(".atomic-code-block"),
+  ).map((element) => {
+    let id = element.dataset.codeBlockId;
+    if (!id || seen.has(id)) {
+      id = `block-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
+    }
+    seen.add(id);
+
+    const code =
+      element.dataset.code ?? element.querySelector("code")?.textContent ?? "";
+    const language = normalizeLanguageId(
+      element.dataset.language ?? "plaintext",
+    );
+
+    element.dataset.codeBlockId = id;
+    element.dataset.code = code;
+    element.dataset.language = language;
+    element.setAttribute("contenteditable", "false");
+    element.removeAttribute("data-editing");
+    element.removeAttribute("style");
+    element.innerHTML = renderCodeBlockViewHtml(code, language);
+
+    return { id, code, language };
+  });
+}
+
 export function isLanguageReady(language: string): boolean {
   const id = normalizeLanguageId(language);
   return id === "plaintext" || readyLanguages.has(id);
@@ -604,7 +636,7 @@ export async function buildNotesExportHtml(
 
   for (const note of notes) {
     const container = document.createElement("div");
-    container.innerHTML = sanitizeHtml(note.html);
+    container.innerHTML = sanitizeNoteHtml(note.html);
 
     container
       .querySelectorAll("[data-table-editor-container], .atomic-table-toolbar")
