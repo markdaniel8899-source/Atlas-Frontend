@@ -1275,16 +1275,16 @@ const insertTable = () => {
     topBar.innerHTML = `
       <div style="display: flex; gap: 6px;">
         <button class="table-btn" data-action="add-row" title="Add row" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">▲</span> Row
+          <span style="font-size: 10px;">+</span> Row
         </button>
         <button class="table-btn" data-action="remove-row" title="Remove row" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">▼</span> Row
+          <span style="font-size: 10px;">−</span> Row
         </button>
         <button class="table-btn" data-action="add-col" title="Add column" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">▲</span> Col
+          <span style="font-size: 10px;">+</span> Col
         </button>
         <button class="table-btn" data-action="remove-col" title="Remove column" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">▼</span> Col
+          <span style="font-size: 10px;">−</span> Col
         </button>
       </div>
       <div style="display: flex; gap: 6px;">
@@ -1341,15 +1341,16 @@ const insertTable = () => {
     const action = btn?.dataset.action;
 
     if (action === "add-row") {
-      const newRow = table.insertRow();
+      const newRowIndex = table.rows.length;
+      const newRow = table.insertRow(newRowIndex);
       const cols = table.rows[0].cells.length;
       for (let i = 0; i < cols; i++) {
-        const cell = newRow.insertCell();
+        const cell = newRow.insertCell(i);
         cell.style.cssText =
           "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
-        cell.textContent = `Cell ${newRow.rowIndex}`;
+        cell.textContent = `Cell ${newRowIndex}-${i + 1}`;
       }
     } else if (action === "remove-row") {
       // Always keep at least 1 header row
@@ -1358,14 +1359,15 @@ const insertTable = () => {
       }
     } else if (action === "add-col") {
       for (let i = 0; i < table.rows.length; i++) {
-        const cell = table.rows[i].insertCell();
+        const cellIndex = table.rows[i].cells.length;
+        const cell = table.rows[i].insertCell(cellIndex);
         const style = i === 0
           ? "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);"
           : "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.style.cssText = style;
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
-        cell.textContent = i === 0 ? `Header ${table.rows[i].cells.length}` : `Cell ${i + 1}`;
+        cell.textContent = i === 0 ? `Header ${cellIndex + 1}` : `Cell ${i + 1}-${cellIndex + 1}`;
       }
     } else if (action === "remove-col") {
       // Always keep at least 1 column
