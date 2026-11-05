@@ -1212,14 +1212,12 @@ const insertTable = () => {
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
 
-    // Default 1x1 table
+    // Default 1 header row + 2 columns
     const tableHTML = `
       <table style="border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0; font-family: inherit; background: rgba(17, 24, 39, 0.5); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overflow: hidden;">
         <tr>
           <th style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);" contenteditable="true" data-cell="true">Header 1</th>
-        </tr>
-        <tr>
-          <td style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;" contenteditable="true" data-cell="true">Cell 1</td>
+          <th style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);" contenteditable="true" data-cell="true">Header 2</th>
         </tr>
       </table>
     `;
@@ -1354,6 +1352,7 @@ const insertTable = () => {
         cell.textContent = `Cell ${newRow.rowIndex}`;
       }
     } else if (action === "remove-row") {
+      // Always keep at least 1 header row
       if (table.rows.length > 1) {
         table.deleteRow(table.rows.length - 1);
       }
@@ -1362,13 +1361,14 @@ const insertTable = () => {
         const cell = table.rows[i].insertCell();
         const style = i === 0
           ? "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);"
-          : "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
+          : "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.style.cssText = style;
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
         cell.textContent = i === 0 ? `Header ${table.rows[i].cells.length}` : `Cell ${i + 1}`;
       }
     } else if (action === "remove-col") {
+      // Always keep at least 1 column
       const cols = table.rows[0].cells.length;
       if (cols > 1) {
         for (let i = 0; i < table.rows.length; i++) {
