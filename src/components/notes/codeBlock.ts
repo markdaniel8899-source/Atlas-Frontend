@@ -29,6 +29,7 @@ const LANGUAGE_ALIASES: Record<string, string> = {
   "c++": "cpp",
   "c#": "csharp",
   objc: "objective-c",
+  asm: "assembly",
   psql: "pgsql",
   postgres: "pgsql",
   postgresql: "pgsql",
