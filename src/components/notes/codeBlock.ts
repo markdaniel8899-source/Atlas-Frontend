@@ -1,5 +1,10 @@
 import { monaco } from "../../lib/monacoSetup";
 import { sanitizeHtml } from "../../lib/notes";
+import {
+  readTableBlockRows,
+  renderTableBlockViewHtml,
+  TABLE_BLOCK_CSS,
+} from "./tableBlock";
 
 export interface CodeBlockData {
   id: string;
@@ -601,6 +606,21 @@ export async function buildNotesExportHtml(
     const container = document.createElement("div");
     container.innerHTML = sanitizeHtml(note.html);
 
+    container
+      .querySelectorAll("[data-table-editor-container], .atomic-table-toolbar")
+      .forEach((node) => node.remove());
+
+    container
+      .querySelectorAll<HTMLElement>(".atomic-table-block")
+      .forEach((block) => {
+        const rows = readTableBlockRows(block);
+        block.dataset.table = JSON.stringify(rows);
+        block.setAttribute("contenteditable", "false");
+        block.removeAttribute("data-editing");
+        block.removeAttribute("style");
+        block.innerHTML = renderTableBlockViewHtml(rows);
+      });
+
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".atomic-code-block"),
     );
@@ -641,7 +661,7 @@ export async function buildNotesExportHtml(
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(documentTitle)}</title>
-<style>${EXPORT_PAGE_CSS}${CODE_BLOCK_CSS}</style>
+<style>${EXPORT_PAGE_CSS}${CODE_BLOCK_CSS}${TABLE_BLOCK_CSS}</style>
 </head>
 <body>
 <main class="notes-export">${rendered.join("")}</main>

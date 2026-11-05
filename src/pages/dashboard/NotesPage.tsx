@@ -29,6 +29,7 @@ import { RevealText } from "../../components/RevealText";
 import { ShareNoteModal } from "../../components/notes/ShareNoteModal";
 import { BulkShareModal } from "../../components/notes/BulkShareModal";
 import { InlineCodeBlock } from "../../components/notes/InlineCodeBlock";
+import { InlineTableBlock } from "../../components/notes/InlineTableBlock";
 import {
   buildNotesExportHtml,
   CODE_BLOCK_CSS,
@@ -38,6 +39,17 @@ import {
   renderCodeBlockViewHtml,
   renderCodeBlockViewHtmlAsync,
 } from "../../components/notes/codeBlock";
+import {
+  createDefaultTableRows,
+  createTableId,
+  findTableBlockElement,
+  hydrateTableBlocks,
+  normalizeTableRows,
+  readTableBlockRows,
+  renderTableBlockViewHtml,
+  TABLE_BLOCK_CSS,
+  type TableBlockData,
+} from "../../components/notes/tableBlock";
 import { sanitizeHtml } from "../../lib/notes";
 import type { Note } from "../../lib/notes";
 import { supabase } from "../../lib/supabase";
@@ -310,8 +322,10 @@ export default function NotesPage() {
   const dataVersionRef = useRef(0);
   const activeRef = useRef<string | null>(activeId);
   const codeBlocksRef = useRef<Array<{ id: string; code: string; language: string }>>([]);
+  const tableBlocksRef = useRef<TableBlockData[]>([]);
   const savedRangeRef = useRef<Range | null>(null);
   const editingBlockIdRef = useRef<string | null>(null);
+  const editingTableIdRef = useRef<string | null>(null);
   const saveNoteContentRef = useRef<() => void>(() => {});
   const draftSaveRef = useRef<number | null>(null);
 
@@ -321,7 +335,9 @@ export default function NotesPage() {
   const [bulkDownloading, setBulkDownloading] = useState(false);
   const [bulkActionType, setBulkActionType] = useState<'download' | 'share' | null>(null);
   const [codeBlocks, setCodeBlocks] = useState<Array<{ id: string; code: string; language: string }>>([]);
+  const [tableBlocks, setTableBlocks] = useState<TableBlockData[]>([]);
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [courseMenuOpen, setCourseMenuOpen] = useState(false);
   const courseMenuRef = useRef<HTMLDivElement>(null);
@@ -533,6 +549,7 @@ export default function NotesPage() {
 
     activeRef.current = activeId;
     setEditingBlockId(null);
+    setEditingTableId(null);
 
     const editor = editorRef.current;
     const note = notes.find((n) => n.id === activeId);
@@ -540,6 +557,8 @@ export default function NotesPage() {
       if (!note) {
         codeBlocksRef.current = [];
         setCodeBlocks([]);
+        tableBlocksRef.current = [];
+        setTableBlocks([]);
       }
       return;
     }
@@ -573,6 +592,10 @@ export default function NotesPage() {
 
     codeBlocksRef.current = restored;
     setCodeBlocks(restored);
+
+    const restoredTables = hydrateTableBlocks(editor);
+    tableBlocksRef.current = restoredTables;
+    setTableBlocks(restoredTables);
     // selectionMode is a dep so leaving multi-select repopulates the editor
     // (the contentEditable is remounted after being hidden).
   }, [activeId, selectionMode]);
@@ -581,10 +604,18 @@ export default function NotesPage() {
     editingBlockIdRef.current = editingBlockId;
   }, [editingBlockId]);
 
+  useEffect(() => {
+    editingTableIdRef.current = editingTableId;
+  }, [editingTableId]);
+
   // Keep codeBlocksRef in sync with codeBlocks state
   useEffect(() => {
     codeBlocksRef.current = codeBlocks;
   }, [codeBlocks]);
+
+  useEffect(() => {
+    tableBlocksRef.current = tableBlocks;
+  }, [tableBlocks]);
 
   // Re-render saved views when a block changes and no overlay is mounted.
   // Lazy Monaco grammars are upgraded asynchronously so the first paint is
@@ -626,6 +657,19 @@ export default function NotesPage() {
   }, [codeBlocks, editingBlockId]);
 
   useEffect(() => {
+    if (editingTableId) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    for (const block of tableBlocks) {
+      const element = findTableBlockElement(editor, block.id);
+      if (!element) continue;
+      element.dataset.table = JSON.stringify(block.rows);
+      element.innerHTML = renderTableBlockViewHtml(block.rows);
+    }
+  }, [tableBlocks, editingTableId]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
       if (savedRef.current) window.clearTimeout(savedRef.current);
@@ -662,12 +706,17 @@ export default function NotesPage() {
 
     const clone = editor.cloneNode(true) as HTMLElement;
 
-    // Strip the React-mounted Monaco overlay and any legacy editor chrome.
+    // Strip the React-mounted overlays and any legacy editor chrome.
     clone
       .querySelectorAll("[data-editor-container]")
       .forEach((node) => node.remove());
     clone
       .querySelectorAll(".atomic-code-block-toolbar")
+      .forEach((node) => node.remove());
+    clone
+      .querySelectorAll(
+        "[data-table-editor-container], .atomic-table-toolbar, .table-top-bar, .table-btn",
+      )
       .forEach((node) => node.remove());
 
     // Unwrap legacy wrappers, keeping the atomic block itself.
@@ -692,6 +741,25 @@ export default function NotesPage() {
         block.removeAttribute("data-editing");
         block.removeAttribute("style");
         block.innerHTML = renderCodeBlockViewHtml(data.code, data.language);
+      });
+
+    clone
+      .querySelectorAll<HTMLElement>(".atomic-table-block")
+      .forEach((block) => {
+        const id = block.dataset.tableId;
+        const data = id
+          ? tableBlocksRef.current.find((item) => item.id === id)
+          : undefined;
+        const rows = normalizeTableRows(
+          data?.rows ?? readTableBlockRows(block),
+        );
+
+        block.dataset.tableId = id || createTableId();
+        block.dataset.table = JSON.stringify(rows);
+        block.setAttribute("contenteditable", "false");
+        block.removeAttribute("data-editing");
+        block.removeAttribute("style");
+        block.innerHTML = renderTableBlockViewHtml(rows);
       });
 
     return clone.innerHTML;
@@ -829,7 +897,9 @@ export default function NotesPage() {
       const target = event?.target;
       if (
         target instanceof Element &&
-        target.closest(".atomic-code-block, [data-editor-container]")
+        target.closest(
+          ".atomic-code-block, .atomic-table-block, [data-editor-container], [data-table-editor-container]",
+        )
       ) {
         return;
       }
@@ -1040,9 +1110,125 @@ export default function NotesPage() {
     [endCodeEdit, saveNoteContent],
   );
 
+  const endTableEdit = useCallback(() => {
+    if (draftSaveRef.current !== null) {
+      window.clearTimeout(draftSaveRef.current);
+      draftSaveRef.current = null;
+    }
+    setEditingTableId(null);
+  }, []);
+
+  const handleTableDraft = useCallback((id: string, rows: string[][]) => {
+    const normalized = normalizeTableRows(rows);
+    const index = tableBlocksRef.current.findIndex((block) => block.id === id);
+
+    if (index >= 0) {
+      tableBlocksRef.current = tableBlocksRef.current.map((block) =>
+        block.id === id ? { ...block, rows: normalized } : block,
+      );
+    } else {
+      tableBlocksRef.current = [
+        ...tableBlocksRef.current,
+        { id, rows: normalized },
+      ];
+    }
+
+    const editor = editorRef.current;
+    const element = editor ? findTableBlockElement(editor, id) : null;
+    if (element) element.dataset.table = JSON.stringify(normalized);
+
+    if (draftSaveRef.current !== null) {
+      window.clearTimeout(draftSaveRef.current);
+    }
+    draftSaveRef.current = window.setTimeout(() => {
+      draftSaveRef.current = null;
+      saveNoteContentRef.current();
+    }, 600);
+  }, []);
+
+  const handleTableCommit = useCallback(
+    (id: string, rows: string[][]) => {
+      const normalized = normalizeTableRows(rows);
+      const exists = tableBlocksRef.current.some((block) => block.id === id);
+
+      tableBlocksRef.current = exists
+        ? tableBlocksRef.current.map((block) =>
+            block.id === id ? { ...block, rows: normalized } : block,
+          )
+        : [...tableBlocksRef.current, { id, rows: normalized }];
+
+      const editor = editorRef.current;
+      const element = editor ? findTableBlockElement(editor, id) : null;
+      if (element) {
+        element.dataset.table = JSON.stringify(normalized);
+        element.dataset.tableId = id;
+      }
+
+      setTableBlocks(tableBlocksRef.current);
+      saveNoteContent();
+    },
+    [saveNoteContent],
+  );
+
+  const handleTableRemove = useCallback(
+    (id: string) => {
+      tableBlocksRef.current = tableBlocksRef.current.filter(
+        (block) => block.id !== id,
+      );
+      setTableBlocks(tableBlocksRef.current);
+
+      const editor = editorRef.current;
+      const element = editor ? findTableBlockElement(editor, id) : null;
+      if (editor && element) {
+        const next = element.nextElementSibling;
+        const wrapper = element.parentElement;
+        element.remove();
+        if (
+          wrapper &&
+          wrapper !== editor &&
+          wrapper.tagName === "DIV" &&
+          wrapper.childElementCount === 0 &&
+          !(wrapper.textContent ?? "").trim()
+        ) {
+          wrapper.remove();
+        }
+        if (
+          next?.tagName === "P" &&
+          next.innerHTML === "<br>" &&
+          !next.nextElementSibling
+        ) {
+          next.remove();
+        }
+        if (editor.childNodes.length === 0) {
+          const paragraph = document.createElement("p");
+          paragraph.innerHTML = "<br>";
+          editor.appendChild(paragraph);
+        }
+      }
+
+      endTableEdit();
+      saveNoteContent();
+    },
+    [endTableEdit, saveNoteContent],
+  );
+
   const handleEditorClick = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
       const element = event.target as HTMLElement;
+      if (element.closest("[data-table-editor-container]")) return;
+
+      const tableElement = element.closest<HTMLElement>(
+        ".atomic-table-block",
+      );
+      const tableId = tableElement?.dataset.tableId;
+      if (tableId) {
+        if (tableElement.dataset.editing === "true") return;
+        event.preventDefault();
+        setEditingBlockId(null);
+        setEditingTableId(tableId);
+        return;
+      }
+
       const blockElement = element.closest<HTMLElement>(
         ".atomic-code-block",
       );
@@ -1050,6 +1236,7 @@ export default function NotesPage() {
       if (!id) return;
       if (blockElement.dataset.editing === "true") return;
       event.preventDefault();
+      setEditingTableId(null);
       setEditingBlockId(id);
     },
     [],
@@ -1060,7 +1247,9 @@ export default function NotesPage() {
       if (!active || selectionMode) return;
       const target = e.target as HTMLElement | null;
       if (
-        target?.closest(".atomic-code-block, [data-editor-container]")
+        target?.closest(
+          ".atomic-code-block, [data-editor-container], [data-table-editor-container]",
+        )
       ) {
         return;
       }
@@ -1203,204 +1392,94 @@ export default function NotesPage() {
     }
   };
 
-const insertTable = () => {
+  const insertTable = () => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
 
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-    const range = selection.getRangeAt(0);
+    const liveRange =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0)
+        : null;
+    const savedRange = savedRangeRef.current;
+    const range =
+      liveRange && editor.contains(liveRange.commonAncestorContainer)
+        ? liveRange
+        : savedRange && editor.contains(savedRange.commonAncestorContainer)
+          ? savedRange
+          : null;
 
-    // Default 1 header row + 2 columns
-    const tableHTML = `
-      <table style="border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0; font-family: inherit; background: rgba(17, 24, 39, 0.5); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overflow: hidden;">
-        <tr>
-          <th style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);" contenteditable="true" data-cell="true">Header 1</th>
-          <th style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);" contenteditable="true" data-cell="true">Header 2</th>
-        </tr>
-      </table>
-    `;
+    const id = createTableId();
+    const rows = createDefaultTableRows();
+    const block = document.createElement("div");
+    block.className = "atomic-table-block";
+    block.contentEditable = "false";
+    block.dataset.tableId = id;
+    block.dataset.table = JSON.stringify(rows);
+    block.innerHTML = renderTableBlockViewHtml(rows);
 
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = tableHTML;
-    const table = tempDiv.firstChild;
+    const trailing = document.createElement("p");
+    trailing.innerHTML = "<br>";
 
-    if (!table) return;
+    const topLevelChild = (node: Node | null): HTMLElement | null => {
+      let current: Node | null = node;
+      while (current && current.parentNode !== editor) {
+        current = current.parentNode;
+      }
+      return current instanceof HTMLElement ? current : null;
+    };
 
-    range.deleteContents();
-    range.insertNode(table as Node);
+    let placement: HTMLElement = trailing;
 
-    if (!table.parentNode) return;
+    if (range) {
+      range.collapse(true);
+      const top = topLevelChild(range.startContainer);
 
-    addTableControls(table as HTMLTableElement);
+      if (top?.classList.contains("atomic-table-block")) {
+        top.after(block, trailing);
+      } else if (
+        top &&
+        ["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE"].includes(
+          top.tagName,
+        )
+      ) {
+        const tailRange = document.createRange();
+        tailRange.selectNodeContents(top);
+        tailRange.setStart(range.startContainer, range.startOffset);
+        const tail = tailRange.extractContents();
+        const tailBlock = top.cloneNode(false) as HTMLElement;
+        tailBlock.appendChild(tail);
+        top.after(tailBlock);
+        top.after(block);
 
-    // Focus the first cell
-    const firstCell = (table as HTMLTableElement).querySelector('th[data-cell="true"], td[data-cell="true"]') as HTMLElement;
-    if (firstCell) {
-      firstCell.focus();
+        if (tailBlock.textContent?.trim() || tailBlock.querySelector("*")) {
+          placement = tailBlock;
+        } else {
+          tailBlock.remove();
+          block.after(trailing);
+        }
+      } else if (top) {
+        top.after(block, trailing);
+      } else {
+        editor.append(block, trailing);
+      }
+    } else {
+      editor.append(block, trailing);
     }
 
-    const p = document.createElement("p");
-    p.innerHTML = "<br>";
-    table.parentNode.insertBefore(p, table.nextSibling);
-
     const caret = document.createRange();
-    caret.setStartAfter(p);
+    caret.setStart(placement, 0);
     caret.collapse(true);
     const nextSelection = window.getSelection();
     nextSelection?.removeAllRanges();
     nextSelection?.addRange(caret);
+    savedRangeRef.current = null;
 
-    setTimeout(() => handleInput(), 100);
-  };
-
-  const addTableControls = (table: HTMLTableElement) => {
-    const wrapper = document.createElement("div");
-    wrapper.style.cssText =
-      "position: relative; margin: 16px 0; width: 100%;";
-
-    if (table.parentNode) {
-      table.parentNode.insertBefore(wrapper, table);
-      wrapper.appendChild(table);
-    } else {
-      return document.createElement("div");
-    }
-
-    const topBar = document.createElement("div");
-    topBar.className = "table-top-bar";
-    topBar.style.cssText =
-      "display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 8px 12px; background: rgba(17, 24, 39, 0.7); border: 1px solid rgba(124, 92, 255, 0.25); border-radius: 10px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 11px; opacity: 1; transition: opacity 0.15s ease;";
-
-    topBar.innerHTML = `
-      <div style="display: flex; gap: 6px;">
-        <button class="table-btn" data-action="add-row" title="Add row" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">+</span> Row
-        </button>
-        <button class="table-btn" data-action="remove-row" title="Remove row" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">−</span> Row
-        </button>
-        <button class="table-btn" data-action="add-col" title="Add column" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">+</span> Col
-        </button>
-        <button class="table-btn" data-action="remove-col" title="Remove column" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <span style="font-size: 10px;">−</span> Col
-        </button>
-      </div>
-      <div style="display: flex; gap: 6px;">
-        <button class="table-btn" data-action="copy-table" title="Copy table" style="padding: 6px 12px; background: rgba(17, 24, 39, 0.6); color: #f9fafb; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; backdrop-filter: blur(4px);">Copy</button>
-        <button class="table-btn" data-action="delete-table" title="Delete table" style="padding: 6px 12px; background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px;">Delete</button>
-      </div>
-    `;
-
-    wrapper.insertBefore(topBar, table);
-
-    topBar.querySelectorAll(".table-btn").forEach((btn) => {
-      (btn as HTMLElement).onclick = (e: MouseEvent) =>
-        handleTableAction(e, table as HTMLTableElement);
-    });
-
-    // Hide top bar when clicking outside the table wrapper
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (!wrapper.contains(e.target as Node)) {
-        topBar.style.opacity = "0";
-        topBar.style.pointerEvents = "none";
-        document.removeEventListener("mousedown", handleOutsideClick);
-      }
-    };
-
-    // Show top bar when clicking on table
-    const handleTableClick = (e: MouseEvent) => {
-      if (wrapper.contains(e.target as Node)) {
-        topBar.style.opacity = "1";
-        topBar.style.pointerEvents = "auto";
-        document.addEventListener("mousedown", handleOutsideClick);
-      }
-    };
-
-    table.addEventListener("mousedown", handleTableClick);
-    document.addEventListener("mousedown", handleOutsideClick);
-
-    // Store cleanup reference on wrapper for later removal
-    (wrapper as any).__tableCleanup = () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      table.removeEventListener("mousedown", handleTableClick);
-    };
-
-    return wrapper;
-  };
-
-  const handleTableAction = (
-    e: MouseEvent,
-    table: HTMLTableElement
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const btn = e.currentTarget as HTMLElement | null;
-    const action = btn?.dataset.action;
-
-    if (action === "add-row") {
-      const newRowIndex = table.rows.length;
-      const newRow = table.insertRow(newRowIndex);
-      const cols = table.rows[0].cells.length;
-      for (let i = 0; i < cols; i++) {
-        const cell = newRow.insertCell(i);
-        cell.style.cssText =
-          "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
-        cell.contentEditable = "true";
-        cell.dataset.cell = "true";
-        cell.textContent = `Cell ${newRowIndex}-${i + 1}`;
-      }
-    } else if (action === "remove-row") {
-      // Always keep at least 1 header row
-      if (table.rows.length > 1) {
-        table.deleteRow(table.rows.length - 1);
-      }
-    } else if (action === "add-col") {
-      for (let i = 0; i < table.rows.length; i++) {
-        const cellIndex = table.rows[i].cells.length;
-        const cell = table.rows[i].insertCell(cellIndex);
-        const style = i === 0
-          ? "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);"
-          : "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
-        cell.style.cssText = style;
-        cell.contentEditable = "true";
-        cell.dataset.cell = "true";
-        cell.textContent = i === 0 ? `Header ${cellIndex + 1}` : `Cell ${i + 1}-${cellIndex + 1}`;
-      }
-    } else if (action === "remove-col") {
-      // Always keep at least 1 column
-      const cols = table.rows[0].cells.length;
-      if (cols > 1) {
-        for (let i = 0; i < table.rows.length; i++) {
-          table.rows[i].deleteCell(cols - 1);
-        }
-      }
-    } else if (action === "copy-table") {
-      const html = table.outerHTML;
-      navigator.clipboard.writeText(html).then(() => {
-        const original = btn?.textContent ?? "";
-        if (btn) {
-          btn.textContent = "Copied!";
-          btn.style.background = "rgba(34, 197, 94, 0.2)";
-          btn.style.color = "#4ade80";
-          setTimeout(() => {
-            btn.textContent = original;
-            btn.style.background = "rgba(17, 24, 39, 0.6)";
-            btn.style.color = "#f9fafb";
-          }, 1500);
-        }
-      });
-    } else if (action === "delete-table") {
-      if (confirm("Delete this table?")) {
-        const wrapper = table.parentElement;
-        wrapper?.remove();
-      }
-      return;
-    }
-
-    setTimeout(() => handleInput(), 100);
+    tableBlocksRef.current = [...tableBlocksRef.current, { id, rows }];
+    setTableBlocks(tableBlocksRef.current);
+    setEditingBlockId(null);
+    setEditingTableId(id);
   };
 
   const tools: Tool[] = [
@@ -1692,13 +1771,7 @@ const insertTable = () => {
   return (
     <div className="space-y-8">
       <style>{CODE_BLOCK_CSS}</style>
-      <style>{`
-        table td[contenteditable="true"]:focus,
-        table th[contenteditable="true"]:focus {
-          outline: 2px solid #7c5cff;
-          background-color: #374151;
-        }
-      `}</style>
+      <style>{TABLE_BLOCK_CSS}</style>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.4em] text-star/70">
@@ -2171,6 +2244,23 @@ const insertTable = () => {
                         }
                         onExit={endCodeEdit}
                         onRemove={() => handleCodeBlockRemove(block.id)}
+                      />
+                    ))}
+                    {tableBlocks.map((block) => (
+                      <InlineTableBlock
+                        key={block.id}
+                        id={block.id}
+                        rows={block.rows}
+                        editing={editingTableId === block.id}
+                        containerRef={editorRef}
+                        onDraftChange={(rows) =>
+                          handleTableDraft(block.id, rows)
+                        }
+                        onCommit={(rows) =>
+                          handleTableCommit(block.id, rows)
+                        }
+                        onExit={endTableEdit}
+                        onRemove={() => handleTableRemove(block.id)}
                       />
                     ))}
                   </div>
