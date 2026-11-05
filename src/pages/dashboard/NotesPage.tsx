@@ -1208,46 +1208,102 @@ export default function NotesPage() {
     if (!editor) return;
     editor.focus();
 
-    const rowsInput = prompt("Number of rows:", "3");
-    const colsInput = prompt("Number of columns:", "3");
+    // Create dark-themed modal for rows/cols selection
+    const modal = document.createElement("div");
+    modal.style.cssText =
+      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;";
 
-    const rows = parseInt(rowsInput ?? "", 10);
-    const cols = parseInt(colsInput ?? "", 10);
+    modal.innerHTML = `
+      <div style="background: #1f2937; padding: 24px; border-radius: 12px; border: 1px solid #374151; min-width: 300px;">
+        <h3 style="color: #f9fafb; margin: 0 0 20px 0; font-size: 18px;">Insert Table</h3>
 
-    if (
-      !rowsInput ||
-      !colsInput ||
-      Number.isNaN(rows) ||
-      Number.isNaN(cols) ||
-      rows < 1 ||
-      cols < 1 ||
-      rows > 20 ||
-      cols > 20
-    ) {
-      alert("Please enter valid numbers (1-20).");
-      return;
-    }
+        <div style="margin-bottom: 16px;">
+          <label style="color: #e5e7eb; display: block; margin-bottom: 8px;">Rows:</label>
+          <input type="number" id="tableRows" value="3" min="1" max="20" style="width: 100%; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #f9fafb;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="color: #e5e7eb; display: block; margin-bottom: 8px;">Columns:</label>
+          <input type="number" id="tableCols" value="3" min="1" max="20" style="width: 100%; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; color: #f9fafb;">
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button id="tableCancel" style="flex: 1; padding: 10px; background: #374151; color: #f9fafb; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+          <button id="tableInsert" style="flex: 1; padding: 10px; background: #7c5cff; color: #ffffff; border: none; border-radius: 6px; cursor: pointer;">Insert</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const rowsInput = document.getElementById("tableRows") as HTMLInputElement;
+    const colsInput = document.getElementById("tableCols") as HTMLInputElement;
+    const cancelBtn = document.getElementById("tableCancel") as HTMLButtonElement;
+    const insertBtn = document.getElementById("tableInsert") as HTMLButtonElement;
+
+    rowsInput.focus();
+
+    cancelBtn.onclick = () => modal.remove();
+
+    insertBtn.onclick = () => {
+      const rows = parseInt(rowsInput.value, 10);
+      const cols = parseInt(colsInput.value, 10);
+
+      if (
+        Number.isNaN(rows) ||
+        Number.isNaN(cols) ||
+        rows < 1 ||
+        cols < 1 ||
+        rows > 20 ||
+        cols > 20
+      ) {
+        alert("Please enter valid numbers (1-20).");
+        return;
+      }
+
+      modal.remove();
+      createAndInsertTable(rows, cols);
+    };
+
+    // Allow Enter to insert
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") insertBtn.click();
+      if (e.key === "Escape") cancelBtn.click();
+    };
+    rowsInput.addEventListener("keydown", onKeyDown);
+    colsInput.addEventListener("keydown", onKeyDown);
+  };
+
+  const createAndInsertTable = (rows: number, cols: number) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
 
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
 
+    // Dark theme table styles
+    const tableStyle =
+      "border-collapse: collapse; width: 100%; margin: 16px 0; font-family: inherit; background-color: #1f2937; border: 1px solid #374151;";
+    const headerStyle =
+      "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 600; background-color: #111827; color: #f9fafb;";
+    const cellStyle =
+      "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 400; background-color: #1f2937; color: #e5e7eb;";
+
     let tableHTML =
-      '<table style="border-collapse: collapse; width: 100%; margin: 16px 0; font-family: inherit; border: 1px solid #d1d5db;">';
+      '<table style="' +
+      tableStyle +
+      '">';
 
     for (let i = 0; i < rows; i++) {
       tableHTML += "<tr>";
       for (let j = 0; j < cols; j++) {
         const cellType = i === 0 ? "th" : "td";
-        const cellStyle =
-          "border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-weight: " +
-          (i === 0 ? "600" : "400") +
-          "; background-color: " +
-          (i === 0 ? "#f9fafb" : "#ffffff") +
-          ";";
+        const style = i === 0 ? headerStyle : cellStyle;
         const cellContent =
           i === 0 ? `Header ${j + 1}` : `Cell ${i + 1}-${j + 1}`;
-        tableHTML += `<${cellType} style="${cellStyle}" contenteditable="true">${cellContent}</${cellType}>`;
+        tableHTML += `<${cellType} style="${style}" contenteditable="true" data-cell="true">${cellContent}</${cellType}>`;
       }
       tableHTML += "</tr>";
     }
@@ -1264,16 +1320,99 @@ export default function NotesPage() {
 
     if (!table.parentNode) return;
 
+    // Add floating toolbar above the table
+    addTableToolbar(table as HTMLTableElement);
+
+    // Add paragraph after table so user can continue typing
     const p = document.createElement("p");
     p.innerHTML = "<br>";
     table.parentNode.insertBefore(p, table.nextSibling);
 
+    // Move cursor after table
     const caret = document.createRange();
     caret.setStartAfter(p);
     caret.collapse(true);
     const nextSelection = window.getSelection();
     nextSelection?.removeAllRanges();
     nextSelection?.addRange(caret);
+
+    setTimeout(() => handleInput(), 100);
+  };
+
+  const addTableToolbar = (table: HTMLTableElement) => {
+    const toolbar = document.createElement("div");
+    toolbar.className = "table-toolbar";
+    toolbar.style.cssText =
+      "display: flex; gap: 8px; margin-bottom: 8px; padding: 8px; background: #111827; border: 1px solid #374151; border-radius: 6px; z-index: 1000;";
+
+    toolbar.innerHTML = `
+      <button class="table-btn" data-action="add-row" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Row</button>
+      <button class="table-btn" data-action="remove-row" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">- Row</button>
+      <button class="table-btn" data-action="add-col" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Col</button>
+      <button class="table-btn" data-action="remove-col" style="padding: 6px 12px; background: #374151; color: #f9fafb; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">- Col</button>
+      <button class="table-btn" data-action="delete-table" style="padding: 6px 12px; background: #dc2626; color: #ffffff; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
+    `;
+
+    // Insert toolbar before table
+    if (table.parentNode) {
+      table.parentNode.insertBefore(toolbar, table);
+    }
+
+    toolbar.querySelectorAll(".table-btn").forEach((btn) => {
+      (btn as HTMLElement).onclick = (e: MouseEvent) =>
+        handleTableAction(e, table, toolbar);
+    });
+  };
+
+  const handleTableAction = (
+    e: MouseEvent,
+    table: HTMLTableElement,
+    toolbar: HTMLElement
+  ) => {
+    const btn = e.currentTarget as HTMLElement | null;
+    const action = btn?.dataset.action;
+
+    if (action === "add-row") {
+      const newRow = table.insertRow();
+      const cols = table.rows[0].cells.length;
+      for (let i = 0; i < cols; i++) {
+        const cell = newRow.insertCell();
+        cell.style.cssText =
+          "border: 1px solid #374151; padding: 10px 12px; text-align: left; background-color: #1f2937; color: #e5e7eb;";
+        cell.contentEditable = "true";
+        cell.dataset.cell = "true";
+        cell.textContent = `Cell ${newRow.rowIndex + 1}-${i + 1}`;
+      }
+    } else if (action === "remove-row") {
+      if (table.rows.length > 1) {
+        table.deleteRow(table.rows.length - 1);
+      }
+    } else if (action === "add-col") {
+      for (let i = 0; i < table.rows.length; i++) {
+        const cell = table.rows[i].insertCell();
+        const style = i === 0
+          ? "border: 1px solid #374151; padding: 10px 12px; text-align: left; font-weight: 600; background-color: #111827; color: #f9fafb;"
+          : "border: 1px solid #374151; padding: 10px 12px; text-align: left; background-color: #1f2937; color: #e5e7eb;";
+        cell.style.cssText = style;
+        cell.contentEditable = "true";
+        cell.dataset.cell = "true";
+        cell.textContent = i === 0
+          ? `Header ${table.rows[i].cells.length}`
+          : `Cell ${i + 1}-${table.rows[i].cells.length}`;
+      }
+    } else if (action === "remove-col") {
+      const cols = table.rows[0].cells.length;
+      if (cols > 1) {
+        for (let i = 0; i < table.rows.length; i++) {
+          table.rows[i].deleteCell(cols - 1);
+        }
+      }
+    } else if (action === "delete-table") {
+      if (confirm("Delete this table?")) {
+        toolbar.remove();
+        table.remove();
+      }
+    }
 
     setTimeout(() => handleInput(), 100);
   };
@@ -1567,6 +1706,13 @@ export default function NotesPage() {
   return (
     <div className="space-y-8">
       <style>{CODE_BLOCK_CSS}</style>
+      <style>{`
+        table td[contenteditable="true"]:focus,
+        table th[contenteditable="true"]:focus {
+          outline: 2px solid #7c5cff;
+          background-color: #374151;
+        }
+      `}</style>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.4em] text-star/70">
