@@ -1203,77 +1203,7 @@ export default function NotesPage() {
     }
   };
 
-  const insertTable = () => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    editor.focus();
-
-    const modal = document.createElement("div");
-    modal.style.cssText =
-      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 23, 0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 9999;";
-
-    modal.innerHTML = `
-      <div style="background: rgba(17, 24, 39, 0.9); padding: 28px; border-radius: 16px; border: 1px solid rgba(124, 92, 255, 0.4); min-width: 320px; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.6);">
-        <h3 style="color: #f9fafb; margin: 0 0 24px 0; font-size: 18px; font-weight: 600;">Insert Table</h3>
-
-        <div style="margin-bottom: 20px;">
-          <label style="color: #a1a1aa; display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500;">Rows</label>
-          <input type="number" id="tableRows" value="3" min="1" max="20" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid #374151; border-radius: 8px; color: #f9fafb; font-size: 14px; outline: none;">
-        </div>
-
-        <div style="margin-bottom: 24px;">
-          <label style="color: #a1a1aa; display: block; margin-bottom: 8px; font-size: 13px; font-weight: 500;">Columns</label>
-          <input type="number" id="tableCols" value="3" min="1" max="20" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid #374151; border-radius: 8px; color: #f9fafb; font-size: 14px; outline: none;">
-        </div>
-
-        <div style="display: flex; gap: 12px;">
-          <button id="tableCancel" style="flex: 1; padding: 11px; background: transparent; color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">Cancel</button>
-          <button id="tableInsert" style="flex: 1; padding: 11px; background: #7c5cff; color: #ffffff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 0 20px rgba(124, 92, 255, 0.4);">Insert</button>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const rowsInput = document.getElementById("tableRows") as HTMLInputElement;
-    const colsInput = document.getElementById("tableCols") as HTMLInputElement;
-    const cancelBtn = document.getElementById("tableCancel") as HTMLButtonElement;
-    const insertBtn = document.getElementById("tableInsert") as HTMLButtonElement;
-
-    rowsInput.focus();
-    rowsInput.select();
-
-    cancelBtn.onclick = () => modal.remove();
-
-    insertBtn.onclick = () => {
-      const rows = parseInt(rowsInput.value, 10);
-      const cols = parseInt(colsInput.value, 10);
-
-      if (
-        Number.isNaN(rows) ||
-        Number.isNaN(cols) ||
-        rows < 1 ||
-        cols < 1 ||
-        rows > 20 ||
-        cols > 20
-      ) {
-        alert("Please enter valid numbers (1-20).");
-        return;
-      }
-
-      modal.remove();
-      createAndInsertTable(rows, cols);
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") insertBtn.click();
-      if (e.key === "Escape") cancelBtn.click();
-    };
-    rowsInput.addEventListener("keydown", onKeyDown);
-    colsInput.addEventListener("keydown", onKeyDown);
-  };
-
-  const createAndInsertTable = (rows: number, cols: number) => {
+const insertTable = () => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -1282,30 +1212,17 @@ export default function NotesPage() {
     if (!selection || selection.rangeCount === 0) return;
     const range = selection.getRangeAt(0);
 
-    const tableStyle =
-      "border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0; font-family: inherit; background: rgba(17, 24, 39, 0.5); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overflow: hidden;";
-    const headerStyle =
-      "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);";
-    const cellStyle =
-      "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
-
-    let tableHTML =
-      '<table style="' +
-      tableStyle +
-      '">';
-
-    for (let i = 0; i < rows; i++) {
-      tableHTML += "<tr>";
-      for (let j = 0; j < cols; j++) {
-        const cellType = i === 0 ? "th" : "td";
-        const style = i === 0 ? headerStyle : cellStyle;
-        const cellContent =
-          i === 0 ? `Header ${j + 1}` : `Cell ${i + 1}-${j + 1}`;
-        tableHTML += `<${cellType} style="${style}" contenteditable="true" data-cell="true">${cellContent}</${cellType}>`;
-      }
-      tableHTML += "</tr>";
-    }
-    tableHTML += "</table>";
+    // Default 1x1 table
+    const tableHTML = `
+      <table style="border-collapse: separate; border-spacing: 0; width: 100%; margin: 16px 0; font-family: inherit; background: rgba(17, 24, 39, 0.5); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 12px; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); overflow: hidden;">
+        <tr>
+          <th style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.2); border-right: 1px solid rgba(124, 92, 255, 0.15); padding: 12px 14px; text-align: left; font-weight: 600; font-size: 13px; color: #7c5cff; background: rgba(124, 92, 255, 0.08);" contenteditable="true" data-cell="true">Header 1</th>
+        </tr>
+        <tr>
+          <td style="border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;" contenteditable="true" data-cell="true">Cell 1</td>
+        </tr>
+      </table>
+    `;
 
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = tableHTML;
@@ -1319,6 +1236,12 @@ export default function NotesPage() {
     if (!table.parentNode) return;
 
     addTableControls(table as HTMLTableElement);
+
+    // Focus the first cell
+    const firstCell = (table as HTMLTableElement).querySelector('th[data-cell="true"], td[data-cell="true"]') as HTMLElement;
+    if (firstCell) {
+      firstCell.focus();
+    }
 
     const p = document.createElement("p");
     p.innerHTML = "<br>";
@@ -1337,54 +1260,85 @@ export default function NotesPage() {
   const addTableControls = (table: HTMLTableElement) => {
     const wrapper = document.createElement("div");
     wrapper.style.cssText =
-      "position: relative; margin: 16px 0; display: inline-block; width: 100%;";
+      "position: relative; margin: 16px 0; width: 100%;";
 
     if (table.parentNode) {
       table.parentNode.insertBefore(wrapper, table);
       wrapper.appendChild(table);
     } else {
-      return;
+      return document.createElement("div");
     }
 
-    const topControls = document.createElement("div");
-    topControls.style.cssText =
-      "display: flex; gap: 6px; margin-bottom: 6px; padding: 6px 10px; background: rgba(17, 24, 39, 0.6); border: 1px solid rgba(124, 92, 255, 0.2); border-radius: 8px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); font-size: 11px;";
+    const topBar = document.createElement("div");
+    topBar.className = "table-top-bar";
+    topBar.style.cssText =
+      "display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding: 8px 12px; background: rgba(17, 24, 39, 0.7); border: 1px solid rgba(124, 92, 255, 0.25); border-radius: 10px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 11px; opacity: 1; transition: opacity 0.15s ease;";
 
-    topControls.innerHTML = `
-      <button class="table-ctrl" data-action="add-row" title="Add row" style="padding: 4px 8px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-weight: 500;">+ Row</button>
-      <button class="table-ctrl" data-action="remove-row" title="Remove row" style="padding: 4px 8px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 6px; cursor: pointer; font-weight: 500;">\u2212 Row</button>
-      <button class="table-ctrl" data-action="add-col" title="Add column" style="padding: 4px 8px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-weight: 500;">+ Col</button>
-      <button class="table-ctrl" data-action="remove-col" title="Remove column" style="padding: 4px 8px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 6px; cursor: pointer; font-weight: 500;">\u2212 Col</button>
+    topBar.innerHTML = `
+      <div style="display: flex; gap: 6px;">
+        <button class="table-btn" data-action="add-row" title="Add row" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 10px;">▲</span> Row
+        </button>
+        <button class="table-btn" data-action="remove-row" title="Remove row" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 10px;">▼</span> Row
+        </button>
+        <button class="table-btn" data-action="add-col" title="Add column" style="padding: 6px 10px; background: rgba(124, 92, 255, 0.15); color: #7c5cff; border: 1px solid rgba(124, 92, 255, 0.35); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 10px;">▲</span> Col
+        </button>
+        <button class="table-btn" data-action="remove-col" title="Remove column" style="padding: 6px 10px; background: rgba(55, 65, 81, 0.5); color: #a1a1aa; border: 1px solid #374151; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 10px;">▼</span> Col
+        </button>
+      </div>
+      <div style="display: flex; gap: 6px;">
+        <button class="table-btn" data-action="copy-table" title="Copy table" style="padding: 6px 12px; background: rgba(17, 24, 39, 0.6); color: #f9fafb; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; backdrop-filter: blur(4px);">Copy</button>
+        <button class="table-btn" data-action="delete-table" title="Delete table" style="padding: 6px 12px; background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px;">Delete</button>
+      </div>
     `;
 
-    const sideControls = document.createElement("div");
-    sideControls.style.cssText =
-      "position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;";
+    wrapper.insertBefore(topBar, table);
 
-    sideControls.innerHTML = `
-      <button class="table-side" data-action="copy-table" title="Copy table" style="padding: 6px 10px; background: rgba(17, 24, 39, 0.7); color: #f9fafb; border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500; backdrop-filter: blur(4px);">Copy</button>
-      <button class="table-side" data-action="delete-table" title="Delete table" style="padding: 6px 10px; background: rgba(220, 38, 38, 0.15); color: #f87171; border: 1px solid rgba(220, 38, 38, 0.3); border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 500;">Delete</button>
-    `;
-
-    wrapper.insertBefore(topControls, table);
-    wrapper.appendChild(sideControls);
-
-    topControls.querySelectorAll(".table-ctrl").forEach((btn) => {
+    topBar.querySelectorAll(".table-btn").forEach((btn) => {
       (btn as HTMLElement).onclick = (e: MouseEvent) =>
-        handleTableAction(e, table, wrapper);
+        handleTableAction(e, table as HTMLTableElement);
     });
 
-    sideControls.querySelectorAll(".table-side").forEach((btn) => {
-      (btn as HTMLElement).onclick = (e: MouseEvent) =>
-        handleTableAction(e, table, wrapper);
-    });
+    // Hide top bar when clicking outside the table wrapper
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (!wrapper.contains(e.target as Node)) {
+        topBar.style.opacity = "0";
+        topBar.style.pointerEvents = "none";
+        document.removeEventListener("mousedown", handleOutsideClick);
+      }
+    };
+
+    // Show top bar when clicking on table
+    const handleTableClick = (e: MouseEvent) => {
+      if (wrapper.contains(e.target as Node)) {
+        topBar.style.opacity = "1";
+        topBar.style.pointerEvents = "auto";
+        document.addEventListener("mousedown", handleOutsideClick);
+      }
+    };
+
+    table.addEventListener("mousedown", handleTableClick);
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    // Store cleanup reference on wrapper for later removal
+    (wrapper as any).__tableCleanup = () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      table.removeEventListener("mousedown", handleTableClick);
+    };
+
+    return wrapper;
   };
 
   const handleTableAction = (
     e: MouseEvent,
-    table: HTMLTableElement,
-    wrapper: HTMLElement
+    table: HTMLTableElement
   ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     const btn = e.currentTarget as HTMLElement | null;
     const action = btn?.dataset.action;
 
@@ -1397,7 +1351,7 @@ export default function NotesPage() {
           "border: 0; border-bottom: 1px solid rgba(124, 92, 255, 0.1); border-right: 1px solid rgba(124, 92, 255, 0.08); padding: 12px 14px; text-align: left; font-weight: 400; font-size: 14px; color: #e5e7eb; background: transparent;";
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
-        cell.textContent = `Cell ${newRow.rowIndex + 1}-${i + 1}`;
+        cell.textContent = `Cell ${newRow.rowIndex}`;
       }
     } else if (action === "remove-row") {
       if (table.rows.length > 1) {
@@ -1412,9 +1366,7 @@ export default function NotesPage() {
         cell.style.cssText = style;
         cell.contentEditable = "true";
         cell.dataset.cell = "true";
-        cell.textContent = i === 0
-          ? `Header ${table.rows[i].cells.length}`
-          : `Cell ${i + 1}-${table.rows[i].cells.length}`;
+        cell.textContent = i === 0 ? `Header ${table.rows[i].cells.length}` : `Cell ${i + 1}`;
       }
     } else if (action === "remove-col") {
       const cols = table.rows[0].cells.length;
@@ -1433,21 +1385,20 @@ export default function NotesPage() {
           btn.style.color = "#4ade80";
           setTimeout(() => {
             btn.textContent = original;
-            btn.style.background = "rgba(17, 24, 39, 0.7)";
+            btn.style.background = "rgba(17, 24, 39, 0.6)";
             btn.style.color = "#f9fafb";
           }, 1500);
         }
       });
     } else if (action === "delete-table") {
       if (confirm("Delete this table?")) {
-        wrapper.remove();
+        const wrapper = table.parentElement;
+        wrapper?.remove();
       }
       return;
     }
 
-    if (action !== "delete-table") {
-      setTimeout(() => handleInput(), 100);
-    }
+    setTimeout(() => handleInput(), 100);
   };
 
   const tools: Tool[] = [
