@@ -119,6 +119,20 @@ const NOTE_ACCENTS = [
   "#cf9eff",
 ];
 
+function buildExportFilename(notes: Array<{ title: string }>): string {
+  const date = new Date().toISOString().split("T")[0];
+  const title = notes.length === 1 ? notes[0]?.title.trim() ?? "" : "";
+  if (!title) return `notes-${date}.html`;
+
+  const slug = title
+    .toLowerCase()
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+
+  return `${slug || "note"}-${date}.html`;
+}
+
 function hexToRgba(hex: string, alpha: number): string {
   const value = hex.replace("#", "");
   const full =
@@ -1636,11 +1650,14 @@ export default function NotesPage() {
       const ids = Array.from(selectedIds).filter(
         (id): id is string => typeof id === "string",
       );
+      await flush();
       const downloadNotes = await bulkDownloadNotes(ids);
       const content = await buildNotesExportHtml(
         downloadNotes.map((note) => ({
           title: note.title,
           html: note.html,
+          courseTitle: note.courseTitle,
+          updatedAt: note.updatedAt,
         })),
       );
 
@@ -1648,7 +1665,7 @@ export default function NotesPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `notes-${new Date().toISOString().split("T")[0]}.html`;
+      a.download = buildExportFilename(downloadNotes);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1666,13 +1683,14 @@ export default function NotesPage() {
     } finally {
       setBulkDownloading(false);
     }
-  }, [selectedIds, clearSelection]);
+  }, [selectedIds, clearSelection, flush]);
 
   const handleBulkShare = useCallback(() => {
-    if (selectedIds.size > 0) {
-      setBulkShareOpen(true);
-    }
-  }, [selectedIds]);
+    if (selectedIds.size === 0) return;
+    void flush()
+      .catch(() => undefined)
+      .finally(() => setBulkShareOpen(true));
+  }, [selectedIds, flush]);
   
   const [bulkShareOpen, setBulkShareOpen] = useState(false);
 
@@ -2512,7 +2530,7 @@ export default function NotesPage() {
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
-                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-[15px] leading-relaxed text-white/70 focus:outline-none sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-base leading-relaxed text-white/70 focus:outline-none sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
                     {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}
@@ -2601,7 +2619,7 @@ export default function NotesPage() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2, ease: EASE }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl border border-white/10 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl"
+          className="fixed bottom-4 left-1/2 z-50 flex w-[calc(100vw-1.5rem)] max-w-lg -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 px-3 py-2.5 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.95)] backdrop-blur-2xl sm:bottom-6 sm:w-auto sm:flex-nowrap sm:justify-start sm:gap-3 sm:px-4 sm:py-3"
           style={{ backgroundColor: "rgba(10, 10, 18, 0.95)" }}
           role="region"
           aria-label="Bulk actions"

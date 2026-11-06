@@ -45,6 +45,13 @@ export function InlineTableBlock({
     normalizeTableRows(rows),
   );
   const [copied, setCopied] = useState(false);
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === "undefined" ? 0 : window.innerWidth,
+    height:
+      typeof window === "undefined"
+        ? 0
+        : window.visualViewport?.height ?? window.innerHeight,
+  }));
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const rowsRef = useRef(draftRows);
@@ -138,9 +145,35 @@ export function InlineTableBlock({
     };
   }, [editing, target]);
 
+  useEffect(() => {
+    if (!editing) return;
+    const visualViewport = window.visualViewport;
+    const update = () =>
+      setViewport({
+        width: window.innerWidth,
+        height: visualViewport?.height ?? window.innerHeight,
+      });
+    update();
+    visualViewport?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      visualViewport?.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, [editing]);
+
   const columnCount = Math.max(1, draftRows[0]?.length ?? 1);
+  const isCompactViewport =
+    (viewport.width > 0 && viewport.width < 768) ||
+    (viewport.height > 0 && viewport.height < 520);
+  const maxEditorHeight =
+    isCompactViewport && viewport.height > 0
+      ? Math.max(140, Math.min(380, viewport.height - 148))
+      : 380;
   const editorHeight = Math.min(
-    380,
+    maxEditorHeight,
     Math.max(140, draftRows.length * ROW_HEIGHT + 28),
   );
   const overlayHeight = editorHeight + TOOLBAR_HEIGHT;

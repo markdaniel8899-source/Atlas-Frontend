@@ -344,6 +344,8 @@ export const TABLE_BLOCK_CSS = `
   border-radius: 10px;
   background: rgba(17, 24, 39, 0.5);
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 .atomic-table {
   width: 100%;
@@ -539,6 +541,8 @@ export const TABLE_BLOCK_CSS = `
   overflow: auto;
   border-radius: 0 0 9px 9px;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 .atomic-table-editor-grid {
   width: 100%;
@@ -623,6 +627,9 @@ export const TABLE_BLOCK_CSS = `
     padding: 8px 10px;
     font-size: 12px;
   }
+  .atomic-table thead th {
+    white-space: nowrap;
+  }
   .atomic-table-overlay {
     border-radius: 8px;
   }
@@ -630,11 +637,19 @@ export const TABLE_BLOCK_CSS = `
     gap: 4px;
     padding: 0 8px;
   }
-  .atomic-table-toolbar-title {
+  .atomic-table-toolbar-title,
+  .atomic-table-toolbar-dims,
+  .atomic-table-toolbar-spacer {
     display: none;
   }
   .atomic-table-toolbar-btn {
-    padding: 0 7px;
+    order: 3;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+  }
+  .atomic-table-toolbar-btn--done {
+    order: 2;
   }
   .atomic-table-toolbar-btn-text {
     display: none;
@@ -643,9 +658,10 @@ export const TABLE_BLOCK_CSS = `
     padding: 8px;
   }
   .atomic-table-input {
-    min-width: 82px;
-    font-size: 12px;
-    padding: 7px 8px;
+    min-width: 88px;
+    min-height: 40px;
+    font-size: 16px;
+    padding: 8px 9px;
   }
 }
 .notes-export table:not(.atomic-table) {

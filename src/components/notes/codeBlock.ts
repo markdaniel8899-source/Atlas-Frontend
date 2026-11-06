@@ -21,6 +21,8 @@ export interface LanguageOption {
 export interface ExportNote {
   title: string;
   html: string;
+  courseTitle?: string | null;
+  updatedAt?: number;
 }
 
 const PHP_PREFIX = "<?php\n";
@@ -585,6 +587,13 @@ main.notes-export {
   letter-spacing: -0.01em;
 }
 .export-note h1 { margin-top: 0; font-size: 2rem; }
+.export-meta {
+  margin: -2px 0 24px;
+  color: #8f90a6;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .export-note h2 { font-size: 1.5rem; }
 .export-note h3 { font-size: 1.2rem; }
 .export-note p { margin: 12px 0; }
@@ -608,6 +617,11 @@ main.notes-export {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 .export-note img { max-width: 100%; height: auto; }
+.export-note p,
+.export-note li,
+.export-note blockquote {
+  overflow-wrap: break-word;
+}
 .export-note code {
   padding: 1px 5px;
   border-radius: 4px;
@@ -623,11 +637,34 @@ main.notes-export {
   color: inherit;
   font-size: inherit;
 }
+@media (max-width: 640px) {
+  main.notes-export { padding: 28px 16px 56px; }
+  .export-note h1 { font-size: 1.55rem; }
+  .export-note h2 { font-size: 1.3rem; }
+  .export-note h3 { font-size: 1.12rem; }
+  .export-meta { margin-bottom: 18px; }
+}
 @media print {
   body { background: #0a0a12; }
   main.notes-export { max-width: none; padding: 0; }
 }
 `;
+
+function buildExportMeta(note: ExportNote): string {
+  const date =
+    typeof note.updatedAt === "number" && Number.isFinite(note.updatedAt)
+      ? new Date(note.updatedAt).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "";
+  const parts = [note.courseTitle?.trim() ?? "", date].filter(Boolean);
+  if (parts.length === 0) return "";
+  return `<p class="export-meta">${parts
+    .map((part) => escapeHtml(part))
+    .join(" &middot; ")}</p>`;
+}
 
 export async function buildNotesExportHtml(
   notes: ExportNote[],
@@ -680,7 +717,7 @@ export async function buildNotesExportHtml(
     rendered.push(
       `<article class="export-note"><h1>${escapeHtml(
         note.title || "Untitled note",
-      )}</h1>${container.innerHTML}</article>`,
+      )}</h1>${buildExportMeta(note)}${container.innerHTML}</article>`,
     );
   }
 
