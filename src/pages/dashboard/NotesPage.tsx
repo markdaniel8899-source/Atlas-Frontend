@@ -251,7 +251,7 @@ function CourseSwitcher({
         aria-label="Filter notes by course"
         title="Show notes for one course, or all notes by subject"
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex max-w-56 items-center gap-2 rounded-full border px-4 py-2.5 text-sm backdrop-blur-[40px] transition-colors ${
+        className={`inline-flex max-w-72 items-center gap-2 rounded-full border px-4 py-2.5 text-sm backdrop-blur-[40px] transition-colors ${
           open
             ? "border-[#cf9eff]/50 bg-[#cf9eff]/[0.08] text-white"
             : "border-white/[0.08] bg-white/[0.03] text-white/75 hover:border-[#cf9eff]/45 hover:bg-white/[0.06] hover:text-white"
@@ -278,7 +278,7 @@ function CourseSwitcher({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: EASE }}
-            className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 w-full rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl md:left-auto md:w-64"
+            className="absolute top-[calc(100%+8px)] left-0 right-0 z-50 w-full rounded-2xl border border-white/10 bg-[#111] p-1.5 shadow-xl backdrop-blur-2xl md:left-auto md:w-80"
           >
             {items.map((item) => {
               const Icon = item.icon;
@@ -2104,7 +2104,7 @@ export default function NotesPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[260px_1fr]">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-[300px_1fr]">
         <aside className="glass card-sheen flex max-h-[42dvh] flex-col overflow-hidden rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] lg:max-h-[65vh]">
           <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.07] px-4 py-3">
             <span
@@ -2550,7 +2550,7 @@ export default function NotesPage() {
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
-                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-base leading-relaxed text-white/70 focus:outline-none max-md:min-h-[52dvh] max-md:pb-32 sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-sm leading-relaxed text-white/70 focus:outline-none max-md:min-h-[52dvh] max-md:pb-32 sm:min-h-[38vh] sm:px-6 sm:py-5 [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
                     {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}

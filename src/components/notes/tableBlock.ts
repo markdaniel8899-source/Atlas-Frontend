@@ -662,7 +662,6 @@ export const TABLE_BLOCK_CSS = `
   .atomic-table-input {
     min-width: 88px;
     min-height: 40px;
-    font-size: 16px;
     padding: 8px 9px;
   }
 }
