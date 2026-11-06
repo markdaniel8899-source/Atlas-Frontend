@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { useLenis } from "./hooks/useLenis";
+import { useMobileKeyboard } from "./hooks/useMobileKeyboard";
 import { scrollToTop } from "./lib/scroll";
 import { MotionConfig } from "framer-motion";
 import { CustomCursor } from "./components/CustomCursor";
@@ -338,6 +339,7 @@ function AnimatedRoutes() {
 
 export default function App() {
   useLenis();
+  useMobileKeyboard();
   const routesRef = useRef<HTMLDivElement>(null);
 
   // A curtain covers the screen while the next route mounts under it, so

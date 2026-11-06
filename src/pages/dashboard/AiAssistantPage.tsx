@@ -162,7 +162,10 @@ export default function AiAssistantPage() {
   const hasMessages = turns.length > 0;
 
   return (
-    <div className="-mb-8 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden md:-mb-12">
+    <div
+      data-keyboard-managed="true"
+      className="-mb-8 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden md:-mb-12"
+    >
       {hasMessages && (
         <ChatThread key="thread" turns={turns} thinking={thinking} />
       )}

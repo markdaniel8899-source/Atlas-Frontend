@@ -321,8 +321,9 @@ html.lenis body {
 
   body {
     position: relative;
-    min-height: 100dvh;
+    min-height: calc(100dvh + var(--keyboard-space, 0px));
     margin: 0;
+    padding-bottom: var(--keyboard-space, 0px);
     overflow-x: clip;
     background-color: var(--color-void);
     color: rgba(255, 255, 255, 0.7);
