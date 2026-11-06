@@ -50,6 +50,7 @@ import {
   findTableBlockElement,
   hydrateTableBlocks,
   normalizeTableRows,
+  parseTabularText,
   readTableBlockRows,
   renderTableBlockViewHtml,
   renderTableClipboardHtml,
@@ -1055,6 +1056,98 @@ export default function NotesPage() {
     [],
   );
 
+  const insertTableBlock = useCallback((rows: string[][]) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const selection = window.getSelection();
+    const liveRange =
+      selection && selection.rangeCount > 0
+        ? selection.getRangeAt(0)
+        : null;
+    const savedRange = savedRangeRef.current;
+    const range =
+      liveRange && editor.contains(liveRange.commonAncestorContainer)
+        ? liveRange
+        : savedRange && editor.contains(savedRange.commonAncestorContainer)
+          ? savedRange
+          : null;
+
+    const id = createTableId();
+    const normalized = normalizeTableRows(rows);
+    const block = document.createElement("div");
+    block.className = "atomic-table-block";
+    block.contentEditable = "false";
+    block.dataset.tableId = id;
+    block.dataset.table = JSON.stringify(normalized);
+    block.innerHTML = renderTableBlockViewHtml(normalized);
+
+    const trailing = document.createElement("p");
+    trailing.innerHTML = "<br>";
+
+    const topLevelChild = (node: Node | null): HTMLElement | null => {
+      let current: Node | null = node;
+      while (current && current.parentNode !== editor) {
+        current = current.parentNode;
+      }
+      return current instanceof HTMLElement ? current : null;
+    };
+
+    let placement: HTMLElement = trailing;
+
+    if (range) {
+      range.collapse(true);
+      const top = topLevelChild(range.startContainer);
+
+      if (top?.classList.contains("atomic-table-block")) {
+        top.after(block, trailing);
+      } else if (
+        top &&
+        ["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE"].includes(
+          top.tagName,
+        )
+      ) {
+        const tailRange = document.createRange();
+        tailRange.selectNodeContents(top);
+        tailRange.setStart(range.startContainer, range.startOffset);
+        const tail = tailRange.extractContents();
+        const tailBlock = top.cloneNode(false) as HTMLElement;
+        tailBlock.appendChild(tail);
+        top.after(tailBlock);
+        top.after(block);
+
+        if (tailBlock.textContent?.trim() || tailBlock.querySelector("*")) {
+          placement = tailBlock;
+        } else {
+          tailBlock.remove();
+          block.after(trailing);
+        }
+      } else if (top) {
+        top.after(block, trailing);
+      } else {
+        editor.append(block, trailing);
+      }
+    } else {
+      editor.append(block, trailing);
+    }
+
+    const caret = document.createRange();
+    caret.setStart(placement, 0);
+    caret.collapse(true);
+    const nextSelection = window.getSelection();
+    nextSelection?.removeAllRanges();
+    nextSelection?.addRange(caret);
+    savedRangeRef.current = null;
+
+    tableBlocksRef.current = [
+      ...tableBlocksRef.current,
+      { id, rows: normalized },
+    ];
+    setTableBlocks(tableBlocksRef.current);
+    setEditingBlockId(null);
+    setEditingTableId(id);
+  }, []);
+
   const handlePaste = useCallback(
     (event: ReactClipboardEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement | null;
@@ -1064,10 +1157,24 @@ export default function NotesPage() {
         return;
       }
 
-      const pasted = event.clipboardData.getData("text/html");
-      if (!pasted) return;
+      const pastedHtml = event.clipboardData.getData("text/html");
+      const hasHtmlTable = /<table[\s>]/i.test(pastedHtml);
 
-      const cleaned = sanitizeNoteHtml(pasted);
+      if (!hasHtmlTable) {
+        const pastedText = event.clipboardData.getData("text/plain");
+        const rows = parseTabularText(pastedText);
+        if (rows && restoreEditorSelection()) {
+          event.preventDefault();
+          insertTableBlock(rows);
+          saveSelection();
+          handleInput();
+          return;
+        }
+      }
+
+      if (!pastedHtml) return;
+
+      const cleaned = sanitizeNoteHtml(pastedHtml);
       if (!cleaned.trim()) return;
 
       event.preventDefault();
@@ -1094,7 +1201,12 @@ export default function NotesPage() {
       saveSelection();
       handleInput();
     },
-    [handleInput, restoreEditorSelection, saveSelection],
+    [
+      handleInput,
+      restoreEditorSelection,
+      saveSelection,
+      insertTableBlock,
+    ],
   );
 
   const endCodeEdit = useCallback(() => {
@@ -1632,90 +1744,7 @@ export default function NotesPage() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-
-    const selection = window.getSelection();
-    const liveRange =
-      selection && selection.rangeCount > 0
-        ? selection.getRangeAt(0)
-        : null;
-    const savedRange = savedRangeRef.current;
-    const range =
-      liveRange && editor.contains(liveRange.commonAncestorContainer)
-        ? liveRange
-        : savedRange && editor.contains(savedRange.commonAncestorContainer)
-          ? savedRange
-          : null;
-
-    const id = createTableId();
-    const rows = createDefaultTableRows();
-    const block = document.createElement("div");
-    block.className = "atomic-table-block";
-    block.contentEditable = "false";
-    block.dataset.tableId = id;
-    block.dataset.table = JSON.stringify(rows);
-    block.innerHTML = renderTableBlockViewHtml(rows);
-
-    const trailing = document.createElement("p");
-    trailing.innerHTML = "<br>";
-
-    const topLevelChild = (node: Node | null): HTMLElement | null => {
-      let current: Node | null = node;
-      while (current && current.parentNode !== editor) {
-        current = current.parentNode;
-      }
-      return current instanceof HTMLElement ? current : null;
-    };
-
-    let placement: HTMLElement = trailing;
-
-    if (range) {
-      range.collapse(true);
-      const top = topLevelChild(range.startContainer);
-
-      if (top?.classList.contains("atomic-table-block")) {
-        top.after(block, trailing);
-      } else if (
-        top &&
-        ["P", "DIV", "H1", "H2", "H3", "BLOCKQUOTE"].includes(
-          top.tagName,
-        )
-      ) {
-        const tailRange = document.createRange();
-        tailRange.selectNodeContents(top);
-        tailRange.setStart(range.startContainer, range.startOffset);
-        const tail = tailRange.extractContents();
-        const tailBlock = top.cloneNode(false) as HTMLElement;
-        tailBlock.appendChild(tail);
-        top.after(tailBlock);
-        top.after(block);
-
-        if (tailBlock.textContent?.trim() || tailBlock.querySelector("*")) {
-          placement = tailBlock;
-        } else {
-          tailBlock.remove();
-          block.after(trailing);
-        }
-      } else if (top) {
-        top.after(block, trailing);
-      } else {
-        editor.append(block, trailing);
-      }
-    } else {
-      editor.append(block, trailing);
-    }
-
-    const caret = document.createRange();
-    caret.setStart(placement, 0);
-    caret.collapse(true);
-    const nextSelection = window.getSelection();
-    nextSelection?.removeAllRanges();
-    nextSelection?.addRange(caret);
-    savedRangeRef.current = null;
-
-    tableBlocksRef.current = [...tableBlocksRef.current, { id, rows }];
-    setTableBlocks(tableBlocksRef.current);
-    setEditingBlockId(null);
-    setEditingTableId(id);
+    insertTableBlock(createDefaultTableRows());
   };
 
   const tools: Tool[] = [

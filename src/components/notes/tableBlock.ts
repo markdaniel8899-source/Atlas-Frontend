@@ -105,6 +105,85 @@ export function parseTableRows(raw: string | null | undefined): string[][] {
   }
 }
 
+function parseCsvText(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[index + 1] === '"') {
+          field += '"';
+          index += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  row.push(field);
+  rows.push(row);
+  return rows;
+}
+
+/**
+ * Detect CSV/TSV clipboard text and convert it into table rows.
+ * Returns null when the text does not look like tabular data.
+ */
+export function parseTabularText(raw: string): string[][] | null {
+  const text = raw.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ");
+  if (!text.trim()) return null;
+
+  const lines = text.split("\n").filter((line) => line.trim().length > 0);
+  if (lines.length < 2) return null;
+
+  const delimiter = lines.some((line) => line.includes("\t")) ? "\t" : ",";
+  if (delimiter === "," && !lines.some((line) => line.includes(","))) {
+    return null;
+  }
+
+  const parsed =
+    delimiter === ","
+      ? parseCsvText(text)
+      : lines.map((line) => line.split("\t"));
+
+  const rows = parsed
+    .map((row) => row.map((cell) => cell.trim()))
+    .filter((row) => row.some((cell) => cell.length > 0));
+
+  if (rows.length < 2) return null;
+
+  const width = Math.max(...rows.map((row) => row.length));
+  if (width < 2) return null;
+
+  const aligned = rows.filter((row) => row.length === width).length;
+  if (aligned < 2) return null;
+
+  return normalizeTableRows(rows);
+}
+
 export function renderTableBlockViewHtml(input: unknown): string {
   const rows = normalizeTableRows(input);
   const header = rows[0] ?? [];
