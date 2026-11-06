@@ -267,6 +267,9 @@ export default function DashboardLayout() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [assistantViewportHeight, setAssistantViewportHeight] = useState<
+    number | null
+  >(null);
 
   const user = getUser();
   const userId = user?.id;
@@ -285,6 +288,35 @@ export default function DashboardLayout() {
     setVisited((prev) =>
       prev.has(activePath) ? prev : new Set(prev).add(activePath),
     );
+  }, [activePath]);
+
+  // Mobile keyboards shrink the visual viewport without resizing the layout
+  // viewport, so the assistant needs an explicit height to keep its composer
+  // above the keyboard and its thread scrollable.
+  useEffect(() => {
+    if (activePath !== "/app/assistant") {
+      setAssistantViewportHeight(null);
+      return;
+    }
+    const visualViewport = window.visualViewport;
+    const update = () => {
+      if (!window.matchMedia("(max-width: 767px)").matches) {
+        setAssistantViewportHeight(null);
+        return;
+      }
+      setAssistantViewportHeight(
+        visualViewport?.height ?? window.innerHeight,
+      );
+    };
+    update();
+    visualViewport?.addEventListener("resize", update);
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      visualViewport?.removeEventListener("resize", update);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
   }, [activePath]);
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -539,13 +571,18 @@ export default function DashboardLayout() {
       <main
         className={`relative z-10 flex flex-col pt-16 transition-[padding-left] duration-300 ${
           activePath === "/app/assistant"
-            ? "h-dvh"
+            ? "h-dvh overflow-hidden"
             : "min-h-dvh"
         } ${isSidebarOpen ? "md:pl-64" : "md:pl-20"}`}
+        style={
+          activePath === "/app/assistant" && assistantViewportHeight !== null
+            ? { height: assistantViewportHeight }
+            : undefined
+        }
       >
         <div
           className={`mx-auto flex w-full max-w-[1920px] flex-1 flex-col px-4 py-8 sm:px-6 md:px-8 md:py-12 lg:px-12 ${
-            activePath === "/app/assistant" ? "min-h-0" : ""
+            activePath === "/app/assistant" ? "min-h-0 overflow-hidden" : ""
           }`}
         >
           {PAGES.filter(({ path }) => visited.has(path)).map(
@@ -559,7 +596,11 @@ export default function DashboardLayout() {
             ),
           )}
         </div>
-        <div className="mx-auto w-full max-w-[1920px] px-4 pb-8 sm:px-6 md:px-8 lg:px-12">
+        <div
+          className={`mx-auto w-full max-w-[1920px] px-4 pb-8 sm:px-6 md:px-8 lg:px-12 ${
+            activePath === "/app/assistant" ? "max-md:hidden" : ""
+          }`}
+        >
           <footer
             className={`flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-6 text-xs text-zinc-500 sm:justify-end ${
               activePath === "/app/assistant" ? "" : "border-t border-white/[0.06]"

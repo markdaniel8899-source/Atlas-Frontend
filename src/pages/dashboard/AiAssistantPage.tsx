@@ -162,17 +162,18 @@ export default function AiAssistantPage() {
   const hasMessages = turns.length > 0;
 
   return (
-    <div className="-mb-8 flex h-full min-h-0 w-full flex-1 flex-col md:-mb-12">
+    <div className="-mb-8 flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden md:-mb-12">
       {hasMessages && (
         <ChatThread key="thread" turns={turns} thinking={thinking} />
       )}
 
       <div
         key="composer-dock"
+        data-lenis-prevent
         className={
           hasMessages
-            ? "mt-auto shrink-0"
-            : "flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-8 sm:px-6"
+            ? "mt-auto shrink-0 max-md:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            : "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-8 sm:px-6"
         }
       >
         <div

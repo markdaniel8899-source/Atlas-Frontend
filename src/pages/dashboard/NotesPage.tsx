@@ -1130,12 +1130,16 @@ export default function NotesPage() {
         top.after(tailBlock);
         top.after(block);
 
-        if (tailBlock.textContent?.trim() || tailBlock.querySelector("*")) {
-          placement = tailBlock;
-        } else {
-          tailBlock.remove();
-          block.after(trailing);
-        }
+        const hasTailContent =
+          Boolean((tailBlock.textContent ?? "").trim()) ||
+          Boolean(
+            tailBlock.querySelector(
+              "img, ul, ol, blockquote, h1, h2, h3, table, pre, hr",
+            ),
+          );
+        if (!hasTailContent) tailBlock.remove();
+        block.after(trailing);
+        placement = trailing;
       } else if (top) {
         top.after(block, trailing);
       } else {
@@ -1471,6 +1475,19 @@ export default function NotesPage() {
       if (element) {
         element.dataset.table = JSON.stringify(normalized);
         element.dataset.tableId = id;
+
+        // Always leave a tappable paragraph after the table so mobile users
+        // have somewhere to place the caret without fighting the table view.
+        const next = element.nextElementSibling;
+        if (
+          !next ||
+          next.classList.contains("atomic-table-block") ||
+          next.classList.contains("atomic-code-block")
+        ) {
+          const paragraph = document.createElement("p");
+          paragraph.innerHTML = "<br>";
+          element.after(paragraph);
+        }
       }
 
       setTableBlocks(tableBlocksRef.current);
@@ -2517,7 +2534,10 @@ export default function NotesPage() {
 
 {!selectionMode ? (
                 <>
-                  <div className="relative min-h-0 flex-1 max-md:max-h-[58dvh] max-md:overflow-y-auto max-md:overscroll-contain">
+                  <div
+                    data-lenis-prevent
+                    className="relative min-h-0 flex-1 max-md:max-h-[68dvh] max-md:overflow-y-auto max-md:overscroll-contain max-md:scroll-smooth"
+                  >
                     <div
                       ref={editorRef}
                       contentEditable
@@ -2530,7 +2550,7 @@ export default function NotesPage() {
                       onKeyUp={saveSelection}
                       onMouseUp={saveSelection}
                       spellCheck={false}
-                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-base leading-relaxed text-white/70 focus:outline-none sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+                      className="min-h-[42dvh] flex-1 break-words px-3 py-4 text-base leading-relaxed text-white/70 focus:outline-none max-md:min-h-[52dvh] max-md:pb-32 sm:min-h-[38vh] sm:px-6 sm:py-5 sm:text-sm [&_blockquote]:border-l-2 [&_blockquote]:border-star/50 [&_blockquote]:pl-4 [&_blockquote]:text-white/50 [&_h2]:mt-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-white [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
                       aria-label="Note content"
                     />
                     {/* Render InlineCodeBlock as portals targeting the atomic-code-block elements inside the editor */}

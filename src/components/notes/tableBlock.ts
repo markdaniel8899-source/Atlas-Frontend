@@ -618,9 +618,11 @@ export const TABLE_BLOCK_CSS = `
 @media (max-width: 639px) {
   .atomic-table-block {
     margin: 12px 0;
+    scroll-margin-block: 16px 112px;
   }
   .atomic-table-view {
     border-radius: 8px;
+    scroll-behavior: smooth;
   }
   .atomic-table th,
   .atomic-table td {
