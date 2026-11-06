@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  ClipboardEvent as ReactClipboardEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Minus, Plus, Table as TableIcon, Trash2 } from "lucide-react";
 import {
-  escapeTableCellText,
   normalizeTableRows,
   renderTableClipboardHtml,
+  sanitizeTableCellHtml,
   tableCellToText,
 } from "./tableBlock";
 
@@ -178,14 +182,66 @@ export function InlineTableBlock({
     latestRef.current.onDraftChange(normalized);
   }, []);
 
-  const updateCell = useCallback(
-    (rowIndex: number, columnIndex: number, value: string) => {
+  const updateCellHtml = useCallback(
+    (rowIndex: number, columnIndex: number, element: HTMLElement) => {
       const next = cloneRows(rowsRef.current);
       if (!next[rowIndex]) return;
-      next[rowIndex][columnIndex] = escapeTableCellText(value);
-      updateRows(next);
+      next[rowIndex][columnIndex] = sanitizeTableCellHtml(element.innerHTML);
+      rowsRef.current = next;
+      setDraftRows(next);
+      latestRef.current.onDraftChange(next);
     },
-    [updateRows],
+    [],
+  );
+
+  const handleCellPaste = useCallback(
+    (event: ReactClipboardEvent<HTMLDivElement>) => {
+      const html = event.clipboardData.getData("text/html");
+      const text = event.clipboardData.getData("text/plain");
+      if (!html && !text) return;
+
+      event.preventDefault();
+      const cell = event.currentTarget;
+      if (html) {
+        document.execCommand(
+          "insertHTML",
+          false,
+          sanitizeTableCellHtml(html),
+        );
+      } else {
+        document.execCommand(
+          "insertText",
+          false,
+          text.replace(/\r?\n/g, " "),
+        );
+      }
+      cell.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    [],
+  );
+
+  const handleCellKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        document.execCommand("insertLineBreak");
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+      const cells = Array.from(
+        overlayRef.current?.querySelectorAll<HTMLElement>(
+          ".atomic-table-input",
+        ) ?? [],
+      );
+      const index = cells.indexOf(event.currentTarget);
+      if (index < 0) return;
+      const next = cells[index + (event.shiftKey ? -1 : 1)];
+      if (!next) return;
+      event.preventDefault();
+      next.focus();
+    },
+    [],
   );
 
   const addRow = useCallback(() => {
@@ -282,6 +338,9 @@ export function InlineTableBlock({
     if (!editing) return;
     const handlePointerDown = (event: PointerEvent) => {
       const node = event.target as Node;
+      if (node instanceof Element && node.closest("[data-format-tool]")) {
+        return;
+      }
       if (overlayRef.current?.contains(node)) return;
       if (target?.contains(node)) return;
       finish(true);
@@ -294,12 +353,15 @@ export function InlineTableBlock({
   useEffect(() => {
     if (!editing || !target) return;
     const timer = window.setTimeout(() => {
-      const input =
-        overlayRef.current?.querySelector<HTMLInputElement>(
-          ".atomic-table-input",
-        );
-      input?.focus();
-      input?.select();
+      const cell =
+        overlayRef.current?.querySelector<HTMLElement>(".atomic-table-input");
+      if (!cell) return;
+      cell.focus();
+      const range = document.createRange();
+      range.selectNodeContents(cell);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
     }, 40);
     return () => window.clearTimeout(timer);
   }, [editing, target]);
@@ -451,15 +513,24 @@ export function InlineTableBlock({
             <tr>
               {draftRows[0]?.map((cell, columnIndex) => (
                 <th key={columnIndex}>
-                  <input
+                  <div
                     className="atomic-table-input"
-                    value={tableCellToText(cell)}
-                    placeholder="Header"
+                    contentEditable
+                    suppressContentEditableWarning
+                    role="textbox"
+                    data-placeholder="Header"
                     aria-label={`Header column ${columnIndex + 1}`}
                     spellCheck={false}
-                    onChange={(event) =>
-                      updateCell(0, columnIndex, event.target.value)
+                    ref={(node) => {
+                      if (!node || node.dataset.hydrated === "true") return;
+                      node.dataset.hydrated = "true";
+                      node.innerHTML = sanitizeTableCellHtml(cell);
+                    }}
+                    onInput={(event) =>
+                      updateCellHtml(0, columnIndex, event.currentTarget)
                     }
+                    onPaste={handleCellPaste}
+                    onKeyDown={handleCellKeyDown}
                   />
                 </th>
               ))}
@@ -471,21 +542,32 @@ export function InlineTableBlock({
                 <tr key={bodyIndex}>
                   {row.map((cell, columnIndex) => (
                     <td key={columnIndex}>
-                      <input
+                      <div
                         className="atomic-table-input"
-                        value={tableCellToText(cell)}
-                        placeholder="Cell"
+                        contentEditable
+                        suppressContentEditableWarning
+                        role="textbox"
+                        data-placeholder="Cell"
                         aria-label={`Row ${bodyIndex + 2} column ${
                           columnIndex + 1
                         }`}
                         spellCheck={false}
-                        onChange={(event) =>
-                          updateCell(
+                        ref={(node) => {
+                          if (!node || node.dataset.hydrated === "true") {
+                            return;
+                          }
+                          node.dataset.hydrated = "true";
+                          node.innerHTML = sanitizeTableCellHtml(cell);
+                        }}
+                        onInput={(event) =>
+                          updateCellHtml(
                             bodyIndex + 1,
                             columnIndex,
-                            event.target.value,
+                            event.currentTarget,
                           )
                         }
+                        onPaste={handleCellPaste}
+                        onKeyDown={handleCellKeyDown}
                       />
                     </td>
                   ))}

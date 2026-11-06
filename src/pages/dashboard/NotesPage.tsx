@@ -93,6 +93,17 @@ interface NoteGroup {
 
 const NOTE_ORDER_PREFIX = "atlas:note-order:";
 
+/** Formatting tools that can run inside an inline table cell editor. */
+const TABLE_CELL_TOOL_LABELS = new Set([
+  "Bold",
+  "Italic",
+  "Underline",
+  "Heading",
+  "Quote",
+  "Bullet list",
+  "Numbered list",
+]);
+
 /** Neutral accent for notes that are not linked to a course. */
 const GENERAL_ACCENT = "#8b90a3";
 
@@ -978,6 +989,22 @@ export default function NotesPage() {
     return null;
   }, []);
 
+  const getTableCellEditor = useCallback((): HTMLElement | null => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return null;
+
+    let node: Node | null = selection.getRangeAt(0).startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    const element = node instanceof HTMLElement ? node : null;
+    const cell = element?.closest<HTMLElement>(
+      ".atomic-table-input[contenteditable]",
+    );
+
+    if (!cell || !editor.contains(cell)) return null;
+    return cell;
+  }, []);
+
   const handleCopy = useCallback(
     (event: ReactClipboardEvent<HTMLDivElement>) => {
       const editor = editorRef.current;
@@ -1402,11 +1429,10 @@ export default function NotesPage() {
     (e: KeyboardEvent) => {
       if (!active || selectionMode) return;
       const target = e.target as HTMLElement | null;
-      if (
-        target?.closest(
-          ".atomic-code-block, [data-editor-container], [data-table-editor-container]",
-        )
-      ) {
+      const inTableEditor = Boolean(
+        target?.closest("[data-table-editor-container]"),
+      );
+      if (target?.closest(".atomic-code-block, [data-editor-container]")) {
         return;
       }
 
@@ -1438,11 +1464,22 @@ export default function NotesPage() {
       if (!tool) return;
       e.preventDefault();
       e.stopPropagation();
+
+      if (inTableEditor) {
+        if (!TABLE_CELL_TOOL_LABELS.has(tool.label)) return;
+        tool.run();
+        getTableCellEditor()?.dispatchEvent(
+          new Event("input", { bubbles: true }),
+        );
+        handleInput();
+        return;
+      }
+
       focusEditor();
       tool.run();
       handleInput();
     },
-    [active, selectionMode, handleInput],
+    [active, selectionMode, handleInput, getTableCellEditor],
   );
 
   useEffect(() => {
@@ -1533,6 +1570,23 @@ export default function NotesPage() {
   const ALT = isMac ? "⌥" : "Alt";
 
   const toggleHeading = () => {
+    const cell = getTableCellEditor();
+    if (cell) {
+      const heading = cell.querySelector<HTMLElement>("h2, h3");
+      if (heading) {
+        while (heading.firstChild) {
+          cell.insertBefore(heading.firstChild, heading);
+        }
+        heading.remove();
+      } else {
+        const next = document.createElement("h2");
+        while (cell.firstChild) next.appendChild(cell.firstChild);
+        cell.appendChild(next);
+      }
+      cell.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
     if (!restoreEditorSelection()) return;
     const block = getSelectionBlock();
     const target = block?.closest("h2") ? "p" : "h2";
@@ -1540,6 +1594,23 @@ export default function NotesPage() {
   };
 
   const toggleQuote = () => {
+    const cell = getTableCellEditor();
+    if (cell) {
+      const quote = cell.querySelector<HTMLElement>("blockquote");
+      if (quote) {
+        while (quote.firstChild) {
+          cell.insertBefore(quote.firstChild, quote);
+        }
+        quote.remove();
+      } else {
+        const next = document.createElement("blockquote");
+        while (cell.firstChild) next.appendChild(cell.firstChild);
+        cell.appendChild(next);
+      }
+      cell.dispatchEvent(new Event("input", { bubbles: true }));
+      return;
+    }
+
     if (!restoreEditorSelection()) return;
     const block = getSelectionBlock();
     const quote = block?.closest("blockquote");
@@ -2158,8 +2229,23 @@ export default function NotesPage() {
                       type="button"
                       title={tool.label}
                       aria-label={tool.label}
+                      data-format-tool={
+                        editingTableId &&
+                        TABLE_CELL_TOOL_LABELS.has(tool.label)
+                          ? "true"
+                          : undefined
+                      }
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
+                        if (editingTableId) {
+                          if (!TABLE_CELL_TOOL_LABELS.has(tool.label)) return;
+                          tool.run();
+                          getTableCellEditor()?.dispatchEvent(
+                            new Event("input", { bubbles: true }),
+                          );
+                          handleInput();
+                          return;
+                        }
                         focusEditor();
                         tool.run();
                         handleInput();

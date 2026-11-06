@@ -26,15 +26,6 @@ const CELL_ALLOWED_TAGS = [
   "li",
 ];
 
-export function escapeTableCellText(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 export function sanitizeTableCellHtml(value: string): string {
   if (!value) return "";
   return DOMPurify.sanitize(value, {
@@ -316,6 +307,41 @@ export const TABLE_BLOCK_CSS = `
 .atomic-table tbody tr:hover td {
   background: rgba(255, 255, 255, 0.03);
 }
+.atomic-table th p,
+.atomic-table td p,
+.atomic-table th ul,
+.atomic-table td ul,
+.atomic-table th ol,
+.atomic-table td ol,
+.atomic-table th blockquote,
+.atomic-table td blockquote,
+.atomic-table th h2,
+.atomic-table td h2,
+.atomic-table th h3,
+.atomic-table td h3 {
+  margin: 0;
+}
+.atomic-table td h2,
+.atomic-table th h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.atomic-table td h3,
+.atomic-table th h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.atomic-table td ul,
+.atomic-table td ol,
+.atomic-table th ul,
+.atomic-table th ol {
+  padding-left: 18px;
+}
+.atomic-table td blockquote,
+.atomic-table th blockquote {
+  padding-left: 8px;
+  border-left: 2px solid rgba(207, 158, 255, 0.35);
+}
 .atomic-table-overlay {
   background: #1e1e1e;
   box-shadow: 0 18px 50px -20px rgba(0, 0, 0, 0.9);
@@ -449,8 +475,10 @@ export const TABLE_BLOCK_CSS = `
   vertical-align: middle;
 }
 .atomic-table-input {
+  display: block;
   width: 100%;
   min-width: 96px;
+  min-height: 34px;
   box-sizing: border-box;
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -461,14 +489,44 @@ export const TABLE_BLOCK_CSS = `
   font-size: 13px;
   line-height: 1.35;
   outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  cursor: text;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
-.atomic-table-input::placeholder {
+.atomic-table-input:empty::before,
+.atomic-table-input:has(> br:only-child)::before {
+  content: attr(data-placeholder);
   color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
 }
 .atomic-table-input:focus {
   border-color: rgba(207, 158, 255, 0.55);
   background: rgba(207, 158, 255, 0.06);
+}
+.atomic-table-input h2,
+.atomic-table-input h3,
+.atomic-table-input p,
+.atomic-table-input ul,
+.atomic-table-input ol,
+.atomic-table-input blockquote {
+  margin: 0;
+}
+.atomic-table-input h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.atomic-table-input h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.atomic-table-input ul,
+.atomic-table-input ol {
+  padding-left: 18px;
+}
+.atomic-table-input blockquote {
+  padding-left: 8px;
+  border-left: 2px solid rgba(207, 158, 255, 0.35);
 }
 .atomic-table-editor-grid thead .atomic-table-input {
   color: #cf9eff;
