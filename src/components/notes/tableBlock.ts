@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 export interface TableBlockData {
   id: string;
   rows: string[][];
@@ -6,6 +8,59 @@ export interface TableBlockData {
 const MAX_ROWS = 60;
 const MAX_COLS = 12;
 const DEFAULT_HEADERS = ["Header 1", "Header 2"];
+const CELL_ALLOWED_TAGS = [
+  "b",
+  "strong",
+  "i",
+  "em",
+  "u",
+  "s",
+  "strike",
+  "br",
+  "p",
+  "h2",
+  "h3",
+  "blockquote",
+  "ul",
+  "ol",
+  "li",
+];
+
+export function escapeTableCellText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function sanitizeTableCellHtml(value: string): string {
+  if (!value) return "";
+  return DOMPurify.sanitize(value, {
+    ALLOWED_TAGS: CELL_ALLOWED_TAGS,
+    ALLOWED_ATTR: [],
+  });
+}
+
+export function tableCellToText(value: string): string {
+  if (!value) return "";
+  const html = sanitizeTableCellHtml(value);
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.body
+      .querySelectorAll("br")
+      .forEach((node) => node.replaceWith(" "));
+    return (doc.body.textContent ?? "")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export function createTableId(): string {
   return `table-${Date.now().toString(36)}-${Math.random()
@@ -15,15 +70,6 @@ export function createTableId(): string {
 
 export function createDefaultTableRows(): string[][] {
   return [DEFAULT_HEADERS.slice()];
-}
-
-function escapeTableHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 export function normalizeTableRows(input: unknown): string[][] {
@@ -74,13 +120,13 @@ export function renderTableBlockViewHtml(input: unknown): string {
   const body = rows.slice(1);
 
   const head = `<thead><tr>${header
-    .map((cell) => `<th>${escapeTableHtml(cell)}</th>`)
+    .map((cell) => `<th>${sanitizeTableCellHtml(cell)}</th>`)
     .join("")}</tr></thead>`;
   const rowsHtml = body
     .map(
       (row) =>
         `<tr>${row
-          .map((cell) => `<td>${escapeTableHtml(cell)}</td>`)
+          .map((cell) => `<td>${sanitizeTableCellHtml(cell)}</td>`)
           .join("")}</tr>`,
     )
     .join("");
@@ -98,13 +144,16 @@ export function renderTableClipboardHtml(input: unknown): string {
   const headStyle = `${cellStyle}background:#f2f2f2;font-weight:600;`;
 
   const head = `<thead><tr>${header
-    .map((cell) => `<th style="${headStyle}">${escapeTableHtml(cell)}</th>`)
+    .map((cell) => `<th style="${headStyle}">${sanitizeTableCellHtml(cell)}</th>`)
     .join("")}</tr></thead>`;
   const rowsHtml = body
     .map(
       (row) =>
         `<tr>${row
-          .map((cell) => `<td style="${cellStyle}">${escapeTableHtml(cell)}</td>`)
+          .map(
+            (cell) =>
+              `<td style="${cellStyle}">${sanitizeTableCellHtml(cell)}</td>`,
+          )
           .join("")}</tr>`,
     )
     .join("");
@@ -116,9 +165,7 @@ export function renderTableClipboardHtml(input: unknown): string {
 
 export function readTableRowsFromElement(table: HTMLTableElement): string[][] {
   const rows = Array.from(table.rows).map((row) =>
-    Array.from(row.cells).map((cell) =>
-      (cell.textContent ?? "").replace(/\u00a0/g, " ").trim(),
-    ),
+    Array.from(row.cells).map((cell) => sanitizeTableCellHtml(cell.innerHTML)),
   );
   if (rows.length === 0) return createDefaultTableRows();
   return normalizeTableRows(rows);

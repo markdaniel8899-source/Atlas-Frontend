@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Copy, Minus, Plus, Table as TableIcon, Trash2 } from "lucide-react";
-import { normalizeTableRows, renderTableClipboardHtml } from "./tableBlock";
+import {
+  escapeTableCellText,
+  normalizeTableRows,
+  renderTableClipboardHtml,
+  tableCellToText,
+} from "./tableBlock";
 
 interface InlineTableBlockProps {
   id: string;
@@ -177,7 +182,7 @@ export function InlineTableBlock({
     (rowIndex: number, columnIndex: number, value: string) => {
       const next = cloneRows(rowsRef.current);
       if (!next[rowIndex]) return;
-      next[rowIndex][columnIndex] = value;
+      next[rowIndex][columnIndex] = escapeTableCellText(value);
       updateRows(next);
     },
     [updateRows],
@@ -226,7 +231,9 @@ export function InlineTableBlock({
 
   const handleCopy = useCallback(async () => {
     const rows = rowsRef.current;
-    const tsv = rows.map((row) => row.join("\t")).join("\n");
+    const tsv = rows
+      .map((row) => row.map((cell) => tableCellToText(cell)).join("\t"))
+      .join("\n");
     const html = renderTableClipboardHtml(rows);
 
     try {
@@ -446,7 +453,7 @@ export function InlineTableBlock({
                 <th key={columnIndex}>
                   <input
                     className="atomic-table-input"
-                    value={cell}
+                    value={tableCellToText(cell)}
                     placeholder="Header"
                     aria-label={`Header column ${columnIndex + 1}`}
                     spellCheck={false}
@@ -466,7 +473,7 @@ export function InlineTableBlock({
                     <td key={columnIndex}>
                       <input
                         className="atomic-table-input"
-                        value={cell}
+                        value={tableCellToText(cell)}
                         placeholder="Cell"
                         aria-label={`Row ${bodyIndex + 2} column ${
                           columnIndex + 1
