@@ -51,6 +51,10 @@ export function InlineTableBlock({
       typeof window === "undefined"
         ? 0
         : window.visualViewport?.height ?? window.innerHeight,
+    top:
+      typeof window === "undefined"
+        ? 0
+        : window.visualViewport?.offsetTop ?? 0,
   }));
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -121,37 +125,13 @@ export function InlineTableBlock({
   }, [editing, rows]);
 
   useEffect(() => {
-    if (!editing || !target) return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
-
-    const reveal = (smooth: boolean) => {
-      overlayRef.current?.scrollIntoView({
-        block: "center",
-        behavior: smooth ? "smooth" : "auto",
-      });
-    };
-
-    const timers = [
-      window.setTimeout(() => reveal(true), 80),
-      window.setTimeout(() => reveal(true), 360),
-    ];
-    const viewport = window.visualViewport;
-    const handleViewportChange = () => reveal(false);
-    viewport?.addEventListener("resize", handleViewportChange);
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-      viewport?.removeEventListener("resize", handleViewportChange);
-    };
-  }, [editing, target]);
-
-  useEffect(() => {
     if (!editing) return;
     const visualViewport = window.visualViewport;
     const update = () =>
       setViewport({
         width: window.innerWidth,
         height: visualViewport?.height ?? window.innerHeight,
+        top: visualViewport?.offsetTop ?? 0,
       });
     update();
     visualViewport?.addEventListener("resize", update);
@@ -165,6 +145,7 @@ export function InlineTableBlock({
   }, [editing]);
 
   const columnCount = Math.max(1, draftRows[0]?.length ?? 1);
+  const isPhoneViewport = viewport.width > 0 && viewport.width < 768;
   const isCompactViewport =
     (viewport.width > 0 && viewport.width < 768) ||
     (viewport.height > 0 && viewport.height < 520);
@@ -181,12 +162,26 @@ export function InlineTableBlock({
   useEffect(() => {
     if (!editing || !target) return;
     target.dataset.editing = "true";
-    target.style.minHeight = `${overlayHeight}px`;
+    // On phones the editor is a viewport-covering overlay, so the inline block
+    // does not need to reserve space for it.
+    if (!isPhoneViewport) {
+      target.style.minHeight = `${overlayHeight}px`;
+    }
     return () => {
       delete target.dataset.editing;
       target.style.removeProperty("min-height");
     };
-  }, [editing, target, overlayHeight]);
+  }, [editing, target, overlayHeight, isPhoneViewport]);
+
+  // Keep the page behind a phone overlay from scrolling under the editor.
+  useEffect(() => {
+    if (!editing || !isPhoneViewport) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [editing, isPhoneViewport]);
 
   useEffect(() => {
     return () => {
@@ -401,19 +396,36 @@ export function InlineTableBlock({
 
   if (!editing || !target) return null;
 
+  // On phones the editor escapes the note sheet and covers the viewport, so
+  // mount it on <body>. Desktop keeps the inline absolutely-positioned overlay.
+  const portalTarget =
+    isPhoneViewport && typeof document !== "undefined" ? document.body : target;
+
   return createPortal(
     <div
       ref={overlayRef}
       data-table-editor-container="true"
-      className="atomic-table-overlay"
+      className={`atomic-table-overlay${
+        isPhoneViewport ? " atomic-table-overlay--phone" : ""
+      }`}
       style={{
-        position: "absolute",
-        top: 0,
+        position: isPhoneViewport ? "fixed" : "absolute",
+        top: isPhoneViewport ? viewport.top : 0,
         left: 0,
-        right: 0,
-        height: overlayHeight,
-        zIndex: 30,
-        borderRadius: 9,
+        right: isPhoneViewport ? undefined : 0,
+        width: isPhoneViewport ? "100%" : undefined,
+        height: isPhoneViewport
+          ? viewport.height || "100dvh"
+          : overlayHeight,
+        display: isPhoneViewport ? "flex" : undefined,
+        flexDirection: isPhoneViewport ? "column" : undefined,
+        zIndex: isPhoneViewport ? 90 : 30,
+        borderRadius: isPhoneViewport ? 0 : 9,
+        boxSizing: isPhoneViewport ? "border-box" : undefined,
+        paddingTop: isPhoneViewport ? "env(safe-area-inset-top)" : undefined,
+        paddingBottom: isPhoneViewport
+          ? "env(safe-area-inset-bottom)"
+          : undefined,
       }}
       onKeyDown={(event) => event.stopPropagation()}
       onKeyUp={(event) => event.stopPropagation()}
@@ -436,7 +448,7 @@ export function InlineTableBlock({
       <div
         className="atomic-table-toolbar"
         data-lenis-prevent
-        style={{ height: TOOLBAR_HEIGHT }}
+        style={{ height: TOOLBAR_HEIGHT, flexShrink: 0 }}
       >
         <span className="atomic-table-toolbar-label">
           <TableIcon className="size-4 shrink-0 text-white/35" />
@@ -539,7 +551,11 @@ export function InlineTableBlock({
       <div
         className="atomic-table-editor"
         data-lenis-prevent
-        style={{ height: editorHeight }}
+        style={
+          isPhoneViewport
+            ? { flex: "1 1 auto", minHeight: 0 }
+            : { height: editorHeight }
+        }
       >
         <table className="atomic-table-editor-grid">
           <thead>
@@ -611,6 +627,6 @@ export function InlineTableBlock({
         </table>
       </div>
     </div>,
-    target,
+    portalTarget,
   );
 }

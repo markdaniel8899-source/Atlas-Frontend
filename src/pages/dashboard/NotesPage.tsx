@@ -5,6 +5,7 @@ import type {
   MouseEvent as ReactMouseEvent,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import JSZip from "jszip";
 import { useSearchParams } from "react-router-dom";
 import {
   Bold,
@@ -119,18 +120,62 @@ const NOTE_ACCENTS = [
   "#cf9eff",
 ];
 
-function buildExportFilename(notes: Array<{ title: string }>): string {
+/** Characters that are not allowed in file names on Windows/macOS/Linux. */
+const INVALID_FILENAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
+
+/** Keep the note name as typed, only stripping characters that break file systems. */
+function sanitizeFilenamePart(value: string, fallback: string): string {
+  const cleaned = value
+    .replace(INVALID_FILENAME_CHARS, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^[.\s]+|[.\s]+$/g, "")
+    .slice(0, 120)
+    .trim();
+  return cleaned || fallback;
+}
+
+function buildNoteExportFilename(title: string): string {
+  return `${sanitizeFilenamePart(title, "Untitled note")}.html`;
+}
+
+/** Ensure notes that share a title still get their own file in the ZIP. */
+function uniqueZipEntryName(title: string, used: Set<string>): string {
+  const base = sanitizeFilenamePart(title, "Untitled note");
+  let name = `${base}.html`;
+  let index = 2;
+  while (used.has(name.toLowerCase())) {
+    name = `${base} (${index}).html`;
+    index += 1;
+  }
+  used.add(name.toLowerCase());
+  return name;
+}
+
+function buildZipFilename(
+  notes: Array<{ courseTitle: string | null }>,
+): string {
   const date = new Date().toISOString().split("T")[0];
-  const title = notes.length === 1 ? notes[0]?.title.trim() ?? "" : "";
-  if (!title) return `notes-${date}.html`;
+  const courseTitles = new Set(
+    notes
+      .map((note) => note.courseTitle?.trim())
+      .filter((title): title is string => Boolean(title)),
+  );
+  if (courseTitles.size === 1) {
+    const [courseTitle] = [...courseTitles];
+    return `${sanitizeFilenamePart(`${courseTitle} notes`, "notes")}-${date}.zip`;
+  }
+  return `notes-${date}.zip`;
+}
 
-  const slug = title
-    .toLowerCase()
-    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-
-  return `${slug || "note"}-${date}.html`;
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -1664,34 +1709,75 @@ export default function NotesPage() {
     if (selectedIds.size === 0) return;
     setBulkDownloading(true);
     try {
-      const ids = Array.from(selectedIds).filter(
-        (id): id is string => typeof id === "string",
+      const selected = new Set(
+        Array.from(selectedIds).filter(
+          (id): id is string => typeof id === "string",
+        ),
       );
-      await flush();
-      const downloadNotes = await bulkDownloadNotes(ids);
-      const content = await buildNotesExportHtml(
-        downloadNotes.map((note) => ({
-          title: note.title,
-          html: note.html,
-          courseTitle: note.courseTitle,
-          updatedAt: note.updatedAt,
-        })),
-      );
+      // Download in the same order the notes are shown on the page: grouped
+      // by subject in "All notes", plain list order when a course is picked.
+      const visibleNotes =
+        selectedCourseId == null
+          ? groupedNotes.flatMap((group) => group.notes)
+          : notes;
+      const ids = visibleNotes
+        .filter((note) => selected.has(note.id))
+        .map((note) => note.id);
+      for (const id of selected) {
+        if (!ids.includes(id)) ids.push(id);
+      }
 
-      const blob = new Blob([content], { type: "text/html;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = buildExportFilename(downloadNotes);
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await flush();
+      const fetched = await bulkDownloadNotes(ids);
+      if (fetched.length === 0) {
+        toast.error("Failed to download notes");
+        return;
+      }
+      const byId = new Map(fetched.map((note) => [note.id, note]));
+      const downloadNotes = ids
+        .map((id) => byId.get(id))
+        .filter((note): note is (typeof fetched)[number] => Boolean(note));
+
+      if (downloadNotes.length === 1) {
+        const [note] = downloadNotes;
+        const content = await buildNotesExportHtml([
+          {
+            title: note.title,
+            html: note.html,
+            courseTitle: note.courseTitle,
+            updatedAt: note.updatedAt,
+          },
+        ]);
+        triggerDownload(
+          new Blob([content], { type: "text/html;charset=utf-8" }),
+          buildNoteExportFilename(note.title),
+        );
+      } else {
+        const zip = new JSZip();
+        const usedNames = new Set<string>();
+        for (const note of downloadNotes) {
+          const content = await buildNotesExportHtml([
+            {
+              title: note.title,
+              html: note.html,
+              courseTitle: note.courseTitle,
+              updatedAt: note.updatedAt,
+            },
+          ]);
+          zip.file(uniqueZipEntryName(note.title, usedNames), content);
+        }
+        const blob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
+        });
+        triggerDownload(blob, buildZipFilename(downloadNotes));
+      }
 
       toast.success(
-        `Downloaded ${downloadNotes.length} note${
-          downloadNotes.length > 1 ? "s" : ""
-        }`,
+        downloadNotes.length === 1
+          ? "Note downloaded"
+          : `Downloaded ${downloadNotes.length} notes as ZIP`,
       );
       clearSelection();
     } catch (error) {
@@ -1700,7 +1786,7 @@ export default function NotesPage() {
     } finally {
       setBulkDownloading(false);
     }
-  }, [selectedIds, clearSelection, flush]);
+  }, [notes, groupedNotes, selectedCourseId, selectedIds, clearSelection, flush]);
 
   const handleBulkShare = useCallback(() => {
     if (selectedIds.size === 0) return;

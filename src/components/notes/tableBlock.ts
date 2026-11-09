@@ -665,6 +665,35 @@ export const TABLE_BLOCK_CSS = `
     padding: 8px 9px;
   }
 }
+@media (max-width: 767px) {
+  /* Phone table editor: a full-screen sheet that spreads across the viewport
+     instead of being squeezed into the note column. */
+  .atomic-table-overlay--phone {
+    background: #0a0a12;
+    overscroll-behavior: contain;
+    border: 0;
+    box-shadow: none;
+  }
+  .atomic-table-overlay--phone .atomic-table-toolbar {
+    border-radius: 0;
+    background: rgba(13, 13, 22, 0.98);
+  }
+  .atomic-table-overlay--phone .atomic-table-editor {
+    border-radius: 0;
+    padding: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+  }
+  .atomic-table-overlay--phone .atomic-table-editor-grid {
+    width: max-content;
+    min-width: 100%;
+  }
+  .atomic-table-overlay--phone .atomic-table-input {
+    min-width: 120px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+}
 .notes-export table:not(.atomic-table) {
   width: 100%;
   margin: 16px 0;
