@@ -482,13 +482,15 @@ export default function NotesPage() {
     dataVersionRef.current += 1;
   }, []);
 
-  // Close course menu on outside click
+  // Close course menu on outside click. The mobile course list lives inside
+  // the three-dot menu, so tapping it must not count as an outside click.
   useEffect(() => {
     if (!courseMenuOpen) return;
     const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!courseMenuRef.current?.contains(event.target as Node)) {
-        setCourseMenuOpen(false);
-      }
+      const target = event.target as Node;
+      const insideDesktop = courseMenuRef.current?.contains(target) ?? false;
+      const insideMobile = mobileActionsRef.current?.contains(target) ?? false;
+      if (!insideDesktop && !insideMobile) setCourseMenuOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setCourseMenuOpen(false);
@@ -928,19 +930,32 @@ export default function NotesPage() {
   const updateNoteCourse = useCallback(async (noteId: string, courseId: number | null) => {
     if (!active) return;
     dataVersionRef.current += 1;
+    // Moving a note out of the course currently being viewed should remove it
+    // from this list immediately, not only after the next refetch/reload.
+    const leavesCurrentCourse =
+      activeCourseId != null && courseId !== activeCourseId;
     try {
       await updateNote(noteId, { courseId });
-      setNotes((prev) =>
-        prev.map((note) =>
+      setNotes((prev) => {
+        const next = prev.map((note) =>
           note.id === noteId ? { ...note, courseId } : note,
-        ),
-      );
+        );
+        return leavesCurrentCourse
+          ? next.filter((note) => note.id !== noteId)
+          : next;
+      });
+      if (leavesCurrentCourse) {
+        setActiveId((current) => {
+          if (current !== noteId) return current;
+          return notes.find((note) => note.id !== noteId)?.id ?? null;
+        });
+      }
       toast.success(courseId ? "Note moved to course" : "Note moved to General");
     } catch (error) {
       toast.error("Failed to move note");
       console.error(error);
     }
-  }, [active]);
+  }, [active, activeCourseId, notes]);
 
   const focusEditor = () => {
     editorRef.current?.focus();

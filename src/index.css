@@ -88,6 +88,33 @@
     );
 }
 
+/* Session-complete card: dark ATLAS surface with the same soft mesh wash as
+   the dashboard (lilac top-left, star blue top-right, indigo bottom-right). */
+@utility session-complete-surface {
+  background-color: rgba(8, 8, 16, 0.94);
+  background-image:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      rgba(207, 158, 255, 0.16) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      100% 130% at 100% 0%,
+      rgba(157, 180, 255, 0.1) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      110% 160% at 100% 100%,
+      rgba(64, 68, 204, 0.18) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      90% 120% at 0% 100%,
+      rgba(11, 34, 70, 0.55) 0%,
+      transparent 65%
+    );
+}
+
 /* Corner wash: one smooth theme gradient anchored to the top-right,
    instead of discrete blurred discs. */
 @utility atlas-glow {
