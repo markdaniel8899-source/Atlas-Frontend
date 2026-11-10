@@ -273,7 +273,7 @@ export function Hero({ intro = true }: HeroProps) {
           </motion.div>
 
           <motion.a
-            href="https://github.com/markdaniel8899-source/Atlas-app/releases/download/v1.0.3/ATLAS.apk"
+            href="https://github.com/markdaniel8899-source/Atlas-app/releases/download/v1.0.0/ATLAS.apk"
             download="ATLAS.apk"
             target="_blank"
             rel="noopener noreferrer"
